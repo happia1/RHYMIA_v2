@@ -102,9 +102,11 @@ src/
     weather.ts               OpenWeatherMap 서버 전용 fetch 헬퍼 (키 없거나 실패 시 null)
     holidays.ts               2026년 KR 공휴일 정적 목록 (실 API 교체 지점 TODO 주석 있음)
     scheduleKeywords.ts       일정/할 일 공용 태그+색상 그룹 (KEYWORD_GROUPS)
-    mealUtils.ts / routineUtils.ts   끼니/루틴 관련 계산 유틸
+    mealUtils.ts / routineUtils.ts   끼니/루틴 관련 계산 유틸 (mealUtils에 tagHourLabel 2026-07-07 추가 — 태그별 기본 시각 표시)
   types/index.ts            전체 테이블에 대응하는 TS 인터페이스 (NoticeComment 2026-07-07 추가)
-tailwind.config.ts                                        2026-07-07: gridTemplateColumns.board = "3fr 2fr" (게시판 60/40 비율 토큰)
+src/app/globals.css                                       2026-07-07: 다크/라이트 테마 CSS 변수 (--bg-page 등)
+src/app/layout.tsx                                        2026-07-07: ThemeProvider 래핑 + 하이드레이션 전 테마 적용 인라인 스크립트
+tailwind.config.ts                                        gridTemplateColumns.board="3fr 2fr"(게시판), .mirror="1fr 1.4fr 1fr"(홈 태블릿 3단), spacing.section/label-gap/row(홈 여백 리듬) — 전부 2026-07-07 추가
 supabase/
   schema.sql                                              최초 전체 스키마 (참고용 — 라이브 DB에 직접 재실행하지 않음)
   fix_rls.sql / fix_rls_v2.sql                             family_workspace/workspace_member RLS 패치 (실행 완료)
@@ -147,9 +149,11 @@ middleware.ts                                              프로젝트 루트, 
 - [ ] 습관/할 일: 등록 화면만 있고 목록/트래커 화면 없음
 - [ ] 설정 탭 알림(push) 설정 미구현 (알림 페이지 `/notifications`와는 별개)
 - [ ] AI Agent 버튼 기능 미연결 (플레이스홀더)
+- [ ] 다크 모드는 현재 홈 화면에만 적용됨 — 식탁/일정/게시판/설정 탭을 나중에 같은 `mirror.*`/CSS 변수 체계로 전환해야 앱 전체가 일관됨. 그 전까지는 다크 모드 상태로 다른 탭에 들어가면 독바 글자색이 어색하게 보일 수 있음
+- [ ] 테마 선택값은 `localStorage`에만 저장됨(기기별 개별 적용) — 여러 기기 간 동기화가 필요해지면 `users.theme` 컬럼 추가 + 서버 액션으로 옮기는 마이그레이션 필요
+- [ ] 홈 화면 태블릿(lg: 1024px~) 3단 컬럼 레이아웃은 코드로만 구현, 실제 태블릿/넓은 화면에서 육안 확인 안 됨 — 확인 필요
 - [ ] Vercel 배포 여부 미확인
 - [ ] `supabase/add_diary_habit_todo_and_schedule_columns.sql`, `supabase/add_notice_comment_and_avatar_storage.sql`을 라이브 DB에 실행했는지 확인 필요 (실행 전에는 각각 다이어리/습관/할 일/일정 사진·알림, 게시판 댓글·프로필 이미지 업로드가 DB 에러를 냄)
-- [ ] 홈 헤더에서 날짜를 시간과 같은 줄에 작게 유지하기로 판단(사용자가 명시적으로 날짜를 빼라고 하진 않았음) — 의도와 다르면 조정 필요
 
 ## 로컬 실행 방법
 
