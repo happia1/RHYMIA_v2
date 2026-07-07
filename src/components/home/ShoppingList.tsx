@@ -8,6 +8,7 @@ import {
   deleteShoppingItem,
   toggleShoppingPurchased,
 } from "@/app/(main)/home/actions";
+import { SHOPPING_DOT_SIZE } from "@/lib/uiTokens";
 import type { ShoppingItem } from "@/types";
 
 export function ShoppingList({
@@ -59,7 +60,7 @@ export function ShoppingList({
                   toggleShoppingPurchased(item.id, !item.is_purchased);
                 })
               }
-              size={10}
+              size={SHOPPING_DOT_SIZE}
             />
             <span className="flex-1 truncate text-[14px] text-ink">{item.name}</span>
             <button

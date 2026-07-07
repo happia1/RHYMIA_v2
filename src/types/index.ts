@@ -201,6 +201,14 @@ export interface Notice {
   created_at: string;
 }
 
+export interface NoticeComment {
+  id: string;
+  notice_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+}
+
 export interface Expense {
   id: string;
   workspace_id: string;

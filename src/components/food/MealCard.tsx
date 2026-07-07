@@ -7,6 +7,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { CheckToggle } from "@/components/ui/CheckToggle";
 import { toggleMealLike } from "@/app/(main)/food/actions";
 import { toggleMealParticipation } from "@/app/(main)/home/actions";
+import { AVATAR_SIZE } from "@/lib/uiTokens";
 import type { Meal } from "@/types";
 
 const TYPE_COLOR: Record<string, string> = {
@@ -20,6 +21,7 @@ export interface MealCardParticipant {
   display_name: string;
   avatar_color: string;
   avatar_text_color: string;
+  avatar_image_url: string | null;
 }
 
 export function MealCard({
@@ -100,7 +102,8 @@ export function MealCard({
                 name={p.display_name}
                 color={p.avatar_color}
                 textColor={p.avatar_text_color}
-                size={22}
+                imageUrl={p.avatar_image_url}
+                size={AVATAR_SIZE.comment}
               />
             ))}
           </div>

@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { IconChevronDown, IconPlus, IconPaperclip } from "@tabler/icons-react";
-import { TagChip } from "@/components/ui/TagChip";
+import { mirror } from "@/lib/homeTheme";
 import type { Schedule } from "@/types";
 
 export interface MemberInfo {
@@ -17,12 +17,11 @@ function targetLabel(
   targetMembers: string[],
   membersById: Record<string, MemberInfo>
 ) {
-  if (targetMembers.length === 0) return { label: "가족", color: "#888780" };
+  if (targetMembers.length === 0) return "가족";
   if (targetMembers.length === 1) {
-    const m = membersById[targetMembers[0]];
-    return { label: m?.display_name ?? "가족", color: m?.avatar_color ?? "#888780" };
+    return membersById[targetMembers[0]]?.display_name ?? "가족";
   }
-  return { label: `가족 외 ${targetMembers.length}`, color: "#888780" };
+  return `가족 외 ${targetMembers.length}`;
 }
 
 export function TodayEvents({
@@ -51,15 +50,15 @@ export function TodayEvents({
   }, [weekSchedules, weekDates]);
 
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-border-light bg-white p-4">
-      <div className="flex items-center justify-end gap-2">
-        <div className="flex rounded-full bg-cream p-0.5">
+    <div className="flex flex-col gap-row">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex gap-3">
           {(["today", "week"] as const).map((key) => (
             <button
               key={key}
               onClick={() => setTab(key)}
-              className={`rounded-full px-3 py-1 text-[12px] font-medium ${
-                tab === key ? "bg-white text-ink" : "text-stone"
+              className={`text-[12px] font-medium ${
+                tab === key ? mirror.primary : mirror.muted
               }`}
             >
               {key === "today" ? "오늘" : "이번 주"}
@@ -67,33 +66,36 @@ export function TodayEvents({
           ))}
         </div>
         <Link href="/schedule?new=1" aria-label="특이사항 추가">
-          <IconPlus size={18} className="text-stone" />
+          <IconPlus size={16} className={mirror.muted} />
         </Link>
       </div>
 
       {tab === "today" ? (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-row">
           {todaySchedules.length === 0 && (
-            <p className="text-[13px] text-stone">오늘 등록된 일정이 없어요</p>
+            <p className={`text-[13px] ${mirror.muted}`}>오늘 등록된 일정이 없어요</p>
           )}
-          {visibleToday.map((s) => {
-            const target = targetLabel(s.target_members, membersById);
-            return (
-              <div key={s.id} className="flex items-center gap-2">
-                <TagChip label={target.label} color={target.color} />
-                <span
-                  className={`truncate text-[13px] ${
-                    s.is_important ? "font-medium text-terra" : "text-ink"
-                  }`}
-                >
-                  {s.title}
-                </span>
-                {s.memo && (
-                  <IconPaperclip size={14} className="shrink-0 text-stone" />
-                )}
-              </div>
-            );
-          })}
+          {visibleToday.map((s) => (
+            <div key={s.id} className="flex items-center gap-3">
+              <span
+                className="w-12 shrink-0 text-[13px]"
+                style={{ fontVariantNumeric: "tabular-nums", color: "var(--accent-honey)" }}
+              >
+                {s.time_start ? s.time_start.slice(0, 5) : "종일"}
+              </span>
+              <span
+                className={`truncate text-[14px] ${
+                  s.is_important ? "font-medium" : ""
+                } ${mirror.primary}`}
+              >
+                {s.title}
+              </span>
+              {s.memo && <IconPaperclip size={12} className={`shrink-0 ${mirror.muted}`} />}
+              <span className={`ml-auto shrink-0 text-[11px] ${mirror.muted}`}>
+                {targetLabel(s.target_members, membersById)}
+              </span>
+            </div>
+          ))}
           {todaySchedules.length > 3 && (
             <button
               onClick={() => setExpanded((v) => !v)}
@@ -101,8 +103,8 @@ export function TodayEvents({
               aria-label="더보기"
             >
               <IconChevronDown
-                size={18}
-                className={`text-stone transition-transform ${
+                size={16}
+                className={`transition-transform ${mirror.muted} ${
                   expanded ? "rotate-180" : ""
                 }`}
               />
@@ -116,19 +118,19 @@ export function TodayEvents({
             const items = byDate[date] ?? [];
             return (
               <div key={date} className="flex flex-col items-center gap-1">
-                <span className="text-[10px] text-stone">{WEEKDAY_LABELS[i]}</span>
-                <span className="text-[12px] font-medium text-ink">{day}</span>
+                <span className={`text-[10px] ${mirror.muted}`}>{WEEKDAY_LABELS[i]}</span>
+                <span className={`text-[12px] font-medium ${mirror.primary}`}>{day}</span>
                 <div className="flex flex-col items-center gap-0.5">
                   {items.slice(0, 2).map((s) => (
                     <span
                       key={s.id}
                       className={`h-1.5 w-1.5 rounded-full ${
-                        s.is_important ? "bg-terra" : "bg-ocean"
+                        s.is_important ? "bg-terra" : "bg-honey"
                       }`}
                     />
                   ))}
                   {items.some((s) => s.memo) && (
-                    <IconPaperclip size={10} className="text-stone" />
+                    <IconPaperclip size={10} className={mirror.muted} />
                   )}
                 </div>
               </div>

@@ -14,6 +14,12 @@ export function tagOrderIndex(tag: string) {
   return idx === -1 ? MEAL_TAGS.length : idx;
 }
 
+/** 태그별 기본 시각 표시 (예: "저녁" -> "18:00"). 실제 예약 시각이 있으면 그걸 우선 써야 한다. */
+export function tagHourLabel(tag: string): string {
+  const hour = TAG_HOUR[tag] ?? 0;
+  return `${hour}:00`;
+}
+
 export function findUpcomingMeal<T extends { date: string; tag: string }>(
   meals: T[],
   now = new Date()

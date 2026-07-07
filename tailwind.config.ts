@@ -22,6 +22,15 @@ const config: Config = {
         lavender: "#9B8EC4",
         rose: "#E8416A",
       },
+      gridTemplateColumns: {
+        board: "3fr 2fr",
+        mirror: "1fr 1.4fr 1fr",
+      },
+      spacing: {
+        section: "30px",
+        "label-gap": "12px",
+        row: "7px",
+      },
     },
   },
   plugins: [],

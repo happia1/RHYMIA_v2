@@ -2,17 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { IconBell, IconSettings } from "@tabler/icons-react";
 import type { WeatherData } from "@/lib/weather";
 import { WEEKDAY_LABEL } from "@/lib/date";
 import { Avatar } from "@/components/ui/Avatar";
-
-function formatClock(date: Date) {
-  const hours = date.getHours();
-  const minutes = date.getMinutes();
-  const period = hours < 12 ? "오전" : "오후";
-  const hour12 = hours % 12 === 0 ? 12 : hours % 12;
-  return `${period} ${hour12}:${String(minutes).padStart(2, "0")}`;
-}
+import { AVATAR_SIZE } from "@/lib/uiTokens";
+import { mirror } from "@/lib/homeTheme";
 
 function formatDate(date: Date) {
   const m = date.getMonth() + 1;
@@ -24,6 +19,7 @@ export function HomeHeader({
   displayName,
   avatarColor,
   avatarTextColor,
+  avatarImageUrl,
   statusText,
   weather,
   nowIso,
@@ -31,6 +27,7 @@ export function HomeHeader({
   displayName: string;
   avatarColor: string;
   avatarTextColor: string;
+  avatarImageUrl: string | null;
   statusText: string;
   weather: WeatherData | null;
   nowIso: string;
@@ -42,27 +39,49 @@ export function HomeHeader({
     return () => clearInterval(timer);
   }, []);
 
+  const hours = now.getHours();
+  const period = hours < 12 ? "AM" : "PM";
+  const hour12 = hours % 12 === 0 ? 12 : hours % 12;
+
   return (
-    <div className="flex items-center justify-between rounded-2xl bg-white p-5">
-      <div className="flex flex-col gap-1">
-        <span className="text-[17px] font-medium text-ink">{formatClock(now)}</span>
-        <span className="flex items-center gap-1.5 text-[13px] text-stone">
-          {formatDate(now)}
+    <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-label-gap">
+        <div className="flex items-baseline gap-2">
+          <span className={`text-[56px] font-light leading-none ${mirror.primary}`}>
+            {hour12}:{String(now.getMinutes()).padStart(2, "0")}
+          </span>
+          <span className={`text-[13px] font-medium ${mirror.secondary}`}>{period}</span>
+        </div>
+
+        <div className={`flex items-center gap-1.5 text-[13px] ${mirror.secondary}`}>
+          <span>{formatDate(now)}</span>
           {weather && (
             <span>
-              · {weather.icon} {weather.tempC}°
+              · {weather.icon} {weather.tempC}°C
             </span>
           )}
-        </span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Avatar
+            name={displayName}
+            color={avatarColor}
+            textColor={avatarTextColor}
+            imageUrl={avatarImageUrl}
+            size={AVATAR_SIZE.mirror}
+          />
+          <span className={`text-[13px] ${mirror.secondary}`}>{statusText}</span>
+        </div>
       </div>
 
-      <Link href="/settings" className="flex items-center gap-2">
-        <div className="flex flex-col items-end gap-0.5">
-          <span className="text-[13px] font-medium text-ink">{displayName}</span>
-          <span className="text-[12px] text-stone">{statusText}</span>
-        </div>
-        <Avatar name={displayName} color={avatarColor} textColor={avatarTextColor} size={36} />
-      </Link>
+      <div className="flex items-center gap-3">
+        <Link href="/notifications" aria-label="알림">
+          <IconBell size={20} className={mirror.secondary} />
+        </Link>
+        <Link href="/settings" aria-label="설정">
+          <IconSettings size={20} className={mirror.secondary} />
+        </Link>
+      </div>
     </div>
   );
 }

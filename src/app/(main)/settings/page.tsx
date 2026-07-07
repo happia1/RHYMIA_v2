@@ -1,6 +1,9 @@
 import { requireWorkspaceContext } from "@/lib/workspace";
+import { mapWorkspaceMembers } from "@/lib/members";
 import { Avatar } from "@/components/ui/Avatar";
 import { CopyLinkButton } from "@/components/ui/CopyLinkButton";
+import { AvatarUploader } from "@/components/settings/AvatarUploader";
+import { ThemeToggle } from "@/components/settings/ThemeToggle";
 import { signOut } from "./actions";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -10,27 +13,24 @@ const ROLE_LABEL: Record<string, string> = {
 };
 
 export default async function SettingsPage() {
-  const { supabase, workspaceId, role } = await requireWorkspaceContext();
+  const { supabase, user, workspaceId, role } = await requireWorkspaceContext();
 
   const [{ data: workspace }, { data: memberRows }] = await Promise.all([
     supabase.from("family_workspace").select("*").eq("id", workspaceId).single(),
     supabase
       .from("workspace_member")
-      .select("user_id, display_name, role, users(avatar_color, avatar_text_color)")
+      .select("user_id, display_name, role, users(avatar_color, avatar_text_color, avatar_image_url)")
       .eq("workspace_id", workspaceId)
       .order("role", { ascending: true }),
   ]);
 
-  const members = (memberRows ?? []).map((m) => {
-    const u = Array.isArray(m.users) ? m.users[0] : m.users;
-    return {
-      user_id: m.user_id as string,
-      display_name: m.display_name ?? "가족",
-      role: m.role as string,
-      avatar_color: u?.avatar_color ?? "#E1F5EE",
-      avatar_text_color: u?.avatar_text_color ?? "#0F6E56",
-    };
-  });
+  const rawRows = memberRows ?? [];
+  const members = mapWorkspaceMembers(rawRows).map((m, i) => ({
+    ...m,
+    role: rawRows[i].role as string,
+  }));
+
+  const me = members.find((m) => m.user_id === user.id);
 
   return (
     <div className="flex flex-col gap-6 px-4 pb-6 pt-6">
@@ -38,6 +38,24 @@ export default async function SettingsPage() {
         <h1 className="text-[20px] font-medium text-ink">설정</h1>
         <p className="text-[13px] text-stone">{workspace?.name}</p>
       </div>
+
+      <section className="flex flex-col gap-3">
+        <span className="text-[12px] font-medium text-stone">내 프로필</span>
+        <div className="rounded-2xl border border-border-light bg-white p-4">
+          <AvatarUploader
+            userId={user.id}
+            displayName={me?.display_name ?? "가족"}
+            avatarColor={me?.avatar_color ?? "#E1F5EE"}
+            avatarTextColor={me?.avatar_text_color ?? "#0F6E56"}
+            avatarImageUrl={me?.avatar_image_url ?? null}
+          />
+        </div>
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <span className="text-[12px] font-medium text-stone">화면 모드</span>
+        <ThemeToggle />
+      </section>
 
       <section className="flex flex-col gap-3">
         <span className="text-[12px] font-medium text-stone">가족 구성원</span>
@@ -48,6 +66,7 @@ export default async function SettingsPage() {
                 name={m.display_name}
                 color={m.avatar_color}
                 textColor={m.avatar_text_color}
+                imageUrl={m.avatar_image_url}
               />
               <span className="text-[14px] font-medium text-ink">{m.display_name}</span>
               <span className="ml-auto text-[11px] text-stone">
@@ -87,7 +106,7 @@ export default async function SettingsPage() {
       <form action={signOut}>
         <button
           type="submit"
-          className="flex h-11 w-full items-center justify-center rounded-2xl bg-white text-[13px] font-medium text-terra"
+          className="flex h-11 w-full items-center justify-center rounded-2xl bg-white text-[15px] font-medium text-terra"
         >
           로그아웃
         </button>

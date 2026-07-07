@@ -2,6 +2,7 @@ import Link from "next/link";
 import { IconPlus } from "@tabler/icons-react";
 import { requireWorkspaceContext } from "@/lib/workspace";
 import { getWeekDates, toDateStr } from "@/lib/date";
+import { mapWorkspaceMembers } from "@/lib/members";
 import { WeekCalendar } from "@/components/food/WeekCalendar";
 import { MealCard, type MealCardParticipant } from "@/components/food/MealCard";
 
@@ -18,18 +19,10 @@ export default async function FoodPage({
 
   const { data: memberRows } = await supabase
     .from("workspace_member")
-    .select("user_id, display_name, users(avatar_color, avatar_text_color)")
+    .select("user_id, display_name, users(avatar_color, avatar_text_color, avatar_image_url)")
     .eq("workspace_id", workspaceId);
 
-  const members = (memberRows ?? []).map((m) => {
-    const u = Array.isArray(m.users) ? m.users[0] : m.users;
-    return {
-      user_id: m.user_id as string,
-      display_name: m.display_name ?? "가족",
-      avatar_color: u?.avatar_color ?? "#E1F5EE",
-      avatar_text_color: u?.avatar_text_color ?? "#0F6E56",
-    };
-  });
+  const members = mapWorkspaceMembers(memberRows ?? []);
 
   const [{ data: weekMeals }, { data: dayMeals }] = await Promise.all([
     supabase
@@ -77,6 +70,7 @@ export default async function FoodPage({
                 display_name: m?.display_name ?? "가족",
                 avatar_color: m?.avatar_color ?? "#E1F5EE",
                 avatar_text_color: m?.avatar_text_color ?? "#0F6E56",
+                avatar_image_url: m?.avatar_image_url ?? null,
               };
             });
 

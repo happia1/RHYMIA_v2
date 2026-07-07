@@ -17,6 +17,24 @@ export function addMonths(dateStr: string, delta: number): string {
   return toDateStr(d);
 }
 
+/** 오늘이면 "오후 3:20", 아니면 "7/6" 형태로 표시합니다 (게시판 작성 시각용). */
+export function formatPostTimestamp(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const sameDay =
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate();
+
+  if (sameDay) {
+    const hours = d.getHours();
+    const period = hours < 12 ? "오전" : "오후";
+    const hour12 = hours % 12 === 0 ? 12 : hours % 12;
+    return `${period} ${hour12}:${String(d.getMinutes()).padStart(2, "0")}`;
+  }
+  return `${d.getMonth() + 1}/${d.getDate()}`;
+}
+
 /** 월요일 시작 기준 이번 주 7일치 날짜 문자열(YYYY-MM-DD) 배열을 반환합니다. */
 export function getWeekDates(base = new Date()): string[] {
   const day = base.getDay(); // 0=일 ... 6=토

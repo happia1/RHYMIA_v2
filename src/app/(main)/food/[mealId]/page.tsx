@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { requireWorkspaceContext } from "@/lib/workspace";
+import { mapWorkspaceMembers } from "@/lib/members";
 import { MealDetail } from "@/components/food/MealDetail";
 import type { Meal, MealComment } from "@/types";
 
@@ -22,21 +23,13 @@ export default async function MealDetailPage({
       .maybeSingle(),
     supabase
       .from("workspace_member")
-      .select("user_id, display_name, users(avatar_color, avatar_text_color)")
+      .select("user_id, display_name, users(avatar_color, avatar_text_color, avatar_image_url)")
       .eq("workspace_id", workspaceId),
   ]);
 
   if (!meal) notFound();
 
-  const members = (memberRows ?? []).map((m) => {
-    const u = Array.isArray(m.users) ? m.users[0] : m.users;
-    return {
-      user_id: m.user_id as string,
-      display_name: m.display_name ?? "가족",
-      avatar_color: u?.avatar_color ?? "#E1F5EE",
-      avatar_text_color: u?.avatar_text_color ?? "#0F6E56",
-    };
-  });
+  const members = mapWorkspaceMembers(memberRows ?? []);
 
   const participation =
     (meal as unknown as {

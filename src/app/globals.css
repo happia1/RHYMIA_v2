@@ -5,6 +5,41 @@
 :root {
   --background: #f5f4f0;
   --foreground: #1a1a18;
+
+  /* 홈 화면 "스마트미러" 테마 토큰 — 라이트(기본값) */
+  --bg-page: #F5F4F0;
+  --text-primary: #1A1A18;
+  --text-secondary: #888780;
+  --text-muted: #B4B2A9;
+  --hairline: #E8E6E0;
+  --accent-honey: #E8A04A;
+  --accent-sage: #5BAD7F;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-page: #141417;
+    --text-primary: #FFFFFF;
+    --text-secondary: #8A8A92;
+    --text-muted: #5C5C64;
+    --hairline: #26262C;
+  }
+}
+
+:root[data-theme="light"] {
+  --bg-page: #F5F4F0;
+  --text-primary: #1A1A18;
+  --text-secondary: #888780;
+  --text-muted: #B4B2A9;
+  --hairline: #E8E6E0;
+}
+
+:root[data-theme="dark"] {
+  --bg-page: #141417;
+  --text-primary: #FFFFFF;
+  --text-secondary: #8A8A92;
+  --text-muted: #5C5C64;
+  --hairline: #26262C;
 }
 
 body {

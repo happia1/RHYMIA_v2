@@ -12,6 +12,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { CheckToggle } from "@/components/ui/CheckToggle";
 import { toggleMealLike, addMealComment } from "@/app/(main)/food/actions";
 import { toggleMealParticipation } from "@/app/(main)/home/actions";
+import { AVATAR_SIZE } from "@/lib/uiTokens";
 import type { Meal, MealComment } from "@/types";
 
 interface MemberInfo {
@@ -19,6 +20,7 @@ interface MemberInfo {
   display_name: string;
   avatar_color: string;
   avatar_text_color: string;
+  avatar_image_url: string | null;
 }
 
 export function MealDetail({
@@ -121,7 +123,8 @@ export function MealDetail({
               name={author.display_name}
               color={author.avatar_color}
               textColor={author.avatar_text_color}
-              size={22}
+              imageUrl={author.avatar_image_url}
+              size={AVATAR_SIZE.comment}
             />
             <span className="text-[12px] text-stone">{author.display_name}</span>
           </div>
@@ -135,7 +138,8 @@ export function MealDetail({
                 name={m.display_name}
                 color={m.avatar_color}
                 textColor={m.avatar_text_color}
-                size={26}
+                imageUrl={m.avatar_image_url}
+                size={AVATAR_SIZE.card}
               />
             ))}
             {checkedInMembers.length === 0 && (
@@ -176,7 +180,8 @@ export function MealDetail({
                   name={m?.display_name ?? "가족"}
                   color={m?.avatar_color}
                   textColor={m?.avatar_text_color}
-                  size={24}
+                  imageUrl={m?.avatar_image_url}
+                  size={AVATAR_SIZE.comment}
                 />
                 <div className="flex flex-col">
                   <span className="text-[12px] font-medium text-ink">

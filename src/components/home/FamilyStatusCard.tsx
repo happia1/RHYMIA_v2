@@ -1,31 +1,27 @@
-import { Avatar } from "@/components/ui/Avatar";
+import { mirror } from "@/lib/homeTheme";
 
 export interface FamilyMemberStatus {
   user_id: string;
   display_name: string;
   avatar_color: string;
   avatar_text_color: string;
+  avatar_image_url: string | null;
   emoji: string;
   statusText: string;
 }
 
 export function FamilyStatusCard({ members }: { members: FamilyMemberStatus[] }) {
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-border-light bg-white p-4">
-      <div className="flex flex-col gap-3">
-        {members.map((m) => (
-          <div key={m.user_id} className="flex items-center gap-3">
-            <Avatar
-              name={m.display_name}
-              color={m.avatar_color}
-              textColor={m.avatar_text_color}
-            />
-            <span className="text-[14px] font-medium text-ink">{m.display_name}</span>
-            <span className="truncate text-[13px] text-stone">{m.statusText}</span>
-            <span className="ml-auto shrink-0 text-[16px]">{m.emoji}</span>
-          </div>
-        ))}
-      </div>
+    <div className="flex flex-col gap-row">
+      {members.map((m) => (
+        <div key={m.user_id} className="flex items-center gap-3">
+          <span className={`w-16 shrink-0 truncate text-[13px] font-medium ${mirror.primary}`}>
+            {m.display_name}
+          </span>
+          <span className={`truncate text-[13px] ${mirror.secondary}`}>{m.statusText}</span>
+          <span className="ml-auto shrink-0 text-[15px]">{m.emoji}</span>
+        </div>
+      ))}
     </div>
   );
 }
