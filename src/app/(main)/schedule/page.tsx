@@ -1,6 +1,7 @@
 import { requireWorkspaceContext } from "@/lib/workspace";
 import { toDateStr, getWeekDates } from "@/lib/date";
 import { getCurrentBlock, STATUS_EMOJI, DEFAULT_STATUS_EMOJI } from "@/lib/routineUtils";
+import { getCurrentWeather } from "@/lib/weather";
 import { ScheduleTabs } from "@/components/schedule/ScheduleTabs";
 import { EventFilters } from "@/components/schedule/EventFilters";
 import { MonthView } from "@/components/schedule/MonthView";
@@ -97,6 +98,7 @@ export default async function SchedulePage({
   }
 
   const today = new Date();
+  const weather = await getCurrentWeather();
   const { data: myRoutineRows } = await supabase
     .from("routine")
     .select("blocks")
@@ -133,6 +135,7 @@ export default async function SchedulePage({
         members={members}
         defaultDate={anchorStr}
         autoOpen={params.new === "1"}
+        weather={weather}
       />
     </div>
   );

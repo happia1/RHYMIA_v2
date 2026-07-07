@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { IconPaperclip } from "@tabler/icons-react";
 import { getKeywordColor } from "@/lib/scheduleKeywords";
 import { toDateStr } from "@/lib/date";
+import { getHoliday } from "@/lib/holidays";
 import type { Schedule } from "@/types";
 
 const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
@@ -57,6 +58,7 @@ export function MonthView({
             const daySchedules = byDate[date] ?? [];
             const grocery = daySchedules.find((s) => s.is_grocery && s.amount);
             const active = date === selectedDate;
+            const holiday = getHoliday(date);
             return (
               <button
                 key={date}
@@ -65,7 +67,11 @@ export function MonthView({
                   active ? "bg-honey/15" : ""
                 }`}
               >
-                <span className={`text-[13px] ${active ? "font-medium text-honey" : "text-ink"}`}>
+                <span
+                  className={`text-[13px] ${
+                    active ? "font-medium text-honey" : holiday ? "font-medium text-terra" : "text-ink"
+                  }`}
+                >
                   {Number(date.slice(-2))}
                 </span>
                 <div className="flex gap-0.5">
@@ -87,6 +93,9 @@ export function MonthView({
       </div>
 
       <div className="flex flex-col gap-2">
+        {getHoliday(selectedDate) && (
+          <p className="px-1 text-[12px] font-medium text-terra">{getHoliday(selectedDate)}</p>
+        )}
         {selectedSchedules.length === 0 && (
           <p className="py-4 text-center text-[13px] text-stone">일정이 없어요</p>
         )}
@@ -109,7 +118,7 @@ export function MonthView({
             {s.time_start && (
               <span className="text-[12px] text-stone">{s.time_start.slice(0, 5)}</span>
             )}
-            {s.supplies && <IconPaperclip size={14} className="text-stone" />}
+            {s.memo && <IconPaperclip size={14} className="text-stone" />}
           </div>
         ))}
       </div>

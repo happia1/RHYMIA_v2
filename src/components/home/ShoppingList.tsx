@@ -17,12 +17,10 @@ export function ShoppingList({
   workspaceId: string;
   items: ShoppingItem[];
 }) {
-  const [showAll, setShowAll] = useState(false);
   const [draft, setDraft] = useState("");
   const [isPending, startTransition] = useTransition();
 
   const active = items.filter((i) => !i.is_purchased);
-  const visible = showAll ? active : active.slice(0, 4);
 
   const handleAdd = () => {
     const value = draft.trim();
@@ -35,10 +33,6 @@ export function ShoppingList({
 
   return (
     <div className="flex flex-col gap-3 rounded-2xl border border-border-light bg-white p-4">
-      <div className="flex items-center justify-between">
-        <span className="text-[11px] font-medium text-stone">장바구니</span>
-      </div>
-
       <div className="flex items-center gap-2">
         <input
           value={draft}
@@ -56,7 +50,7 @@ export function ShoppingList({
         {active.length === 0 && (
           <p className="text-[13px] text-stone">장바구니가 비어있어요</p>
         )}
-        {visible.map((item) => (
+        {active.map((item) => (
           <div key={item.id} className="flex items-center gap-2">
             <CheckToggle
               checked={item.is_purchased}
@@ -65,7 +59,7 @@ export function ShoppingList({
                   toggleShoppingPurchased(item.id, !item.is_purchased);
                 })
               }
-              size={20}
+              size={10}
             />
             <span className="flex-1 truncate text-[14px] text-ink">{item.name}</span>
             <button
@@ -77,15 +71,6 @@ export function ShoppingList({
           </div>
         ))}
       </div>
-
-      {active.length > 4 && (
-        <button
-          onClick={() => setShowAll((v) => !v)}
-          className="self-start text-[12px] font-medium text-stone"
-        >
-          {showAll ? "접기" : "더보기"}
-        </button>
-      )}
     </div>
   );
 }

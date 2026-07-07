@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
+import { formatYearMonth, addMonths } from "@/lib/date";
 
 const VIEWS: { key: "month" | "week" | "year"; label: string }[] = [
   { key: "month", label: "월간" },
@@ -23,6 +25,18 @@ export function ScheduleTabs({
           내 루틴
         </Link>
       </div>
+
+      {view === "month" && (
+        <div className="flex items-center justify-center gap-4">
+          <Link href={`/schedule?view=month&date=${addMonths(anchorDate, -1)}`} aria-label="이전 달">
+            <IconChevronLeft size={20} className="text-stone" />
+          </Link>
+          <span className="text-[15px] font-medium text-ink">{formatYearMonth(anchorDate)}</span>
+          <Link href={`/schedule?view=month&date=${addMonths(anchorDate, 1)}`} aria-label="다음 달">
+            <IconChevronRight size={20} className="text-stone" />
+          </Link>
+        </div>
+      )}
 
       <div className="flex rounded-full border border-border-light bg-white p-1">
         {VIEWS.map(({ key, label }) => (

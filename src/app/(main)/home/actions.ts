@@ -18,6 +18,7 @@ export async function addShoppingItem(workspaceId: string, name: string) {
     .insert({ workspace_id: workspaceId, name: trimmed, added_by: user.id });
 
   revalidatePath("/home");
+  revalidatePath("/board");
 }
 
 export async function toggleShoppingPurchased(itemId: string, purchased: boolean) {
@@ -37,12 +38,14 @@ export async function toggleShoppingPurchased(itemId: string, purchased: boolean
     .eq("id", itemId);
 
   revalidatePath("/home");
+  revalidatePath("/board");
 }
 
 export async function deleteShoppingItem(itemId: string) {
   const supabase = await createClient();
   await supabase.from("shopping_item").delete().eq("id", itemId);
   revalidatePath("/home");
+  revalidatePath("/board");
 }
 
 export async function toggleMealParticipation(
@@ -105,10 +108,12 @@ export async function addNotice(
   });
 
   revalidatePath("/home");
+  revalidatePath("/board");
 }
 
 export async function deleteNotice(noticeId: string) {
   const supabase = await createClient();
   await supabase.from("notice").delete().eq("id", noticeId);
   revalidatePath("/home");
+  revalidatePath("/board");
 }

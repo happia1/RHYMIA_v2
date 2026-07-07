@@ -1,14 +1,24 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
+import { useToast } from "@/components/ui/Toast";
+import { PlaceInput } from "@/components/schedule/PlaceInput";
 import { createSchedule } from "@/app/(main)/schedule/actions";
 import { KEYWORD_GROUPS } from "@/lib/scheduleKeywords";
+import type { NotifyOffset } from "@/types";
 
 interface MemberOption {
   user_id: string;
   display_name: string;
 }
+
+const NOTIFY_OPTIONS: { value: NotifyOffset; label: string }[] = [
+  { value: "same_day_morning", label: "당일 오전" },
+  { value: "day_before", label: "하루 전" },
+  { value: "week_before", label: "일주일 전" },
+  { value: "custom", label: "직접 설정" },
+];
 
 export function AddEventSheet({
   open,
@@ -23,10 +33,12 @@ export function AddEventSheet({
   members: MemberOption[];
   defaultDate: string;
 }) {
+  const { showToast } = useToast();
   const [title, setTitle] = useState("");
   const [dateStart, setDateStart] = useState(defaultDate);
   const [isRange, setIsRange] = useState(false);
   const [dateEnd, setDateEnd] = useState(defaultDate);
+  const [isAllDay, setIsAllDay] = useState(true);
   const [timeStart, setTimeStart] = useState("");
   const [timeEnd, setTimeEnd] = useState("");
   const [targets, setTargets] = useState<string[]>([]);
@@ -34,13 +46,15 @@ export function AddEventSheet({
   const [keywordMain, setKeywordMain] = useState<string | null>(null);
   const [keywordSub, setKeywordSub] = useState<string | null>(null);
   const [memo, setMemo] = useState("");
-  const [supplies, setSupplies] = useState("");
   const [isImportant, setIsImportant] = useState(false);
-  const [isGrocery, setIsGrocery] = useState(false);
   const [place, setPlace] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [isGrocery, setIsGrocery] = useState(false);
   const [amount, setAmount] = useState("");
   const [receiptUrl, setReceiptUrl] = useState("");
-  const [isPending, startTransition] = useTransition();
+  const [notifyOffset, setNotifyOffset] = useState<NotifyOffset | null>(null);
+  const [notifyCustomAt, setNotifyCustomAt] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const activeGroup = KEYWORD_GROUPS.find((g) => g.main === keywordMain);
 
@@ -50,28 +64,60 @@ export function AddEventSheet({
     );
   };
 
-  const handleSubmit = () => {
+  const reset = () => {
+    setTitle("");
+    setDateStart(defaultDate);
+    setIsRange(false);
+    setDateEnd(defaultDate);
+    setIsAllDay(true);
+    setTimeStart("");
+    setTimeEnd("");
+    setTargets([]);
+    setIsShared(true);
+    setKeywordMain(null);
+    setKeywordSub(null);
+    setMemo("");
+    setIsImportant(false);
+    setPlace("");
+    setImageUrl("");
+    setIsGrocery(false);
+    setAmount("");
+    setReceiptUrl("");
+    setNotifyOffset(null);
+    setNotifyCustomAt("");
+  };
+
+  const handleSubmit = async () => {
     if (!title.trim()) return;
-    startTransition(() => {
-      createSchedule(workspaceId, {
-        title,
-        date_start: dateStart,
-        date_end: isRange ? dateEnd : null,
-        time_start: timeStart || null,
-        time_end: timeEnd || null,
-        target_members: targets,
-        is_shared: isShared,
-        keyword_main: keywordMain,
-        keyword_sub: keywordSub,
-        is_important: isImportant,
-        memo: memo || null,
-        supplies: supplies || null,
-        is_grocery: isGrocery,
-        place: isGrocery ? place || null : null,
-        amount: isGrocery && amount ? Number(amount) : null,
-        receipt_image_url: isGrocery ? receiptUrl || null : null,
-      });
+    setIsSubmitting(true);
+    const result = await createSchedule(workspaceId, {
+      title,
+      date_start: dateStart,
+      date_end: isRange ? dateEnd : null,
+      time_start: !isAllDay ? timeStart || null : null,
+      time_end: !isAllDay ? timeEnd || null : null,
+      target_members: targets,
+      is_shared: isShared,
+      keyword_main: keywordMain,
+      keyword_sub: keywordSub,
+      is_important: isImportant,
+      memo: memo || null,
+      is_grocery: isGrocery,
+      place: place || null,
+      amount: isGrocery && amount ? Number(amount) : null,
+      receipt_image_url: isGrocery ? receiptUrl || null : null,
+      is_all_day: isAllDay,
+      image_url: imageUrl || null,
+      notify_offset: notifyOffset,
+      notify_custom_at: notifyOffset === "custom" ? notifyCustomAt || null : null,
     });
+    setIsSubmitting(false);
+
+    if (result.ok) {
+      showToast("일정이 등록되었습니다.");
+      reset();
+      onClose();
+    }
   };
 
   return (
@@ -111,20 +157,32 @@ export function AddEventSheet({
               className="h-11 rounded-xl border border-border-light px-3 text-[13px] text-ink focus:outline-none"
             />
           )}
-          <div className="flex gap-2">
+
+          <label className="flex items-center justify-between text-[13px] text-ink">
+            종일
             <input
-              type="time"
-              value={timeStart}
-              onChange={(e) => setTimeStart(e.target.value)}
-              className="h-11 flex-1 rounded-xl border border-border-light px-3 text-[13px] text-ink focus:outline-none"
+              type="checkbox"
+              checked={isAllDay}
+              onChange={(e) => setIsAllDay(e.target.checked)}
             />
-            <input
-              type="time"
-              value={timeEnd}
-              onChange={(e) => setTimeEnd(e.target.value)}
-              className="h-11 flex-1 rounded-xl border border-border-light px-3 text-[13px] text-ink focus:outline-none"
-            />
-          </div>
+          </label>
+
+          {!isAllDay && (
+            <div className="flex gap-2">
+              <input
+                type="time"
+                value={timeStart}
+                onChange={(e) => setTimeStart(e.target.value)}
+                className="h-11 flex-1 rounded-xl border border-border-light px-3 text-[13px] text-ink focus:outline-none"
+              />
+              <input
+                type="time"
+                value={timeEnd}
+                onChange={(e) => setTimeEnd(e.target.value)}
+                className="h-11 flex-1 rounded-xl border border-border-light px-3 text-[13px] text-ink focus:outline-none"
+              />
+            </div>
+          )}
         </div>
 
         <div className="flex flex-col gap-2">
@@ -152,21 +210,24 @@ export function AddEventSheet({
           </div>
         </div>
 
-        <div className="flex gap-2">
-          {[
-            { value: true, label: "공유" },
-            { value: false, label: "프라이빗" },
-          ].map((opt) => (
-            <button
-              key={String(opt.value)}
-              onClick={() => setIsShared(opt.value)}
-              className={`rounded-full px-3.5 py-1.5 text-[13px] font-medium ${
-                isShared === opt.value ? "bg-ink text-cream" : "bg-cream text-stone"
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
+        <div className="flex flex-col gap-2">
+          <span className="text-[12px] font-medium text-stone">공유 대상</span>
+          <div className="flex gap-2">
+            {[
+              { value: true, label: "가족 전체" },
+              { value: false, label: "개인" },
+            ].map((opt) => (
+              <button
+                key={String(opt.value)}
+                onClick={() => setIsShared(opt.value)}
+                className={`rounded-full px-3.5 py-1.5 text-[13px] font-medium ${
+                  isShared === opt.value ? "bg-ink text-cream" : "bg-cream text-stone"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="flex flex-col gap-2">
@@ -207,19 +268,47 @@ export function AddEventSheet({
           )}
         </div>
 
-        <input
-          value={supplies}
-          onChange={(e) => setSupplies(e.target.value)}
-          placeholder="준비물 (선택)"
-          className="h-11 rounded-xl border border-border-light px-3 text-[13px] text-ink placeholder:text-stone focus:outline-none"
-        />
+        <PlaceInput value={place} onChange={setPlace} />
+
         <textarea
           value={memo}
           onChange={(e) => setMemo(e.target.value)}
-          placeholder="메모 (선택)"
-          rows={2}
+          placeholder="메모 (준비물 등 자유롭게)"
+          rows={3}
           className="rounded-xl border border-border-light p-3 text-[13px] text-ink placeholder:text-stone focus:outline-none"
         />
+
+        <input
+          value={imageUrl}
+          onChange={(e) => setImageUrl(e.target.value)}
+          placeholder="사진 URL (선택)"
+          className="h-11 rounded-xl border border-border-light px-3 text-[13px] text-ink placeholder:text-stone focus:outline-none"
+        />
+
+        <div className="flex flex-col gap-2">
+          <span className="text-[12px] font-medium text-stone">알림</span>
+          <div className="flex flex-wrap gap-2">
+            {NOTIFY_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => setNotifyOffset(notifyOffset === opt.value ? null : opt.value)}
+                className={`rounded-full px-3.5 py-1.5 text-[13px] font-medium ${
+                  notifyOffset === opt.value ? "bg-ink text-cream" : "bg-cream text-stone"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          {notifyOffset === "custom" && (
+            <input
+              type="datetime-local"
+              value={notifyCustomAt}
+              onChange={(e) => setNotifyCustomAt(e.target.value)}
+              className="h-11 rounded-xl border border-border-light px-3 text-[13px] text-ink focus:outline-none"
+            />
+          )}
+        </div>
 
         <label className="flex items-center justify-between text-[13px] text-ink">
           공지(중요)
@@ -242,12 +331,6 @@ export function AddEventSheet({
         {isGrocery && (
           <div className="flex flex-col gap-2">
             <input
-              value={place}
-              onChange={(e) => setPlace(e.target.value)}
-              placeholder="장소"
-              className="h-11 rounded-xl border border-border-light px-3 text-[13px] text-ink placeholder:text-stone focus:outline-none"
-            />
-            <input
               type="number"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
@@ -265,7 +348,7 @@ export function AddEventSheet({
 
         <button
           onClick={handleSubmit}
-          disabled={isPending}
+          disabled={isSubmitting}
           className="flex h-12 items-center justify-center rounded-2xl bg-ink text-[15px] font-medium text-cream"
         >
           등록하기

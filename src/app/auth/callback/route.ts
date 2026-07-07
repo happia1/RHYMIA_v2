@@ -12,7 +12,7 @@ export async function GET(request: Request) {
     if (!error && data.user) {
       const { user } = data;
 
-      await supabase.from("users").upsert(
+      const { error: upsertError } = await supabase.from("users").upsert(
         {
           id: user.id,
           email: user.email,
@@ -22,6 +22,11 @@ export async function GET(request: Request) {
         },
         { onConflict: "id" }
       );
+
+      if (upsertError) {
+        console.error("[auth/callback] users upsert failed:", upsertError);
+        return NextResponse.redirect(`${origin}/login`);
+      }
 
       const { data: membership } = await supabase
         .from("workspace_member")

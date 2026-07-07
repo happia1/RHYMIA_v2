@@ -1,5 +1,20 @@
+export const WEEKDAY_LABEL = ["일", "월", "화", "수", "목", "금", "토"];
+
 export function toDateStr(date: Date) {
   return date.toISOString().slice(0, 10);
+}
+
+/** "YYYY-MM-DD" -> "2026년 7월" */
+export function formatYearMonth(dateStr: string): string {
+  const d = new Date(dateStr);
+  return `${d.getFullYear()}년 ${d.getMonth() + 1}월`;
+}
+
+/** dateStr 기준 월을 delta만큼 이동한 날짜 문자열(YYYY-MM-DD)을 반환합니다. */
+export function addMonths(dateStr: string, delta: number): string {
+  const d = new Date(dateStr);
+  d.setMonth(d.getMonth() + delta, 1);
+  return toDateStr(d);
 }
 
 /** 월요일 시작 기준 이번 주 7일치 날짜 문자열(YYYY-MM-DD) 배열을 반환합니다. */

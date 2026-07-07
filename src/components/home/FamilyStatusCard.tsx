@@ -12,8 +12,6 @@ export interface FamilyMemberStatus {
 export function FamilyStatusCard({ members }: { members: FamilyMemberStatus[] }) {
   return (
     <div className="flex flex-col gap-3 rounded-2xl border border-border-light bg-white p-4">
-      <span className="text-[11px] font-medium text-stone">지금 우리 가족은</span>
-
       <div className="flex flex-col gap-3">
         {members.map((m) => (
           <div key={m.user_id} className="flex items-center gap-3">

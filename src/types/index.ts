@@ -54,6 +54,8 @@ export interface Routine {
   updated_at: string;
 }
 
+export type NotifyOffset = "same_day_morning" | "day_before" | "week_before" | "custom";
+
 export interface Schedule {
   id: string;
   workspace_id: string;
@@ -69,11 +71,59 @@ export interface Schedule {
   keyword_sub: string | null;
   is_important: boolean;
   memo: string | null;
+  /** @deprecated 새 일정은 memo에 통합 저장됩니다. 과거 데이터 호환용으로만 남겨둡니다. */
   supplies: string | null;
   is_grocery: boolean;
   place: string | null;
   amount: number | null;
   receipt_image_url: string | null;
+  is_all_day: boolean;
+  image_url: string | null;
+  notify_offset: NotifyOffset | null;
+  notify_custom_at: string | null;
+  created_at: string;
+}
+
+export interface Diary {
+  id: string;
+  workspace_id: string;
+  author_id: string | null;
+  date: string;
+  day_of_week: number | null;
+  weather: string | null;
+  mood: string | null;
+  photo_url: string | null;
+  content: string | null;
+  created_at: string;
+}
+
+export type HabitRepeatType = "daily" | "weekly" | "monthly" | "custom";
+
+export interface Habit {
+  id: string;
+  user_id: string;
+  name: string;
+  start_time: string | null;
+  repeat_type: HabitRepeatType;
+  repeat_days: number[];
+  target_duration: string | null;
+  notify_enabled: boolean;
+  notify_time: string | null;
+  created_at: string;
+}
+
+export interface Todo {
+  id: string;
+  workspace_id: string;
+  author_id: string | null;
+  title: string;
+  due_date: string | null;
+  description: string | null;
+  notify_enabled: boolean;
+  repeat_type: string | null;
+  tag: string | null;
+  color: string;
+  is_done: boolean;
   created_at: string;
 }
 

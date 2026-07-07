@@ -52,26 +52,23 @@ export function TodayEvents({
 
   return (
     <div className="flex flex-col gap-3 rounded-2xl border border-border-light bg-white p-4">
-      <div className="flex items-center justify-between">
-        <span className="text-[11px] font-medium text-stone">오늘 뭐하지?</span>
-        <div className="flex items-center gap-2">
-          <div className="flex rounded-full bg-cream p-0.5">
-            {(["today", "week"] as const).map((key) => (
-              <button
-                key={key}
-                onClick={() => setTab(key)}
-                className={`rounded-full px-3 py-1 text-[12px] font-medium ${
-                  tab === key ? "bg-white text-ink" : "text-stone"
-                }`}
-              >
-                {key === "today" ? "오늘" : "이번 주"}
-              </button>
-            ))}
-          </div>
-          <Link href="/schedule?new=1" aria-label="특이사항 추가">
-            <IconPlus size={18} className="text-stone" />
-          </Link>
+      <div className="flex items-center justify-end gap-2">
+        <div className="flex rounded-full bg-cream p-0.5">
+          {(["today", "week"] as const).map((key) => (
+            <button
+              key={key}
+              onClick={() => setTab(key)}
+              className={`rounded-full px-3 py-1 text-[12px] font-medium ${
+                tab === key ? "bg-white text-ink" : "text-stone"
+              }`}
+            >
+              {key === "today" ? "오늘" : "이번 주"}
+            </button>
+          ))}
         </div>
+        <Link href="/schedule?new=1" aria-label="특이사항 추가">
+          <IconPlus size={18} className="text-stone" />
+        </Link>
       </div>
 
       {tab === "today" ? (
@@ -91,7 +88,7 @@ export function TodayEvents({
                 >
                   {s.title}
                 </span>
-                {s.supplies && (
+                {s.memo && (
                   <IconPaperclip size={14} className="shrink-0 text-stone" />
                 )}
               </div>
@@ -130,7 +127,7 @@ export function TodayEvents({
                       }`}
                     />
                   ))}
-                  {items.some((s) => s.supplies) && (
+                  {items.some((s) => s.memo) && (
                     <IconPaperclip size={10} className="text-stone" />
                   )}
                 </div>

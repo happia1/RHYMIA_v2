@@ -4,6 +4,16 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { completeEmailAuth } from "./actions";
 
+function isRedirectError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "digest" in error &&
+    typeof (error as { digest: unknown }).digest === "string" &&
+    (error as { digest: string }).digest.startsWith("NEXT_REDIRECT")
+  );
+}
+
 export default function LoginPage() {
   const supabase = createClient();
 
@@ -42,7 +52,14 @@ export default function LoginPage() {
       return;
     }
 
-    await completeEmailAuth();
+    try {
+      await completeEmailAuth();
+    } catch (err) {
+      if (isRedirectError(err)) throw err;
+      setError(
+        err instanceof Error ? err.message : "로그인 처리 중 오류가 발생했어요."
+      );
+    }
   };
 
   const handleSignUp = async () => {
@@ -70,7 +87,14 @@ export default function LoginPage() {
     }
 
     if (data.session) {
-      await completeEmailAuth();
+      try {
+        await completeEmailAuth();
+      } catch (err) {
+        if (isRedirectError(err)) throw err;
+        setError(
+          err instanceof Error ? err.message : "로그인 처리 중 오류가 발생했어요."
+        );
+      }
     } else {
       setNotice("가입을 완료하려면 이메일함에서 인증 링크를 확인해주세요.");
     }

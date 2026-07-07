@@ -15,22 +15,25 @@ export async function createWorkspace(formData: FormData) {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: workspace, error } = await supabase
+  const workspaceId = crypto.randomUUID();
+  const { error: workspaceError } = await supabase
     .from("family_workspace")
-    .insert({ name })
-    .select("id")
-    .single();
+    .insert({ id: workspaceId, name });
 
-  if (error || !workspace) {
-    throw new Error(error?.message ?? "워크스페이스 생성에 실패했습니다.");
+  if (workspaceError) {
+    throw new Error(workspaceError.message);
   }
 
-  await supabase.from("workspace_member").insert({
-    workspace_id: workspace.id,
-    user_id: user!.id,
+  const { error: memberError } = await supabase.from("workspace_member").insert({
+    workspace_id: workspaceId,
+    user_id: user.id,
     role: "owner",
     display_name: displayName,
   });
+
+  if (memberError) {
+    throw new Error(memberError.message);
+  }
 
   redirect("/home");
 }

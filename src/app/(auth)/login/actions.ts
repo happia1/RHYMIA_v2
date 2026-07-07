@@ -12,20 +12,25 @@ export async function completeEmailAuth() {
 
   if (!user) redirect("/login");
 
-  await supabase.from("users").upsert(
+  const { error: upsertError } = await supabase.from("users").upsert(
     {
-      id: user!.id,
-      email: user!.email,
-      nickname: user!.user_metadata?.nickname ?? null,
+      id: user.id,
+      email: user.email,
+      nickname: user.user_metadata?.nickname ?? null,
       provider: "email",
     },
     { onConflict: "id" }
   );
 
+  if (upsertError) {
+    console.error("[completeEmailAuth] users upsert failed:", upsertError);
+    throw new Error(`사용자 정보 저장에 실패했습니다: ${upsertError.message}`);
+  }
+
   const { data: membership } = await supabase
     .from("workspace_member")
     .select("id")
-    .eq("user_id", user!.id)
+    .eq("user_id", user.id)
     .limit(1)
     .maybeSingle();
 

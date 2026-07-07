@@ -89,29 +89,15 @@ export function MealDetail({
           )}
         </div>
 
-        <div className="flex items-start justify-between">
-          <div className="flex flex-col gap-1.5">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[11px] font-medium text-stone">{meal.tag}</span>
-              <span className="text-[11px] font-medium text-honey">{meal.type}</span>
-            </div>
-            <p className="text-[19px] font-medium text-ink">{meal.main_menu}</p>
-            {meal.sides.length > 0 && (
-              <p className="text-[13px] text-stone">{meal.sides.join(", ")}</p>
-            )}
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] font-medium text-stone">{meal.tag}</span>
+            <span className="text-[11px] font-medium text-honey">{meal.type}</span>
           </div>
-          <button
-            onClick={() =>
-              startTransition(() => toggleMealLike(meal.id, !likedByMe))
-            }
-            aria-label="좋아요"
-          >
-            {likedByMe ? (
-              <IconHeartFilled size={22} className="text-rose" />
-            ) : (
-              <IconHeart size={22} className="text-stone" />
-            )}
-          </button>
+          <p className="text-[19px] font-medium text-ink">{meal.main_menu}</p>
+          {meal.sides.length > 0 && (
+            <p className="text-[13px] text-stone">{meal.sides.join(", ")}</p>
+          )}
         </div>
 
         {meal.type === "외식" && meal.place && (
@@ -156,14 +142,28 @@ export function MealDetail({
               <span className="text-[13px] text-stone">참여자가 없어요</span>
             )}
           </div>
-          <CheckToggle
-            checked={myParticipation === true}
-            onChange={() =>
-              startTransition(() =>
-                toggleMealParticipation(meal.id, myParticipation)
-              )
-            }
-          />
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() =>
+                startTransition(() => toggleMealLike(meal.id, !likedByMe))
+              }
+              aria-label="좋아요"
+            >
+              {likedByMe ? (
+                <IconHeartFilled size={22} className="text-rose" />
+              ) : (
+                <IconHeart size={22} className="text-stone" />
+              )}
+            </button>
+            <CheckToggle
+              checked={myParticipation === true}
+              onChange={() =>
+                startTransition(() =>
+                  toggleMealParticipation(meal.id, myParticipation)
+                )
+              }
+            />
+          </div>
         </div>
 
         <div className="flex flex-col gap-3">

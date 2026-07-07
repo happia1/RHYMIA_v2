@@ -1,5 +1,6 @@
 import { IconPaperclip } from "@tabler/icons-react";
 import { getKeywordColor } from "@/lib/scheduleKeywords";
+import { getHoliday } from "@/lib/holidays";
 import type { Schedule } from "@/types";
 
 const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
@@ -22,12 +23,14 @@ export function WeekView({
       {weekDates.map((date, i) => {
         const daySchedules = byDate[date];
         const day = new Date(date).getDate();
+        const holiday = getHoliday(date);
         return (
           <div key={date} className="rounded-2xl border border-border-light bg-white p-3">
             <div className="mb-2 flex items-center gap-2">
-              <span className="text-[13px] font-medium text-ink">
+              <span className={`text-[13px] font-medium ${holiday ? "text-terra" : "text-ink"}`}>
                 {WEEKDAY_LABELS[i]} {day}
               </span>
+              {holiday && <span className="text-[11px] text-terra">{holiday}</span>}
             </div>
             {daySchedules.length === 0 ? (
               <p className="text-[12px] text-stone">일정 없음</p>
@@ -51,7 +54,7 @@ export function WeekView({
                         {s.time_start.slice(0, 5)}
                       </span>
                     )}
-                    {s.supplies && (
+                    {s.memo && (
                       <IconPaperclip size={12} className="shrink-0 text-stone" />
                     )}
                   </div>

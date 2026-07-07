@@ -2,7 +2,9 @@ import { requireWorkspaceContext } from "@/lib/workspace";
 import { getWeekDates, toDateStr } from "@/lib/date";
 import { findUpcomingMeal } from "@/lib/mealUtils";
 import { getCurrentBlock, STATUS_EMOJI, DEFAULT_STATUS_EMOJI } from "@/lib/routineUtils";
-import { MealSummaryCard, type MealSummaryParticipant } from "@/components/home/MealSummaryCard";
+import { getCurrentWeather } from "@/lib/weather";
+import { HomeHeader } from "@/components/home/HomeHeader";
+import { MealSummaryCard } from "@/components/home/MealSummaryCard";
 import { TodayEvents, type MemberInfo } from "@/components/home/TodayEvents";
 import { FamilyStatusCard, type FamilyMemberStatus } from "@/components/home/FamilyStatusCard";
 import { ShoppingList } from "@/components/home/ShoppingList";
@@ -10,7 +12,7 @@ import { BoardSection } from "@/components/home/BoardSection";
 import type { RoutineBlock } from "@/types";
 
 export default async function HomePage() {
-  const { supabase, user, workspaceId } = await requireWorkspaceContext();
+  const { supabase, user, workspaceId, displayName } = await requireWorkspaceContext();
 
   const today = new Date();
   const todayStr = toDateStr(today);
@@ -39,8 +41,9 @@ export default async function HomePage() {
 
   const memberIds = members.map((m) => m.user_id);
 
-  const [{ data: routineRows }, { data: schedules }, { data: meals }, { data: shoppingItems }, { data: notices }] =
+  const [weather, { data: routineRows }, { data: schedules }, { data: meals }, { data: shoppingItems }, { data: notices }] =
     await Promise.all([
+      getCurrentWeather(),
       supabase
         .from("routine")
         .select("user_id, blocks")
@@ -56,7 +59,7 @@ export default async function HomePage() {
         .order("date_start", { ascending: true }),
       supabase
         .from("meal")
-        .select("*, meal_participation(user_id, status)")
+        .select("*")
         .eq("workspace_id", workspaceId)
         .gte("date", todayStr)
         .order("date", { ascending: true })
@@ -76,20 +79,6 @@ export default async function HomePage() {
 
   // 오늘 뭐먹지?
   const upcomingMeal = findUpcomingMeal(meals ?? [], today);
-  const participants: MealSummaryParticipant[] = upcomingMeal
-    ? ((upcomingMeal as unknown as { meal_participation: { user_id: string; status: boolean | null }[] })
-        .meal_participation ?? [])
-        .filter((p) => p.status === true)
-        .map((p) => {
-          const m = members.find((mm) => mm.user_id === p.user_id);
-          return {
-            user_id: p.user_id,
-            display_name: m?.display_name ?? "가족",
-            avatar_color: m?.avatar_color ?? "#E1F5EE",
-            avatar_text_color: m?.avatar_text_color ?? "#0F6E56",
-          };
-        })
-    : [];
 
   // 오늘 뭐하지?
   const todaySchedules = (schedules ?? []).filter((s) => s.date_start === todayStr);
@@ -132,7 +121,15 @@ export default async function HomePage() {
 
   return (
     <div className="flex flex-col gap-4 px-4 pb-6 pt-6">
-      <MealSummaryCard meal={upcomingMeal} participants={participants} />
+      <HomeHeader
+        displayName={displayName ?? "가족"}
+        weather={weather}
+        nowIso={new Date().toISOString()}
+      />
+      <div className="flex flex-col gap-2">
+        <span className="px-1 text-[11px] font-medium text-stone">오늘 뭐먹지?</span>
+        <MealSummaryCard meal={upcomingMeal} />
+      </div>
       <TodayEvents
         todaySchedules={todaySchedules}
         weekSchedules={schedules ?? []}
