@@ -9,6 +9,16 @@ import { Avatar } from "@/components/ui/Avatar";
 import { AVATAR_SIZE } from "@/lib/uiTokens";
 import { mirror } from "@/lib/homeTheme";
 
+export interface FamilyMemberStatus {
+  user_id: string;
+  display_name: string;
+  avatar_color: string;
+  avatar_text_color: string;
+  avatar_image_url: string | null;
+  emoji: string;
+  statusText: string;
+}
+
 function formatDate(date: Date) {
   const m = date.getMonth() + 1;
   const d = date.getDate();
@@ -16,19 +26,11 @@ function formatDate(date: Date) {
 }
 
 export function HomeHeader({
-  displayName,
-  avatarColor,
-  avatarTextColor,
-  avatarImageUrl,
-  statusText,
+  familyStatus,
   weather,
   nowIso,
 }: {
-  displayName: string;
-  avatarColor: string;
-  avatarTextColor: string;
-  avatarImageUrl: string | null;
-  statusText: string;
+  familyStatus: FamilyMemberStatus[];
   weather: WeatherData | null;
   nowIso: string;
 }) {
@@ -63,39 +65,38 @@ export function HomeHeader({
             </span>
             {weather && <span className="text-[26px] leading-none">{weather.icon}</span>}
           </div>
-          {weather && (
-            <span className={`truncate text-[15px] ${mirror.primary}`}>
-              {weather.description}
-            </span>
-          )}
-          <span className={`text-[10px] uppercase tracking-[0.15em] ${mirror.muted}`}>
-            서울
+          <span className={`truncate text-[12px] ${mirror.secondary}`}>
+            {weather ? `${weather.description} · 서울` : "서울"}
           </span>
         </div>
 
-        {/* 오른쪽: 시간 — 오른쪽 정렬 */}
+        {/* 오른쪽: 시간 — 오른쪽 정렬, PM/AM이 시간 앞에 작게 */}
         <div className="flex shrink-0 flex-col items-end gap-1">
           <div className="flex items-baseline gap-2">
+            <span className={`text-[13px] font-medium ${mirror.secondary}`}>{period}</span>
             <span className={`text-[56px] font-light leading-none ${mirror.primary}`}>
               {hour12}:{String(now.getMinutes()).padStart(2, "0")}
             </span>
-            <span className={`text-[13px] font-medium ${mirror.secondary}`}>{period}</span>
           </div>
           <span className={`text-[12px] ${mirror.secondary}`}>{formatDate(now)}</span>
         </div>
       </div>
 
-      <div className="flex min-w-0 items-center gap-2">
-        <Avatar
-          name={displayName}
-          color={avatarColor}
-          textColor={avatarTextColor}
-          imageUrl={avatarImageUrl}
-          size={AVATAR_SIZE.mirror}
-        />
-        <span className={`min-w-0 flex-1 truncate text-[13px] ${mirror.secondary}`}>
-          {statusText}
-        </span>
+      <div className="flex items-center gap-4 overflow-x-auto">
+        {familyStatus.map((m) => (
+          <div key={m.user_id} className="flex shrink-0 items-center gap-1.5">
+            <Avatar
+              name={m.display_name}
+              color={m.avatar_color}
+              textColor={m.avatar_text_color}
+              imageUrl={m.avatar_image_url}
+              size={AVATAR_SIZE.mirror}
+            />
+            <span className={`whitespace-nowrap text-[12px] ${mirror.secondary}`}>
+              {m.display_name} {m.statusText}
+            </span>
+          </div>
+        ))}
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { IconPlus, IconPaperclip } from "@tabler/icons-react";
+import { IconPaperclip } from "@tabler/icons-react";
 import { mirror } from "@/lib/homeTheme";
 import { targetLabel, type MemberInfo } from "@/lib/scheduleTargets";
 import type { Schedule } from "@/types";
@@ -20,24 +20,12 @@ export function TodayEvents({
 
   return (
     <div className="flex flex-col gap-row">
-      <div className="flex items-center justify-end">
-        <Link href="/schedule?new=1" aria-label="특이사항 추가">
-          <IconPlus size={16} className={mirror.muted} />
-        </Link>
-      </div>
-
       {todaySchedules.length === 0 ? (
         <p className={`text-[13px] ${mirror.muted}`}>오늘 등록된 일정이 없어요</p>
       ) : (
         <div className="flex flex-col gap-row">
           {visible.map((s) => (
-            <div key={s.id} className="flex items-center gap-3">
-              <span
-                className="w-12 shrink-0 text-[13px]"
-                style={{ fontVariantNumeric: "tabular-nums", color: "var(--accent-honey)" }}
-              >
-                {s.time_start ? s.time_start.slice(0, 5) : "종일"}
-              </span>
+            <div key={s.id} className="flex items-center gap-2">
               <span
                 className={`min-w-0 flex-1 truncate text-[14px] ${
                   s.is_important ? "font-medium" : ""
@@ -45,8 +33,14 @@ export function TodayEvents({
               >
                 {s.title}
               </span>
+              <span
+                className="shrink-0 rounded-full bg-honey/10 px-1.5 py-0.5 text-[11px] text-honey"
+                style={{ fontVariantNumeric: "tabular-nums" }}
+              >
+                {s.time_start ? s.time_start.slice(0, 5) : "종일"}
+              </span>
               {s.memo && <IconPaperclip size={12} className={`shrink-0 ${mirror.muted}`} />}
-              <span className={`ml-auto shrink-0 text-[11px] ${mirror.muted}`}>
+              <span className={`shrink-0 text-[11px] ${mirror.muted}`}>
                 {targetLabel(s.target_members, membersById)}
               </span>
             </div>

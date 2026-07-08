@@ -249,16 +249,19 @@ export function BoardSection({
   );
 }
 
-function AddPostSheet({
+export function AddPostSheet({
   open,
   onClose,
   workspaceId,
+  fixedType,
 }: {
   open: boolean;
   onClose: () => void;
   workspaceId: string;
+  /** 지정하면 타입 선택 UI를 숨기고 이 타입으로 고정 (예: 홈의 "스티커" 섹션 + 버튼) */
+  fixedType?: NoticeType;
 }) {
-  const [type, setType] = useState<NoticeType>("sticky");
+  const [type, setType] = useState<NoticeType>(fixedType ?? "sticky");
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [color, setColor] = useState(STICKER_COLORS[0]);
@@ -267,7 +270,7 @@ function AddPostSheet({
   const [isPending, startTransition] = useTransition();
 
   const reset = () => {
-    setType("sticky");
+    setType(fixedType ?? "sticky");
     setTitle("");
     setContent("");
     setColor(STICKER_COLORS[0]);
@@ -300,25 +303,27 @@ function AddPostSheet({
       }}
     >
       <div className="flex flex-col gap-4">
-        <div className="flex gap-2">
-          {(
-            [
-              ["sticky", "스티커"],
-              ["memo", "메모"],
-              ["notice", "공지"],
-            ] as [NoticeType, string][]
-          ).map(([value, label]) => (
-            <button
-              key={value}
-              onClick={() => setType(value)}
-              className={`rounded-full px-3 py-1.5 text-[13px] font-medium ${
-                type === value ? "bg-ink text-cream" : "bg-cream text-stone"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        {!fixedType && (
+          <div className="flex gap-2">
+            {(
+              [
+                ["sticky", "스티커"],
+                ["memo", "메모"],
+                ["notice", "공지"],
+              ] as [NoticeType, string][]
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                onClick={() => setType(value)}
+                className={`rounded-full px-3 py-1.5 text-[13px] font-medium ${
+                  type === value ? "bg-ink text-cream" : "bg-cream text-stone"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {type === "sticky" ? (
           <>

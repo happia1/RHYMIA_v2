@@ -6,13 +6,12 @@ import { getCurrentWeather } from "@/lib/weather";
 import { mapWorkspaceMembers } from "@/lib/members";
 import { mirror } from "@/lib/homeTheme";
 import { resolveHomeLayout } from "@/lib/homeLayout";
-import { IconToolsKitchen2, IconCalendar, IconUsers } from "@tabler/icons-react";
-import { HomeHeader } from "@/components/home/HomeHeader";
-import { MealSummaryCard, type MealSummaryItem } from "@/components/home/MealSummaryCard";
-import { TodayEvents, type MemberInfo } from "@/components/home/TodayEvents";
-import { FamilyStatusCard, type FamilyMemberStatus } from "@/components/home/FamilyStatusCard";
+import { HomeHeader, type FamilyMemberStatus } from "@/components/home/HomeHeader";
+import { type MealSummaryItem } from "@/components/home/MealSummaryCard";
+import { type MemberInfo } from "@/components/home/TodayEvents";
+import { HomeMealSection } from "@/components/home/HomeMealSection";
+import { HomeTodaySection } from "@/components/home/HomeTodaySection";
 import { BoardPreview } from "@/components/home/BoardPreview";
-import { SectionLabel } from "@/components/home/SectionLabel";
 import { HomeSections } from "@/components/home/HomeSections";
 import type { RoutineBlock } from "@/types";
 
@@ -130,58 +129,34 @@ export default async function HomePage() {
     };
   });
 
-  const myStatus = familyStatus.find((f) => f.user_id === user.id);
-  const otherFamilyStatus = familyStatus.filter((f) => f.user_id !== user.id);
+  const memberOptions = members.map((m) => ({
+    user_id: m.user_id,
+    display_name: m.display_name,
+  }));
 
   const headerNode = (
-    <HomeHeader
-      displayName={myStatus?.display_name ?? "가족"}
-      avatarColor={myStatus?.avatar_color ?? "#E1F5EE"}
-      avatarTextColor={myStatus?.avatar_text_color ?? "#0F6E56"}
-      avatarImageUrl={myStatus?.avatar_image_url ?? null}
-      statusText={myStatus?.statusText ?? "쉬는 중"}
-      weather={weather}
-      nowIso={new Date().toISOString()}
-    />
+    <HomeHeader familyStatus={familyStatus} weather={weather} nowIso={new Date().toISOString()} />
   );
 
-  const mealSection = (
-    <section className="flex flex-col gap-label-gap">
-      <SectionLabel icon={IconToolsKitchen2}>오늘 뭐먹지</SectionLabel>
-      <div className="pl-section-indent">
-        <MealSummaryCard meals={mealsToShow} />
-      </div>
-    </section>
-  );
-
-  const todaySection = (
-    <section className="flex flex-col gap-label-gap">
-      <SectionLabel icon={IconCalendar}>오늘 뭐하지</SectionLabel>
-      <div className="pl-section-indent">
-        <TodayEvents todaySchedules={todaySchedules} membersById={membersById} />
-      </div>
-    </section>
-  );
-
-  const familySection = (
-    <section className="flex flex-col gap-label-gap">
-      <SectionLabel icon={IconUsers}>지금 우리 가족은</SectionLabel>
-      <div className="pl-section-indent">
-        <FamilyStatusCard members={otherFamilyStatus} />
-      </div>
-    </section>
-  );
-
-  // 홈 위젯 순서 변경 단위 ②: "오늘 뭐하지"+"지금 우리 가족은"을 2단으로 묶은 하나의 섹션
-  const todayFamilySection = (
+  // 홈 위젯 순서 변경 단위 ①: "오늘 뭐먹지"+"오늘 뭐하지"를 2단으로 묶은 하나의 섹션
+  const mealTodaySection = (
     <div className="grid grid-cols-2 gap-4">
-      {todaySection}
-      <div className={`border-l pl-4 ${mirror.hairline}`}>{familySection}</div>
+      <HomeMealSection meals={mealsToShow} workspaceId={workspaceId} defaultDate={todayStr} />
+      <div className={`border-l pl-4 ${mirror.hairline}`}>
+        <HomeTodaySection
+          todaySchedules={todaySchedules}
+          membersById={membersById}
+          members={memberOptions}
+          workspaceId={workspaceId}
+          defaultDate={todayStr}
+        />
+      </div>
     </div>
   );
 
   const boardSection = (
     <BoardPreview
+      workspaceId={workspaceId}
       stickers={stickers ?? []}
       shoppingItems={shoppingItems ?? []}
       membersById={membersByIdFull}
@@ -190,13 +165,13 @@ export default async function HomePage() {
 
   return (
     <div className={`min-h-screen ${mirror.bg} px-4 pb-24 pt-6`}>
-      {/* 모바일: 위젯처럼 길게 눌러 순서를 바꿀 수 있는 3개 섹션(끼니/오늘+가족/게시판) */}
+      {/* 모바일: 위젯처럼 길게 눌러 순서를 바꿀 수 있는 2개 섹션(끼니+오늘/게시판) */}
       <div className="flex flex-col gap-section lg:hidden">
         {headerNode}
         <div className={`h-px w-full ${mirror.hairlineBg}`} />
         <HomeSections
           initialOrder={homeSectionOrder}
-          sections={{ meal: mealSection, today: todayFamilySection, board: boardSection }}
+          sections={{ meal: mealTodaySection, board: boardSection }}
         />
       </div>
 
@@ -205,11 +180,7 @@ export default async function HomePage() {
         <div className="flex flex-col justify-center lg:pr-8">{headerNode}</div>
 
         <div className={`flex flex-col gap-section lg:border-l lg:px-8 ${mirror.hairline}`}>
-          {mealSection}
-          <div className={`h-px w-full ${mirror.hairlineBg}`} />
-          {todaySection}
-          <div className={`h-px w-full ${mirror.hairlineBg}`} />
-          {familySection}
+          {mealTodaySection}
         </div>
 
         <div className={`flex flex-col lg:border-l lg:pl-8 ${mirror.hairline}`}>

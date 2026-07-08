@@ -1,12 +1,17 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { IconArrowLeft, IconTrash } from "@tabler/icons-react";
 import { upsertRoutine } from "@/app/(main)/schedule/actions";
 import { Input } from "@/components/ui/Input";
+import { RoutineWheel } from "@/components/schedule/RoutineWheel";
 import { STATUS_OPTIONS, STATUS_EMOJI } from "@/lib/routineUtils";
+import { STATUS_COLOR_VAR, DEFAULT_STATUS_COLOR_VAR } from "@/lib/routineColors";
 import type { Routine, RoutineBlock } from "@/types";
+
+// routine.semester 컬럼은 유지하되, UI에서는 학기 구분을 없애고 항상 'default'로 고정한다.
+const SEMESTER = "default";
 
 const DAYS = [
   { value: 1, label: "월" },
@@ -18,19 +23,13 @@ const DAYS = [
   { value: 0, label: "일" },
 ];
 
-const SEMESTERS = [
-  { value: "default", label: "기본" },
-  { value: "summer", label: "여름학기" },
-  { value: "winter", label: "겨울학기" },
-];
+const SWIPE_THRESHOLD = 40;
 
 function sortBlocks(blocks: RoutineBlock[]) {
   return [...blocks].sort((a, b) => (a.start < b.start ? -1 : 1));
 }
 
 export function RoutineEditor({ initialRoutines }: { initialRoutines: Routine[] }) {
-  const [semester, setSemester] = useState("default");
-  const [day, setDay] = useState(1);
   const [byKey, setByKey] = useState<Record<string, RoutineBlock[]>>(() => {
     const map: Record<string, RoutineBlock[]> = {};
     for (const r of initialRoutines) {
@@ -38,7 +37,12 @@ export function RoutineEditor({ initialRoutines }: { initialRoutines: Routine[] 
     }
     return map;
   });
-  const [copyTargets, setCopyTargets] = useState<number[]>([]);
+
+  // 요일 칩 다중 선택 — 배열 순서 = 선택한 순서, 마지막 항목이 차트/리스트에 보여줄 "기준 요일".
+  const [selectedDays, setSelectedDays] = useState<number[]>(() => [new Date().getDay()]);
+  const primaryDay = selectedDays[selectedDays.length - 1];
+
+  const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
   const [isPending, startTransition] = useTransition();
   const [savedMessage, setSavedMessage] = useState("");
 
@@ -48,17 +52,57 @@ export function RoutineEditor({ initialRoutines }: { initialRoutines: Routine[] 
   const [label, setLabel] = useState("");
   const [memo, setMemo] = useState("");
 
-  const key = `${day}-${semester}`;
+  const key = `${primaryDay}-${SEMESTER}`;
   const blocks = useMemo(() => sortBlocks(byKey[key] ?? []), [byKey, key]);
+
+  const touchStartX = useRef<number | null>(null);
 
   const setBlocksFor = (targetKey: string, next: RoutineBlock[]) => {
     setByKey((prev) => ({ ...prev, [targetKey]: next }));
   };
 
+  const toggleDay = (value: number) => {
+    setHighlightedIndex(null);
+    setSelectedDays((prev) => {
+      if (prev.includes(value)) {
+        if (prev.length === 1) return prev; // 최소 1개는 항상 선택 상태 유지
+        return prev.filter((d) => d !== value);
+      }
+      return [...prev, value];
+    });
+  };
+
+  const navigateDay = (direction: 1 | -1) => {
+    setHighlightedIndex(null);
+    const currentIndex = DAYS.findIndex((d) => d.value === primaryDay);
+    const nextIndex = (currentIndex + direction + DAYS.length) % DAYS.length;
+    setSelectedDays([DAYS[nextIndex].value]);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const delta = e.changedTouches[0].clientX - touchStartX.current;
+    touchStartX.current = null;
+    if (Math.abs(delta) < SWIPE_THRESHOLD) return;
+    navigateDay(delta < 0 ? 1 : -1);
+  };
+
+  // 블록 추가 시 현재 선택된 모든 요일에 동시 적용 ("다른 요일에 복사"를 대체).
   const addBlock = () => {
     if (!label.trim() || start >= end) return;
     const block: RoutineBlock = { start, end, status, label: label.trim(), memo: memo || undefined };
-    setBlocksFor(key, [...(byKey[key] ?? []), block]);
+    setByKey((prev) => {
+      const next = { ...prev };
+      for (const day of selectedDays) {
+        const dayKey = `${day}-${SEMESTER}`;
+        next[dayKey] = [...(prev[dayKey] ?? []), block];
+      }
+      return next;
+    });
     setLabel("");
     setMemo("");
   };
@@ -66,27 +110,17 @@ export function RoutineEditor({ initialRoutines }: { initialRoutines: Routine[] 
   const removeBlock = (idx: number) => {
     const next = blocks.filter((_, i) => i !== idx);
     setBlocksFor(key, next);
+    setHighlightedIndex(null);
   };
 
   const save = () => {
     startTransition(async () => {
-      await upsertRoutine(day, semester, byKey[key] ?? []);
+      for (const day of selectedDays) {
+        const dayKey = `${day}-${SEMESTER}`;
+        await upsertRoutine(day, SEMESTER, byKey[dayKey] ?? []);
+      }
       setSavedMessage("저장되었습니다");
       setTimeout(() => setSavedMessage(""), 1500);
-    });
-  };
-
-  const copyToOtherDays = () => {
-    if (copyTargets.length === 0) return;
-    startTransition(async () => {
-      for (const targetDay of copyTargets) {
-        const targetKey = `${targetDay}-${semester}`;
-        setBlocksFor(targetKey, byKey[key] ?? []);
-        await upsertRoutine(targetDay, semester, byKey[key] ?? []);
-      }
-      setSavedMessage("복사되었습니다");
-      setTimeout(() => setSavedMessage(""), 1500);
-      setCopyTargets([]);
     });
   };
 
@@ -100,59 +134,97 @@ export function RoutineEditor({ initialRoutines }: { initialRoutines: Routine[] 
         <div className="w-[22px]" />
       </header>
 
-      <div className="flex flex-col gap-4 px-4">
-        <div className="flex gap-2">
-          {SEMESTERS.map((s) => (
-            <button
-              key={s.value}
-              onClick={() => setSemester(s.value)}
-              className={`rounded-full px-3 py-1.5 text-[12px] font-medium ${
-                semester === s.value ? "bg-ink text-cream" : "bg-surface text-stone"
-              }`}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
+      <div
+        className="flex flex-col gap-4 px-4"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
+        <RoutineWheel
+          blocks={blocks}
+          highlightedIndex={highlightedIndex}
+          onSelectBlock={setHighlightedIndex}
+        />
+
+        <div className="h-px w-full bg-border-light" />
 
         <div className="flex gap-1.5 overflow-x-auto">
-          {DAYS.map((d) => (
-            <button
-              key={d.value}
-              onClick={() => setDay(d.value)}
-              className={`h-10 w-10 shrink-0 rounded-full text-[13px] font-medium ${
-                day === d.value ? "bg-ink text-cream" : "bg-surface text-stone"
-              }`}
-            >
-              {d.label}
-            </button>
-          ))}
+          {DAYS.map((d) => {
+            const isSelected = selectedDays.includes(d.value);
+            const isPrimary = d.value === primaryDay;
+            return (
+              <button
+                key={d.value}
+                onClick={() => toggleDay(d.value)}
+                className={`h-10 w-10 shrink-0 rounded-full text-[13px] font-medium ${
+                  isPrimary
+                    ? "bg-ink text-cream"
+                    : isSelected
+                    ? "bg-honey/15 text-ink"
+                    : "bg-surface text-stone"
+                }`}
+              >
+                {d.label}
+              </button>
+            );
+          })}
         </div>
+        {selectedDays.length > 1 && (
+          <p className="text-[11px] text-stone">
+            선택한 {selectedDays.length}개 요일에 블록이 함께 추가/저장돼요. 좌우로 스와이프하면
+            보기 요일이 바뀌어요.
+          </p>
+        )}
 
-        <div className="flex flex-col gap-2 rounded-2xl border border-border-light bg-surface p-4">
+        <div className="h-px w-full bg-border-light" />
+
+        <div className="flex flex-col gap-2">
+          <span className="text-[12px] font-medium text-stone">
+            {DAYS.find((d) => d.value === primaryDay)?.label}요일 시간 블록
+          </span>
           {blocks.length === 0 && (
             <p className="text-[13px] text-stone">등록된 시간 블록이 없어요</p>
           )}
-          {blocks.map((b, idx) => (
-            <div key={`${b.start}-${idx}`} className="flex items-center gap-2">
-              <span className="w-24 shrink-0 text-[12px] text-stone">
-                {b.start}~{b.end}
-              </span>
-              <span className="shrink-0 text-[16px]">{STATUS_EMOJI[b.status] ?? "✨"}</span>
-              <span className="min-w-0 flex-1 truncate text-[13px] text-ink">{b.label}</span>
-              {b.memo && (
-                <span className="max-w-[30%] shrink-0 truncate text-[11px] text-stone">
-                  {b.memo}
+          {blocks.map((b, idx) => {
+            const colorVar = STATUS_COLOR_VAR[b.status] ?? DEFAULT_STATUS_COLOR_VAR;
+            return (
+              <div
+                key={`${b.start}-${idx}`}
+                onClick={() => setHighlightedIndex(highlightedIndex === idx ? null : idx)}
+                className={`flex cursor-pointer items-center gap-2 py-1.5 ${
+                  idx > 0 ? "border-t border-border-light" : ""
+                }`}
+              >
+                <span
+                  className="h-2 w-2 shrink-0 rounded-full"
+                  style={{ backgroundColor: `var(${colorVar})` }}
+                />
+                <span className="w-24 shrink-0 text-[12px] text-stone">
+                  {b.start}~{b.end}
                 </span>
-              )}
-              <button onClick={() => removeBlock(idx)} aria-label="삭제">
-                <IconTrash size={16} className="text-stone" />
-              </button>
-            </div>
-          ))}
+                <span className="shrink-0 text-[16px]">{STATUS_EMOJI[b.status] ?? "✨"}</span>
+                <span className="min-w-0 flex-1 truncate text-[13px] text-ink">{b.label}</span>
+                {b.memo && (
+                  <span className="max-w-[30%] shrink-0 truncate text-[11px] text-stone">
+                    {b.memo}
+                  </span>
+                )}
+                <button
+                  aria-label="삭제"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeBlock(idx);
+                  }}
+                >
+                  <IconTrash size={16} className="text-stone" />
+                </button>
+              </div>
+            );
+          })}
         </div>
 
-        <div className="flex flex-col gap-3 rounded-2xl border border-border-light bg-surface p-4">
+        <div className="h-px w-full bg-border-light" />
+
+        <div className="flex flex-col gap-3">
           <span className="text-[12px] font-medium text-stone">블록 추가</span>
           <div className="flex gap-2">
             <Input
@@ -169,17 +241,22 @@ export function RoutineEditor({ initialRoutines }: { initialRoutines: Routine[] 
             />
           </div>
           <div className="flex flex-wrap gap-2">
-            {STATUS_OPTIONS.map((s) => (
-              <button
-                key={s}
-                onClick={() => setStatus(s)}
-                className={`rounded-full px-3 py-1.5 text-[12px] font-medium ${
-                  status === s ? "bg-ink text-cream" : "bg-cream text-stone"
-                }`}
-              >
-                {STATUS_EMOJI[s]} {s}
-              </button>
-            ))}
+            {STATUS_OPTIONS.map((s) => {
+              const colorVar = STATUS_COLOR_VAR[s] ?? DEFAULT_STATUS_COLOR_VAR;
+              const active = status === s;
+              return (
+                <button
+                  key={s}
+                  onClick={() => setStatus(s)}
+                  className={`rounded-full px-3 py-1.5 text-[12px] font-medium ${
+                    active ? "text-ink" : "bg-cream text-stone"
+                  }`}
+                  style={active ? { backgroundColor: `var(${colorVar})` } : undefined}
+                >
+                  {STATUS_EMOJI[s]} {s}
+                </button>
+              );
+            })}
           </div>
           <Input
             value={label}
@@ -201,40 +278,10 @@ export function RoutineEditor({ initialRoutines }: { initialRoutines: Routine[] 
           </button>
         </div>
 
-        <div className="flex flex-col gap-2 rounded-2xl border border-border-light bg-surface p-4">
-          <span className="text-[12px] font-medium text-stone">다른 요일에 복사</span>
-          <div className="flex flex-wrap gap-2">
-            {DAYS.filter((d) => d.value !== day).map((d) => (
-              <button
-                key={d.value}
-                onClick={() =>
-                  setCopyTargets((prev) =>
-                    prev.includes(d.value)
-                      ? prev.filter((v) => v !== d.value)
-                      : [...prev, d.value]
-                  )
-                }
-                className={`h-9 w-9 rounded-full text-[12px] font-medium ${
-                  copyTargets.includes(d.value) ? "bg-ink text-cream" : "bg-cream text-stone"
-                }`}
-              >
-                {d.label}
-              </button>
-            ))}
-          </div>
-          <button
-            onClick={copyToOtherDays}
-            disabled={copyTargets.length === 0 || isPending}
-            className="mt-1 flex h-11 items-center justify-center rounded-xl bg-cream text-[13px] font-medium text-ink disabled:opacity-50"
-          >
-            선택한 요일에 복사
-          </button>
-        </div>
-
         <button
           onClick={save}
           disabled={isPending}
-          className="flex h-12 items-center justify-center rounded-2xl bg-ink text-[15px] font-medium text-cream"
+          className="flex h-12 items-center justify-center rounded-2xl bg-ink text-[15px] font-medium text-cream disabled:opacity-50"
         >
           {savedMessage || "저장하기"}
         </button>

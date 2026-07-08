@@ -1,6 +1,8 @@
-export type HomeSectionId = "meal" | "today" | "board";
+// "meal"은 2026-07-08부터 "오늘 뭐먹지 + 오늘 뭐하지" 2단 통합 위젯을 가리킨다
+// (예전엔 "meal"과 "today"가 별개 위젯이었으나 두 섹션이 하나로 합쳐지며 "today"는 제거됨).
+export type HomeSectionId = "meal" | "board";
 
-export const HOME_SECTION_IDS: HomeSectionId[] = ["meal", "today", "board"];
+export const HOME_SECTION_IDS: HomeSectionId[] = ["meal", "board"];
 
 function isHomeSectionId(value: unknown): value is HomeSectionId {
   return typeof value === "string" && (HOME_SECTION_IDS as string[]).includes(value);

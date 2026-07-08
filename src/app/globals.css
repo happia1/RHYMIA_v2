@@ -30,6 +30,15 @@
   --input-border: #E8E6E0;
   /* 섹션 라벨의 [아이콘 14px + gap-1.5(6px)]과 내용 시작점을 맞추기 위한 들여쓰기 */
   --section-indent: 20px;
+  /* 내 루틴 24시간 원형 차트 — 상태별 파스텔 팔레트 (라이트 기본값) */
+  --routine-work: #AEC6EA;
+  --routine-class: #CBB8EA;
+  --routine-exercise: #ABE0C2;
+  --routine-study: #F2CE96;
+  --routine-rest: #A6DFDF;
+  --routine-sleep: #BFC3EA;
+  --routine-commute: #EABBA6;
+  --routine-custom: #EAB0CB;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -46,6 +55,14 @@
     --input-text: #FFFFFF;
     --input-placeholder: #5C5C64;
     --input-border: #34343C;
+    --routine-work: #5D82B3;
+    --routine-class: #8A6BB3;
+    --routine-exercise: #4FA173;
+    --routine-study: #C79544;
+    --routine-rest: #4CA3A3;
+    --routine-sleep: #6569B3;
+    --routine-commute: #B87857;
+    --routine-custom: #B35C85;
   }
 }
 
@@ -62,6 +79,14 @@
   --input-text: #1A1A18;
   --input-placeholder: #B4B2A9;
   --input-border: #E8E6E0;
+  --routine-work: #AEC6EA;
+  --routine-class: #CBB8EA;
+  --routine-exercise: #ABE0C2;
+  --routine-study: #F2CE96;
+  --routine-rest: #A6DFDF;
+  --routine-sleep: #BFC3EA;
+  --routine-commute: #EABBA6;
+  --routine-custom: #EAB0CB;
 }
 
 :root[data-theme="dark"] {
@@ -77,6 +102,14 @@
   --input-text: #FFFFFF;
   --input-placeholder: #5C5C64;
   --input-border: #34343C;
+  --routine-work: #5D82B3;
+  --routine-class: #8A6BB3;
+  --routine-exercise: #4FA173;
+  --routine-study: #C79544;
+  --routine-rest: #4CA3A3;
+  --routine-sleep: #6569B3;
+  --routine-commute: #B87857;
+  --routine-custom: #B35C85;
 }
 
 body {
