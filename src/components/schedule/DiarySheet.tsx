@@ -4,6 +4,7 @@ import { useState } from "react";
 import { IconPhoto } from "@tabler/icons-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { useToast } from "@/components/ui/Toast";
+import { Textarea } from "@/components/ui/Input";
 import { createDiary } from "@/app/(main)/schedule/actions";
 import { WEEKDAY_LABEL } from "@/lib/date";
 import type { WeatherData } from "@/lib/weather";
@@ -90,21 +91,21 @@ export function DiarySheet({
           </div>
         </div>
 
-        <textarea
+        <Textarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
           placeholder="오늘의 기록"
           rows={4}
-          className="rounded-xl border border-border-light p-3 text-[13px] text-ink placeholder:text-stone focus:outline-none"
+          className="rounded-xl p-3 text-[13px]"
         />
 
-        <label className="flex items-center gap-2 rounded-xl border border-border-light px-3 py-2.5 text-[13px] text-stone">
+        <label className="flex items-center gap-2 rounded-xl border border-input-border px-3 py-2.5 text-[13px] text-stone">
           <IconPhoto size={18} className="text-ocean" />
           <input
             value={photoUrl}
             onChange={(e) => setPhotoUrl(e.target.value)}
             placeholder="사진 URL (선택)"
-            className="flex-1 bg-transparent text-[13px] text-ink placeholder:text-stone focus:outline-none"
+            className="flex-1 bg-transparent text-[13px] text-input-text placeholder:text-input-placeholder focus:outline-none"
           />
         </label>
 

@@ -18,8 +18,10 @@ export function FamilyStatusCard({ members }: { members: FamilyMemberStatus[] })
           <span className={`w-16 shrink-0 truncate text-[13px] font-medium ${mirror.primary}`}>
             {m.display_name}
           </span>
-          <span className={`truncate text-[13px] ${mirror.secondary}`}>{m.statusText}</span>
-          <span className="ml-auto shrink-0 text-[15px]">{m.emoji}</span>
+          <span className={`min-w-0 flex-1 truncate text-[13px] ${mirror.secondary}`}>
+            {m.statusText}
+          </span>
+          <span className="shrink-0 text-[15px]">{m.emoji}</span>
         </div>
       ))}
     </div>

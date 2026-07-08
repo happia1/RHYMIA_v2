@@ -41,7 +41,7 @@ export function MealCard({
   return (
     <div
       onClick={() => router.push(`/food/${meal.id}`)}
-      className="flex cursor-pointer gap-3 rounded-2xl border border-border-light bg-white p-3"
+      className="flex cursor-pointer gap-3 rounded-2xl border border-border-light bg-surface p-3"
     >
       <div
         className="relative flex h-20 w-20 shrink-0 items-center justify-center rounded-xl text-3xl"

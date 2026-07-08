@@ -21,7 +21,7 @@ export function DockBar() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 flex h-[64px] items-center justify-around">
+    <nav className="fixed inset-x-0 bottom-0 z-40 flex h-[64px] items-center justify-around bg-cream">
       {TABS.map(({ href, label, icon: Icon }) => {
         const active = pathname === href || pathname.startsWith(`${href}/`);
         return (

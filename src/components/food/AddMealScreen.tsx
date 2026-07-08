@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { IconArrowLeft, IconFridge } from "@tabler/icons-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
+import { Input, Textarea } from "@/components/ui/Input";
 import { createMeal, updateMeal, addFridgeItem, deleteFridgeItem } from "@/app/(main)/food/actions";
 import { MEAL_TAGS } from "@/lib/mealUtils";
 import type { FridgeCategory, FridgeItem, Meal, MealType } from "@/types";
@@ -104,7 +105,7 @@ export function AddMealScreen({
                 key={t}
                 onClick={() => setTag(t)}
                 className={`shrink-0 rounded-full px-3.5 py-2 text-[13px] font-medium ${
-                  tag === t ? "bg-ink text-cream" : "bg-white text-stone"
+                  tag === t ? "bg-ink text-cream" : "bg-surface text-stone"
                 }`}
               >
                 {t}
@@ -121,7 +122,7 @@ export function AddMealScreen({
                 key={t}
                 onClick={() => setType(t)}
                 className={`rounded-full px-3.5 py-2 text-[13px] font-medium ${
-                  type === t ? "bg-ink text-cream" : "bg-white text-stone"
+                  type === t ? "bg-ink text-cream" : "bg-surface text-stone"
                 }`}
               >
                 {t}
@@ -130,17 +131,17 @@ export function AddMealScreen({
           </div>
           {type === "외식" && (
             <div className="mt-1 flex gap-2">
-              <input
+              <Input
                 value={place}
                 onChange={(e) => setPlace(e.target.value)}
                 placeholder="장소"
-                className="h-11 flex-1 rounded-xl border border-border-light bg-white px-3 text-[13px] text-ink placeholder:text-stone focus:outline-none"
+                className="h-11 flex-1 rounded-xl px-3 text-[13px]"
               />
-              <input
+              <Input
                 value={reservationTime}
                 onChange={(e) => setReservationTime(e.target.value)}
                 placeholder="시간"
-                className="h-11 w-24 rounded-xl border border-border-light bg-white px-3 text-[13px] text-ink placeholder:text-stone focus:outline-none"
+                className="h-11 w-24 rounded-xl px-3 text-[13px]"
               />
             </div>
           )}
@@ -148,18 +149,18 @@ export function AddMealScreen({
 
         <section className="flex flex-col gap-2">
           <span className="text-[12px] font-medium text-stone">메뉴 (쉼표로 여러 개)</span>
-          <input
+          <Input
             value={mainMenu}
             onChange={(e) => setMainMenu(e.target.value)}
             placeholder="예: 된장찌개, 계란말이"
-            className="h-11 rounded-xl border border-border-light bg-white px-3 text-[14px] text-ink placeholder:text-stone focus:outline-none"
+            className="h-11 rounded-xl px-3 text-[14px]"
           />
           <div className="flex flex-wrap gap-2">
             {SUGGESTIONS[type].map((item) => (
               <button
                 key={item}
                 onClick={() => appendMenu(item)}
-                className="rounded-full bg-white px-3 py-1.5 text-[12px] text-stone"
+                className="rounded-full bg-surface px-3 py-1.5 text-[12px] text-stone"
               >
                 {item}
               </button>
@@ -179,22 +180,22 @@ export function AddMealScreen({
 
         <section className="flex flex-col gap-2">
           <span className="text-[12px] font-medium text-stone">사이드 (선택)</span>
-          <input
+          <Input
             value={sides}
             onChange={(e) => setSides(e.target.value)}
             placeholder="예: 김치, 나물"
-            className="h-11 rounded-xl border border-border-light bg-white px-3 text-[14px] text-ink placeholder:text-stone focus:outline-none"
+            className="h-11 rounded-xl px-3 text-[14px]"
           />
         </section>
 
         <section className="flex flex-col gap-2">
           <span className="text-[12px] font-medium text-stone">메모 (선택)</span>
-          <textarea
+          <Textarea
             value={memo}
             onChange={(e) => setMemo(e.target.value)}
             rows={3}
             placeholder="자유롭게 적어보세요"
-            className="rounded-xl border border-border-light bg-white p-3 text-[14px] text-ink placeholder:text-stone focus:outline-none"
+            className="rounded-xl p-3 text-[14px]"
           />
         </section>
 
@@ -259,12 +260,12 @@ function FridgeStockSheet({
         </div>
 
         <div className="flex gap-2">
-          <input
+          <Input
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleAdd()}
             placeholder="재료 이름"
-            className="h-11 flex-1 rounded-xl border border-border-light px-3 text-[14px] text-ink placeholder:text-stone focus:outline-none"
+            className="h-11 flex-1 rounded-xl px-3 text-[14px]"
           />
           <button
             onClick={handleAdd}

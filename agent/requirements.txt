@@ -1,0 +1,10 @@
+# 일정 파싱 에이전트 (LangGraph) 의존성
+langgraph>=0.2.0
+langchain-google-genai>=2.0.0
+langchain-core>=0.3.0
+python-dotenv>=1.0.0
+
+# FastAPI 서버 (Next.js 연동용)
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+pydantic>=2.0

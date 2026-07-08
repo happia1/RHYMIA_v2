@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { useToast } from "@/components/ui/Toast";
+import { Input } from "@/components/ui/Input";
 import { createHabit } from "@/app/(main)/schedule/actions";
 import { WEEKDAY_LABEL } from "@/lib/date";
 import type { HabitRepeatType } from "@/types";
@@ -73,20 +74,20 @@ export function HabitSheet({
       <div className="flex flex-col gap-4">
         <h2 className="text-[17px] font-medium text-ink">습관 등록</h2>
 
-        <input
+        <Input
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="습관 이름 (예: 아침 6시 기상)"
-          className="h-11 rounded-xl border border-border-light px-3 text-[14px] text-ink placeholder:text-stone focus:outline-none"
+          className="h-11 rounded-xl px-3 text-[14px]"
         />
 
         <div className="flex flex-col gap-2">
           <span className="text-[12px] font-medium text-stone">시작 시간</span>
-          <input
+          <Input
             type="time"
             value={startTime}
             onChange={(e) => setStartTime(e.target.value)}
-            className="h-11 rounded-xl border border-border-light px-3 text-[13px] text-ink focus:outline-none"
+            className="h-11 rounded-xl px-3 text-[13px]"
           />
         </div>
 
@@ -124,11 +125,11 @@ export function HabitSheet({
 
         <div className="flex flex-col gap-2">
           <span className="text-[12px] font-medium text-stone">목표 기간</span>
-          <input
+          <Input
             value={targetDuration}
             onChange={(e) => setTargetDuration(e.target.value)}
             placeholder="예: 3개월"
-            className="h-11 rounded-xl border border-border-light px-3 text-[13px] text-ink placeholder:text-stone focus:outline-none"
+            className="h-11 rounded-xl px-3 text-[13px]"
           />
         </div>
 
@@ -141,11 +142,11 @@ export function HabitSheet({
           />
         </label>
         {notifyEnabled && (
-          <input
+          <Input
             type="time"
             value={notifyTime}
             onChange={(e) => setNotifyTime(e.target.value)}
-            className="h-11 rounded-xl border border-border-light px-3 text-[13px] text-ink focus:outline-none"
+            className="h-11 rounded-xl px-3 text-[13px]"
           />
         )}
 

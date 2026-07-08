@@ -17,14 +17,11 @@ export default async function FoodPage({
   const selectedDate = date ?? toDateStr(new Date());
   const weekDates = getWeekDates(new Date(selectedDate));
 
-  const { data: memberRows } = await supabase
-    .from("workspace_member")
-    .select("user_id, display_name, users(avatar_color, avatar_text_color, avatar_image_url)")
-    .eq("workspace_id", workspaceId);
-
-  const members = mapWorkspaceMembers(memberRows ?? []);
-
-  const [{ data: weekMeals }, { data: dayMeals }] = await Promise.all([
+  const [{ data: memberRows }, { data: weekMeals }, { data: dayMeals }] = await Promise.all([
+    supabase
+      .from("workspace_member")
+      .select("user_id, display_name, users(avatar_color, avatar_text_color, avatar_image_url)")
+      .eq("workspace_id", workspaceId),
     supabase
       .from("meal")
       .select("date")
@@ -38,6 +35,8 @@ export default async function FoodPage({
       .eq("date", selectedDate)
       .order("created_at", { ascending: true }),
   ]);
+
+  const members = mapWorkspaceMembers(memberRows ?? []);
 
   const datesWithMeals = new Set((weekMeals ?? []).map((m) => m.date));
 

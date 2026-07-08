@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { IconArrowLeft, IconTrash } from "@tabler/icons-react";
 import { upsertRoutine } from "@/app/(main)/schedule/actions";
+import { Input } from "@/components/ui/Input";
 import { STATUS_OPTIONS, STATUS_EMOJI } from "@/lib/routineUtils";
 import type { Routine, RoutineBlock } from "@/types";
 
@@ -106,7 +107,7 @@ export function RoutineEditor({ initialRoutines }: { initialRoutines: Routine[] 
               key={s.value}
               onClick={() => setSemester(s.value)}
               className={`rounded-full px-3 py-1.5 text-[12px] font-medium ${
-                semester === s.value ? "bg-ink text-cream" : "bg-white text-stone"
+                semester === s.value ? "bg-ink text-cream" : "bg-surface text-stone"
               }`}
             >
               {s.label}
@@ -120,7 +121,7 @@ export function RoutineEditor({ initialRoutines }: { initialRoutines: Routine[] 
               key={d.value}
               onClick={() => setDay(d.value)}
               className={`h-10 w-10 shrink-0 rounded-full text-[13px] font-medium ${
-                day === d.value ? "bg-ink text-cream" : "bg-white text-stone"
+                day === d.value ? "bg-ink text-cream" : "bg-surface text-stone"
               }`}
             >
               {d.label}
@@ -128,7 +129,7 @@ export function RoutineEditor({ initialRoutines }: { initialRoutines: Routine[] 
           ))}
         </div>
 
-        <div className="flex flex-col gap-2 rounded-2xl border border-border-light bg-white p-4">
+        <div className="flex flex-col gap-2 rounded-2xl border border-border-light bg-surface p-4">
           {blocks.length === 0 && (
             <p className="text-[13px] text-stone">등록된 시간 블록이 없어요</p>
           )}
@@ -138,8 +139,12 @@ export function RoutineEditor({ initialRoutines }: { initialRoutines: Routine[] 
                 {b.start}~{b.end}
               </span>
               <span className="shrink-0 text-[16px]">{STATUS_EMOJI[b.status] ?? "✨"}</span>
-              <span className="flex-1 truncate text-[13px] text-ink">{b.label}</span>
-              {b.memo && <span className="truncate text-[11px] text-stone">{b.memo}</span>}
+              <span className="min-w-0 flex-1 truncate text-[13px] text-ink">{b.label}</span>
+              {b.memo && (
+                <span className="max-w-[30%] shrink-0 truncate text-[11px] text-stone">
+                  {b.memo}
+                </span>
+              )}
               <button onClick={() => removeBlock(idx)} aria-label="삭제">
                 <IconTrash size={16} className="text-stone" />
               </button>
@@ -147,20 +152,20 @@ export function RoutineEditor({ initialRoutines }: { initialRoutines: Routine[] 
           ))}
         </div>
 
-        <div className="flex flex-col gap-3 rounded-2xl border border-border-light bg-white p-4">
+        <div className="flex flex-col gap-3 rounded-2xl border border-border-light bg-surface p-4">
           <span className="text-[12px] font-medium text-stone">블록 추가</span>
           <div className="flex gap-2">
-            <input
+            <Input
               type="time"
               value={start}
               onChange={(e) => setStart(e.target.value)}
-              className="h-11 flex-1 rounded-xl border border-border-light px-3 text-[13px] text-ink focus:outline-none"
+              className="h-11 flex-1 rounded-xl px-3 text-[13px]"
             />
-            <input
+            <Input
               type="time"
               value={end}
               onChange={(e) => setEnd(e.target.value)}
-              className="h-11 flex-1 rounded-xl border border-border-light px-3 text-[13px] text-ink focus:outline-none"
+              className="h-11 flex-1 rounded-xl px-3 text-[13px]"
             />
           </div>
           <div className="flex flex-wrap gap-2">
@@ -176,17 +181,17 @@ export function RoutineEditor({ initialRoutines }: { initialRoutines: Routine[] 
               </button>
             ))}
           </div>
-          <input
+          <Input
             value={label}
             onChange={(e) => setLabel(e.target.value)}
             placeholder="이름 (예: 요가, 유치원)"
-            className="h-11 rounded-xl border border-border-light px-3 text-[13px] text-ink placeholder:text-stone focus:outline-none"
+            className="h-11 rounded-xl px-3 text-[13px]"
           />
-          <input
+          <Input
             value={memo}
             onChange={(e) => setMemo(e.target.value)}
             placeholder="메모 (예: 활동복)"
-            className="h-11 rounded-xl border border-border-light px-3 text-[13px] text-ink placeholder:text-stone focus:outline-none"
+            className="h-11 rounded-xl px-3 text-[13px]"
           />
           <button
             onClick={addBlock}
@@ -196,7 +201,7 @@ export function RoutineEditor({ initialRoutines }: { initialRoutines: Routine[] 
           </button>
         </div>
 
-        <div className="flex flex-col gap-2 rounded-2xl border border-border-light bg-white p-4">
+        <div className="flex flex-col gap-2 rounded-2xl border border-border-light bg-surface p-4">
           <span className="text-[12px] font-medium text-stone">다른 요일에 복사</span>
           <div className="flex flex-wrap gap-2">
             {DAYS.filter((d) => d.value !== day).map((d) => (

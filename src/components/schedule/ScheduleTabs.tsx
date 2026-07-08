@@ -38,7 +38,7 @@ export function ScheduleTabs({
         </div>
       )}
 
-      <div className="flex rounded-full border border-border-light bg-white p-1">
+      <div className="flex rounded-full border border-border-light bg-surface p-1">
         {VIEWS.map(({ key, label }) => (
           <Link
             key={key}

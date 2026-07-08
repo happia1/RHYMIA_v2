@@ -42,7 +42,7 @@ export function EventFilters({
   const activeGroup = KEYWORD_GROUPS.find((g) => g.main === keywordMain);
 
   return (
-    <div className="flex flex-col gap-2 rounded-2xl border border-border-light bg-white p-3">
+    <div className="flex flex-col gap-2 rounded-2xl border border-border-light bg-surface p-3">
       <div className="flex gap-2">
         {SCOPES.map((s) => (
           <button

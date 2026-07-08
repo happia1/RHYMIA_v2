@@ -68,7 +68,7 @@ export async function createSchedule(workspaceId: string, input: ScheduleInput) 
   }
 
   if (input.is_grocery && input.amount) {
-    await supabase.from("expense").insert({
+    const { error: expenseError } = await supabase.from("expense").insert({
       workspace_id: workspaceId,
       category: "grocery",
       amount: input.amount,
@@ -76,6 +76,7 @@ export async function createSchedule(workspaceId: string, input: ScheduleInput) 
       linked_schedule_id: scheduleId,
       created_by: user.id,
     });
+    if (expenseError) throw new Error(expenseError.message);
   }
 
   revalidatePath("/schedule");
@@ -85,7 +86,25 @@ export async function createSchedule(workspaceId: string, input: ScheduleInput) 
 
 export async function deleteSchedule(scheduleId: string) {
   const supabase = await createClient();
-  await supabase.from("schedule").delete().eq("id", scheduleId);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { data: schedule, error: fetchError } = await supabase
+    .from("schedule")
+    .select("author_id")
+    .eq("id", scheduleId)
+    .maybeSingle();
+
+  if (fetchError) throw new Error(fetchError.message);
+  if (!schedule || schedule.author_id !== user.id) {
+    throw new Error("삭제 권한이 없습니다.");
+  }
+
+  const { error } = await supabase.from("schedule").delete().eq("id", scheduleId);
+  if (error) throw new Error(error.message);
+
   revalidatePath("/schedule");
   revalidatePath("/home");
 }
@@ -101,7 +120,7 @@ export async function upsertRoutine(
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  await supabase.from("routine").upsert(
+  const { error } = await supabase.from("routine").upsert(
     {
       user_id: user!.id,
       day_of_week: dayOfWeek,
@@ -111,6 +130,8 @@ export async function upsertRoutine(
     },
     { onConflict: "user_id,day_of_week,semester" }
   );
+
+  if (error) throw new Error(error.message);
 
   revalidatePath("/schedule/routine");
   revalidatePath("/home");

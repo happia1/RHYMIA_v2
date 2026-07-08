@@ -12,13 +12,13 @@ export function PlaceInput({
   onChange: (value: string) => void;
 }) {
   return (
-    <label className="flex items-center gap-2 rounded-xl border border-border-light px-3 py-2.5">
+    <label className="flex items-center gap-2 rounded-xl border border-input-border px-3 py-2.5">
       <IconMapPin size={18} className="shrink-0 text-ocean" />
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="장소 (선택)"
-        className="h-6 flex-1 bg-transparent text-[13px] text-ink placeholder:text-stone focus:outline-none"
+        className="h-6 flex-1 bg-transparent text-[13px] text-input-text placeholder:text-input-placeholder focus:outline-none"
       />
     </label>
   );

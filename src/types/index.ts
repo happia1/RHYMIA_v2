@@ -8,6 +8,7 @@ export interface FamilyWorkspace {
   plan: string;
   member_limit: number;
   plan_expires_at: string | null;
+  share_token: string;
   created_at: string;
 }
 

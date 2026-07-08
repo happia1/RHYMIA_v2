@@ -45,12 +45,43 @@ export async function joinWorkspace(workspaceId: string, displayName: string) {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  await supabase.from("workspace_member").insert({
+  const { data: existing, error: existingError } = await supabase
+    .from("workspace_member")
+    .select("id")
+    .eq("workspace_id", workspaceId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (existingError) throw new Error(existingError.message);
+  if (existing) redirect("/home");
+
+  const { data: workspace, error: workspaceError } = await supabase
+    .from("family_workspace")
+    .select("member_limit")
+    .eq("id", workspaceId)
+    .maybeSingle();
+
+  if (workspaceError) throw new Error(workspaceError.message);
+  if (!workspace) throw new Error("유효하지 않은 워크스페이스입니다.");
+
+  const { count, error: countError } = await supabase
+    .from("workspace_member")
+    .select("id", { count: "exact", head: true })
+    .eq("workspace_id", workspaceId);
+
+  if (countError) throw new Error(countError.message);
+  if ((count ?? 0) >= workspace.member_limit) {
+    throw new Error("가족 구성원 정원이 가득 찼습니다.");
+  }
+
+  const { error } = await supabase.from("workspace_member").insert({
     workspace_id: workspaceId,
-    user_id: user!.id,
+    user_id: user.id,
     role: "member",
     display_name: displayName,
   });
+
+  if (error) throw new Error(error.message);
 
   redirect("/home");
 }

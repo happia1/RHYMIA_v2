@@ -7,7 +7,6 @@ import { AddEventSheet } from "@/components/schedule/AddEventSheet";
 import { DiarySheet } from "@/components/schedule/DiarySheet";
 import { HabitSheet } from "@/components/schedule/HabitSheet";
 import { TodoSheet } from "@/components/schedule/TodoSheet";
-import { AiAssistButton } from "@/components/schedule/AiAssistButton";
 import type { WeatherData } from "@/lib/weather";
 
 interface MemberOption {
@@ -49,7 +48,6 @@ export function AddEventEntry({
       >
         <IconPlus size={26} />
       </button>
-      <AiAssistButton />
 
       <AddTemplatePicker
         open={pickerOpen}

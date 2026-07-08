@@ -6,3 +6,5 @@ export const AVATAR_SIZE = {
 } as const;
 
 export const SHOPPING_DOT_SIZE = 10;
+
+export const AGENT_BUTTON_SIZE = 52;

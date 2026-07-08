@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { useToast } from "@/components/ui/Toast";
+import { Input, Textarea } from "@/components/ui/Input";
 import { PlaceInput } from "@/components/schedule/PlaceInput";
 import { createSchedule } from "@/app/(main)/schedule/actions";
 import { KEYWORD_GROUPS } from "@/lib/scheduleKeywords";
@@ -125,20 +126,20 @@ export function AddEventSheet({
       <div className="flex flex-col gap-4">
         <h2 className="text-[17px] font-medium text-ink">일정 등록</h2>
 
-        <input
+        <Input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="제목"
-          className="h-11 rounded-xl border border-border-light px-3 text-[14px] text-ink placeholder:text-stone focus:outline-none"
+          className="h-11 rounded-xl px-3 text-[14px]"
         />
 
         <div className="flex flex-col gap-2">
           <div className="flex gap-2">
-            <input
+            <Input
               type="date"
               value={dateStart}
               onChange={(e) => setDateStart(e.target.value)}
-              className="h-11 flex-1 rounded-xl border border-border-light px-3 text-[13px] text-ink focus:outline-none"
+              className="h-11 flex-1 rounded-xl px-3 text-[13px]"
             />
             <label className="flex items-center gap-1.5 text-[12px] text-stone">
               <input
@@ -150,11 +151,11 @@ export function AddEventSheet({
             </label>
           </div>
           {isRange && (
-            <input
+            <Input
               type="date"
               value={dateEnd}
               onChange={(e) => setDateEnd(e.target.value)}
-              className="h-11 rounded-xl border border-border-light px-3 text-[13px] text-ink focus:outline-none"
+              className="h-11 rounded-xl px-3 text-[13px]"
             />
           )}
 
@@ -169,17 +170,17 @@ export function AddEventSheet({
 
           {!isAllDay && (
             <div className="flex gap-2">
-              <input
+              <Input
                 type="time"
                 value={timeStart}
                 onChange={(e) => setTimeStart(e.target.value)}
-                className="h-11 flex-1 rounded-xl border border-border-light px-3 text-[13px] text-ink focus:outline-none"
+                className="h-11 flex-1 rounded-xl px-3 text-[13px]"
               />
-              <input
+              <Input
                 type="time"
                 value={timeEnd}
                 onChange={(e) => setTimeEnd(e.target.value)}
-                className="h-11 flex-1 rounded-xl border border-border-light px-3 text-[13px] text-ink focus:outline-none"
+                className="h-11 flex-1 rounded-xl px-3 text-[13px]"
               />
             </div>
           )}
@@ -270,19 +271,19 @@ export function AddEventSheet({
 
         <PlaceInput value={place} onChange={setPlace} />
 
-        <textarea
+        <Textarea
           value={memo}
           onChange={(e) => setMemo(e.target.value)}
           placeholder="메모 (준비물 등 자유롭게)"
           rows={3}
-          className="rounded-xl border border-border-light p-3 text-[13px] text-ink placeholder:text-stone focus:outline-none"
+          className="rounded-xl p-3 text-[13px]"
         />
 
-        <input
+        <Input
           value={imageUrl}
           onChange={(e) => setImageUrl(e.target.value)}
           placeholder="사진 URL (선택)"
-          className="h-11 rounded-xl border border-border-light px-3 text-[13px] text-ink placeholder:text-stone focus:outline-none"
+          className="h-11 rounded-xl px-3 text-[13px]"
         />
 
         <div className="flex flex-col gap-2">
@@ -301,11 +302,11 @@ export function AddEventSheet({
             ))}
           </div>
           {notifyOffset === "custom" && (
-            <input
+            <Input
               type="datetime-local"
               value={notifyCustomAt}
               onChange={(e) => setNotifyCustomAt(e.target.value)}
-              className="h-11 rounded-xl border border-border-light px-3 text-[13px] text-ink focus:outline-none"
+              className="h-11 rounded-xl px-3 text-[13px]"
             />
           )}
         </div>
@@ -330,18 +331,18 @@ export function AddEventSheet({
 
         {isGrocery && (
           <div className="flex flex-col gap-2">
-            <input
+            <Input
               type="number"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="지출 금액"
-              className="h-11 rounded-xl border border-border-light px-3 text-[13px] text-ink placeholder:text-stone focus:outline-none"
+              className="h-11 rounded-xl px-3 text-[13px]"
             />
-            <input
+            <Input
               value={receiptUrl}
               onChange={(e) => setReceiptUrl(e.target.value)}
               placeholder="영수증 이미지 URL (선택)"
-              className="h-11 rounded-xl border border-border-light px-3 text-[13px] text-ink placeholder:text-stone focus:outline-none"
+              className="h-11 rounded-xl px-3 text-[13px]"
             />
           </div>
         )}

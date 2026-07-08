@@ -10,6 +10,7 @@ import {
 } from "@tabler/icons-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { CheckToggle } from "@/components/ui/CheckToggle";
+import { Input } from "@/components/ui/Input";
 import { toggleMealLike, addMealComment } from "@/app/(main)/food/actions";
 import { toggleMealParticipation } from "@/app/(main)/home/actions";
 import { AVATAR_SIZE } from "@/lib/uiTokens";
@@ -107,7 +108,7 @@ export function MealDetail({
             href={`https://map.kakao.com/link/search/${encodeURIComponent(meal.place)}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 rounded-2xl border border-border-light bg-white p-3 text-[13px] text-ink"
+            className="flex items-center gap-1.5 rounded-2xl border border-border-light bg-surface p-3 text-[13px] text-ink"
           >
             <IconMapPin size={18} className="text-ocean" />
             {meal.place}
@@ -130,7 +131,7 @@ export function MealDetail({
           </div>
         )}
 
-        <div className="flex items-center justify-between rounded-2xl border border-border-light bg-white p-4">
+        <div className="flex items-center justify-between rounded-2xl border border-border-light bg-surface p-4">
           <div className="flex -space-x-2">
             {checkedInMembers.map((m) => (
               <Avatar
@@ -193,12 +194,12 @@ export function MealDetail({
             );
           })}
           <div className="flex items-center gap-2">
-            <input
+            <Input
               value={commentDraft}
               onChange={(e) => setCommentDraft(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleComment()}
               placeholder="댓글을 남겨보세요"
-              className="h-11 flex-1 rounded-xl border border-border-light bg-white px-3 text-[13px] text-ink placeholder:text-stone focus:outline-none"
+              className="h-11 flex-1 rounded-xl px-3 text-[13px]"
             />
             <button
               onClick={handleComment}

@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { IconPlus, IconX } from "@tabler/icons-react";
 import { CheckToggle } from "@/components/ui/CheckToggle";
+import { Input } from "@/components/ui/Input";
 import {
   addShoppingItem,
   deleteShoppingItem,
@@ -33,14 +34,14 @@ export function ShoppingList({
   };
 
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-border-light bg-white p-4">
+    <div className="flex flex-col gap-3 rounded-2xl border border-border-light bg-surface p-4">
       <div className="flex items-center gap-2">
-        <input
+        <Input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleAdd()}
           placeholder="살 것을 입력하세요"
-          className="h-9 flex-1 rounded-xl border border-border-light px-3 text-[13px] text-ink placeholder:text-stone focus:outline-none"
+          className="h-9 flex-1 rounded-xl px-3 text-[13px]"
         />
         <button onClick={handleAdd} aria-label="추가" disabled={isPending}>
           <IconPlus size={20} className="text-stone" />
@@ -62,7 +63,7 @@ export function ShoppingList({
               }
               size={SHOPPING_DOT_SIZE}
             />
-            <span className="flex-1 truncate text-[14px] text-ink">{item.name}</span>
+            <span className="min-w-0 flex-1 truncate text-[14px] text-ink">{item.name}</span>
             <button
               onClick={() => startTransition(() => deleteShoppingItem(item.id))}
               aria-label="삭제"

@@ -58,6 +58,21 @@ It brings together meals, schedules, shopping, and notices into a single home sc
 
 ---
 
+## Design System — "Smart Home Mirror Display"
+
+The fridge door as a metaphor for a smart mirror: a minimal dashboard that separates information with typography and whitespace instead of cards or containers. Dark mode is the default mood; light mode is also supported.
+
+- **No blocks.** No cards, background boxes, or container borders. Sections are separated only by (1) a small uppercase-tracked label, (2) a 0.5px hairline, and (3) vertical spacing (30px between sections).
+- **Theme via CSS variables** — `--bg-page`, `--text-primary`, `--text-secondary`, `--text-muted`, `--hairline` flip between dark (`#141417` background / white text) and light (`#F5F4F0` background / near-black text). Two shared accent colors regardless of theme: `--accent-honey` (`#E8A04A`, time/meals) and `--accent-sage` (`#5BAD7F`, participation/completion).
+- **Typographic hierarchy carries depth** — hero time at 44px/300, primary info (e.g. menu name) at 26px/400, body 13–15px, secondary text 11–12px, section labels 10px with 0.14em letter-spacing. Numbers use tabular figures.
+- **Minimal components** — icon-only buttons (no background/border), name-first avatars, emoji reserved for family status badges, active carousel dots as an elongated honey pill vs. small dots otherwise. No shadows, gradients, or blur.
+- **Layout** — mobile is a vertical stack with hairline separators; tablet landscape (lg, 1024px+) switches to 3 columns (clock/profile · today's info · board/shopping). All spacing/sizing values are CSS variables or Tailwind tokens, never hardcoded.
+- **Writing tone** — short and plain, no greetings or filler. Even empty states are a single line (e.g. "No schedule yet").
+
+Full spec: `PRD_fridge` § 10 ("디자인 가이드").
+
+---
+
 ## Tech Stack
 
 | Layer | Technology |

@@ -49,18 +49,35 @@ export function AvatarUploader({
       .upload(path, file, { upsert: true });
 
     if (uploadError) {
-      setError("업로드에 실패했어요. 잠시 후 다시 시도해주세요.");
+      console.error("[AvatarUploader] storage upload failed:", uploadError);
+      setError(`업로드에 실패했어요: ${uploadError.message}`);
       return;
     }
 
     const { data } = supabase.storage.from("avatars").getPublicUrl(path);
     setPreview(data.publicUrl);
-    startTransition(() => updateAvatarImage(data.publicUrl));
+
+    startTransition(async () => {
+      try {
+        await updateAvatarImage(data.publicUrl);
+      } catch (e) {
+        console.error("[AvatarUploader] updateAvatarImage failed:", e);
+        setError(e instanceof Error ? e.message : "프로필 저장에 실패했어요.");
+      }
+    });
   };
 
   const handleReset = () => {
+    setError("");
     setPreview(null);
-    startTransition(() => clearAvatarImage());
+    startTransition(async () => {
+      try {
+        await clearAvatarImage();
+      } catch (e) {
+        console.error("[AvatarUploader] clearAvatarImage failed:", e);
+        setError(e instanceof Error ? e.message : "초기화에 실패했어요.");
+      }
+    });
   };
 
   return (

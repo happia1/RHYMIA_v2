@@ -51,8 +51,23 @@ export async function createMeal(workspaceId: string, input: MealInput) {
 
 export async function updateMeal(mealId: string, input: MealInput) {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
 
-  await supabase
+  const { data: meal, error: fetchError } = await supabase
+    .from("meal")
+    .select("author_id")
+    .eq("id", mealId)
+    .maybeSingle();
+
+  if (fetchError) throw new Error(fetchError.message);
+  if (!meal || meal.author_id !== user.id) {
+    throw new Error("수정 권한이 없습니다.");
+  }
+
+  const { error } = await supabase
     .from("meal")
     .update({
       date: input.date,
@@ -65,6 +80,8 @@ export async function updateMeal(mealId: string, input: MealInput) {
       memo: input.memo ?? null,
     })
     .eq("id", mealId);
+
+  if (error) throw new Error(error.message);
 
   revalidatePath("/food");
   revalidatePath(`/food/${mealId}`);
@@ -79,13 +96,17 @@ export async function toggleMealLike(mealId: string, liked: boolean) {
   if (!user) return;
 
   if (liked) {
-    await supabase.from("meal_like").insert({ meal_id: mealId, user_id: user.id });
+    const { error } = await supabase
+      .from("meal_like")
+      .insert({ meal_id: mealId, user_id: user.id });
+    if (error) throw new Error(error.message);
   } else {
-    await supabase
+    const { error } = await supabase
       .from("meal_like")
       .delete()
       .eq("meal_id", mealId)
       .eq("user_id", user.id);
+    if (error) throw new Error(error.message);
   }
 
   revalidatePath("/food");
@@ -105,16 +126,19 @@ export async function addFridgeItem(
   } = await supabase.auth.getUser();
   if (!user) return;
 
-  await supabase
+  const { error } = await supabase
     .from("fridge_item")
     .insert({ workspace_id: workspaceId, name: trimmed, category, added_by: user.id });
+
+  if (error) throw new Error(error.message);
 
   revalidatePath("/food/add");
 }
 
 export async function deleteFridgeItem(itemId: string) {
   const supabase = await createClient();
-  await supabase.from("fridge_item").delete().eq("id", itemId);
+  const { error } = await supabase.from("fridge_item").delete().eq("id", itemId);
+  if (error) throw new Error(error.message);
   revalidatePath("/food/add");
 }
 
@@ -128,9 +152,11 @@ export async function addMealComment(mealId: string, content: string) {
   } = await supabase.auth.getUser();
   if (!user) return;
 
-  await supabase
+  const { error } = await supabase
     .from("meal_comment")
     .insert({ meal_id: mealId, user_id: user.id, content: trimmed });
+
+  if (error) throw new Error(error.message);
 
   revalidatePath("/food");
 }

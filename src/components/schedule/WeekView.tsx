@@ -25,7 +25,7 @@ export function WeekView({
         const day = new Date(date).getDate();
         const holiday = getHoliday(date);
         return (
-          <div key={date} className="rounded-2xl border border-border-light bg-white p-3">
+          <div key={date} className="rounded-2xl border border-border-light bg-surface p-3">
             <div className="mb-2 flex items-center gap-2">
               <span className={`text-[13px] font-medium ${holiday ? "text-terra" : "text-ink"}`}>
                 {WEEKDAY_LABELS[i]} {day}
@@ -43,7 +43,7 @@ export function WeekView({
                       style={{ backgroundColor: getKeywordColor(s.keyword_main) }}
                     />
                     <span
-                      className={`truncate text-[13px] ${
+                      className={`min-w-0 flex-1 truncate text-[13px] ${
                         s.is_important ? "font-medium text-terra" : "text-ink"
                       }`}
                     >

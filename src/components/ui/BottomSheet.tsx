@@ -32,7 +32,7 @@ export function BottomSheet({
       <div className="absolute inset-0 bg-black/30" />
       <div
         onClick={(e) => e.stopPropagation()}
-        className={`relative z-10 flex max-h-[85vh] w-full flex-col overflow-y-auto rounded-t-3xl bg-white p-6 transition-transform duration-200 ${
+        className={`relative z-10 flex max-h-[85vh] w-full flex-col overflow-y-auto rounded-t-3xl bg-surface p-6 transition-transform duration-200 ${
           open ? "translate-y-0" : "translate-y-full"
         }`}
       >

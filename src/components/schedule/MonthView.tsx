@@ -46,7 +46,7 @@ export function MonthView({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="rounded-2xl border border-border-light bg-white p-3">
+      <div className="rounded-2xl border border-border-light bg-surface p-3">
         <div className="grid grid-cols-7 gap-y-2 text-center">
           {WEEKDAY_LABELS.map((label) => (
             <span key={label} className="text-[11px] text-stone">
@@ -102,14 +102,14 @@ export function MonthView({
         {selectedSchedules.map((s) => (
           <div
             key={s.id}
-            className="flex items-center gap-2 rounded-2xl border border-border-light bg-white p-3"
+            className="flex items-center gap-2 rounded-2xl border border-border-light bg-surface p-3"
           >
             <span
               className="h-2 w-2 shrink-0 rounded-full"
               style={{ backgroundColor: getKeywordColor(s.keyword_main) }}
             />
             <span
-              className={`flex-1 truncate text-[14px] ${
+              className={`min-w-0 flex-1 truncate text-[14px] ${
                 s.is_important ? "font-medium text-terra" : "text-ink"
               }`}
             >

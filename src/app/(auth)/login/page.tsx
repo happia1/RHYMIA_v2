@@ -1,8 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { IconFridge, IconMessageCircleFilled, IconBrandGoogle } from "@tabler/icons-react";
 import { createClient } from "@/lib/supabase/client";
+import { useToast } from "@/components/ui/Toast";
+import { Input } from "@/components/ui/Input";
 import { completeEmailAuth } from "./actions";
+
+const KEEP_LOGIN_KEY = "fridge_keep_login";
 
 function isRedirectError(error: unknown): boolean {
   return (
@@ -15,21 +20,29 @@ function isRedirectError(error: unknown): boolean {
 }
 
 export default function LoginPage() {
-  const supabase = createClient();
+  const { showToast } = useToast();
 
+  const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
+  const [keepLoggedIn, setKeepLoggedIn] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleLogin = async (provider: "google" | "kakao") => {
-    await supabase.auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
+  useEffect(() => {
+    const stored = localStorage.getItem(KEEP_LOGIN_KEY);
+    if (stored !== null) setKeepLoggedIn(stored === "true");
+  }, []);
+
+  const handleKeepLoggedInChange = (checked: boolean) => {
+    setKeepLoggedIn(checked);
+    localStorage.setItem(KEEP_LOGIN_KEY, String(checked));
+  };
+
+  const handleSocialClick = () => {
+    showToast("준비 중이에요");
   };
 
   const handleEmailLogin = async () => {
@@ -41,6 +54,7 @@ export default function LoginPage() {
     }
 
     setIsSubmitting(true);
+    const supabase = createClient({ persistSession: keepLoggedIn });
     const { error: signInError } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password,
@@ -73,8 +87,13 @@ export default function LoginPage() {
       setError("비밀번호는 6자 이상이어야 해요.");
       return;
     }
+    if (password !== passwordConfirm) {
+      setError("비밀번호가 일치하지 않아요.");
+      return;
+    }
 
     setIsSubmitting(true);
+    const supabase = createClient({ persistSession: keepLoggedIn });
     const { data, error: signUpError } = await supabase.auth.signUp({
       email: email.trim(),
       password,
@@ -100,10 +119,17 @@ export default function LoginPage() {
     }
   };
 
+  const switchMode = (next: "login" | "signup") => {
+    setMode(next);
+    setError("");
+    setNotice("");
+    setPasswordConfirm("");
+  };
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-cream px-6">
       <div className="mb-16 flex flex-col items-center gap-2">
-        <span className="text-4xl">🧊</span>
+        <IconFridge size={40} className="text-ink" stroke={1.5} />
         <h1 className="text-[20px] font-medium text-ink">fridge</h1>
         <p className="text-[13px] text-stone">
           5초 안에 오늘 우리 집의 상태를 확인해요
@@ -111,60 +137,117 @@ export default function LoginPage() {
       </div>
 
       <div className="flex w-full max-w-[320px] flex-col gap-3">
-        <button
-          onClick={() => handleLogin("kakao")}
-          className="flex h-12 w-full items-center justify-center rounded-2xl bg-[#FEE500] text-[15px] font-medium text-[#1A1A18]"
-        >
-          카카오로 시작하기
-        </button>
-        <button
-          onClick={() => handleLogin("google")}
-          className="flex h-12 w-full items-center justify-center rounded-2xl bg-white text-[15px] font-medium text-ink"
-        >
-          구글로 시작하기
-        </button>
-
-        <div className="my-1 flex items-center gap-3">
-          <span className="h-px flex-1 bg-border-light" />
-          <span className="text-[11px] text-stone">또는</span>
-          <span className="h-px flex-1 bg-border-light" />
-        </div>
-
-        <input
+        <Input
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="이메일"
           autoComplete="email"
-          className="h-12 w-full rounded-2xl border border-border-light bg-white px-4 text-[15px] text-ink placeholder:text-stone focus:outline-none"
+          className="h-12 w-full rounded-2xl px-4 text-[15px]"
         />
-        <input
+        <Input
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleEmailLogin()}
+          onKeyDown={(e) => e.key === "Enter" && mode === "login" && handleEmailLogin()}
           placeholder="비밀번호"
-          autoComplete="current-password"
-          className="h-12 w-full rounded-2xl border border-border-light bg-white px-4 text-[15px] text-ink placeholder:text-stone focus:outline-none"
+          autoComplete={mode === "login" ? "current-password" : "new-password"}
+          className="h-12 w-full rounded-2xl px-4 text-[15px]"
         />
+
+        {mode === "signup" && (
+          <Input
+            type="password"
+            value={passwordConfirm}
+            onChange={(e) => setPasswordConfirm(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSignUp()}
+            placeholder="비밀번호 확인"
+            autoComplete="new-password"
+            className="h-12 w-full rounded-2xl px-4 text-[15px]"
+          />
+        )}
+
+        {mode === "login" && (
+          <label className="flex items-center gap-2 px-1 text-[13px] text-stone">
+            <input
+              type="checkbox"
+              checked={keepLoggedIn}
+              onChange={(e) => handleKeepLoggedInChange(e.target.checked)}
+              className="h-4 w-4 accent-sage"
+            />
+            로그인 상태 유지
+          </label>
+        )}
 
         {error && <p className="text-[12px] text-terra">{error}</p>}
         {notice && <p className="text-[12px] text-sage">{notice}</p>}
 
-        <button
-          onClick={handleEmailLogin}
-          disabled={isSubmitting}
-          className="flex h-12 w-full items-center justify-center rounded-2xl bg-ink text-[15px] font-medium text-cream disabled:opacity-50"
-        >
-          로그인
-        </button>
-        <button
-          onClick={handleSignUp}
-          disabled={isSubmitting}
-          className="flex h-12 w-full items-center justify-center rounded-2xl bg-white text-[15px] font-medium text-ink disabled:opacity-50"
-        >
-          회원가입
-        </button>
+        {mode === "login" ? (
+          <button
+            onClick={handleEmailLogin}
+            disabled={isSubmitting}
+            className="flex h-12 w-full items-center justify-center rounded-2xl bg-ink text-[15px] font-medium text-cream disabled:opacity-50"
+          >
+            로그인
+          </button>
+        ) : (
+          <button
+            onClick={handleSignUp}
+            disabled={isSubmitting}
+            className="flex h-12 w-full items-center justify-center rounded-2xl bg-ink text-[15px] font-medium text-cream disabled:opacity-50"
+          >
+            가입하기
+          </button>
+        )}
+
+        {mode === "login" ? (
+          <p className="text-center text-[12px] text-stone">
+            아직 계정이 없나요?{" "}
+            <button
+              onClick={() => switchMode("signup")}
+              className="font-medium text-ink underline underline-offset-2"
+            >
+              회원가입
+            </button>
+          </p>
+        ) : (
+          <p className="text-center text-[12px] text-stone">
+            이미 계정이 있나요?{" "}
+            <button
+              onClick={() => switchMode("login")}
+              className="font-medium text-ink underline underline-offset-2"
+            >
+              로그인
+            </button>
+          </p>
+        )}
+
+        {mode === "login" && (
+          <>
+            <div className="my-1 flex items-center gap-3">
+              <span className="h-px flex-1 bg-border-light" />
+              <span className="text-[11px] text-stone">또는</span>
+              <span className="h-px flex-1 bg-border-light" />
+            </div>
+
+            <div className="flex items-center justify-center gap-4">
+              <button
+                onClick={handleSocialClick}
+                aria-label="카카오로 시작하기"
+                className="flex h-12 w-12 items-center justify-center rounded-full bg-[#FEE500]"
+              >
+                <IconMessageCircleFilled size={22} className="text-[#1A1A18]" />
+              </button>
+              <button
+                onClick={handleSocialClick}
+                aria-label="구글로 시작하기"
+                className="flex h-12 w-12 items-center justify-center rounded-full bg-btn-surface"
+              >
+                <IconBrandGoogle size={20} className="text-btn-surface-text" />
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

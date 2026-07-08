@@ -6,19 +6,21 @@ import { getKeywordColor } from "@/lib/scheduleKeywords";
 export default async function SharePage({
   params,
 }: {
-  params: Promise<{ workspaceId: string }>;
+  params: Promise<{ token: string }>;
 }) {
-  const { workspaceId } = await params;
+  const { token } = await params;
   const supabase = createAdminClient();
   const todayStr = toDateStr(new Date());
 
   const { data: workspace } = await supabase
     .from("family_workspace")
-    .select("name")
-    .eq("id", workspaceId)
+    .select("id, name")
+    .eq("share_token", token)
     .maybeSingle();
 
   if (!workspace) notFound();
+
+  const workspaceId = workspace.id;
 
   const [{ data: schedules }, { data: meals }, { data: notices }] = await Promise.all([
     supabase
@@ -44,7 +46,7 @@ export default async function SharePage({
 
       <section className="mb-5 flex flex-col gap-2">
         <span className="text-[12px] font-medium text-stone">오늘 식탁</span>
-        <div className="flex flex-col gap-2 rounded-2xl border border-border-light bg-white p-4">
+        <div className="flex flex-col gap-2 rounded-2xl border border-border-light bg-surface p-4">
           {(meals ?? []).length === 0 && (
             <p className="text-[13px] text-stone">등록된 끼니가 없어요</p>
           )}
@@ -66,7 +68,7 @@ export default async function SharePage({
 
       <section className="mb-5 flex flex-col gap-2">
         <span className="text-[12px] font-medium text-stone">오늘 일정</span>
-        <div className="flex flex-col gap-2 rounded-2xl border border-border-light bg-white p-4">
+        <div className="flex flex-col gap-2 rounded-2xl border border-border-light bg-surface p-4">
           {(schedules ?? []).length === 0 && (
             <p className="text-[13px] text-stone">등록된 일정이 없어요</p>
           )}
@@ -87,7 +89,7 @@ export default async function SharePage({
 
       <section className="flex flex-col gap-2">
         <span className="text-[12px] font-medium text-stone">공지</span>
-        <div className="flex flex-col gap-2 rounded-2xl border border-border-light bg-white p-4">
+        <div className="flex flex-col gap-2 rounded-2xl border border-border-light bg-surface p-4">
           {(notices ?? []).length === 0 && (
             <p className="text-[13px] text-stone">고정된 공지가 없어요</p>
           )}

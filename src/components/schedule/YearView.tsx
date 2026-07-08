@@ -31,7 +31,7 @@ export function YearView({
             <Link
               key={m}
               href={`/schedule?view=month&date=${dateStr}`}
-              className="flex flex-col items-center gap-1 rounded-2xl border border-border-light bg-white py-4"
+              className="flex flex-col items-center gap-1 rounded-2xl border border-border-light bg-surface py-4"
             >
               <span className="text-[13px] font-medium text-ink">{m + 1}월</span>
               <span className="text-[11px] text-stone">
@@ -50,14 +50,16 @@ export function YearView({
         {importantSchedules.map((s) => (
           <div
             key={s.id}
-            className="flex items-center gap-2 rounded-2xl border border-border-light bg-white p-3"
+            className="flex items-center gap-2 rounded-2xl border border-border-light bg-surface p-3"
           >
             <span
               className="h-2 w-2 shrink-0 rounded-full"
               style={{ backgroundColor: getKeywordColor(s.keyword_main) }}
             />
-            <span className="text-[12px] text-stone">{s.date_start}</span>
-            <span className="truncate text-[14px] font-medium text-terra">{s.title}</span>
+            <span className="shrink-0 text-[12px] text-stone">{s.date_start}</span>
+            <span className="min-w-0 flex-1 truncate text-[14px] font-medium text-terra">
+              {s.title}
+            </span>
           </div>
         ))}
       </div>

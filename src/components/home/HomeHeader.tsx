@@ -44,43 +44,58 @@ export function HomeHeader({
   const hour12 = hours % 12 === 0 ? 12 : hours % 12;
 
   return (
-    <div className="flex items-start justify-between">
-      <div className="flex flex-col gap-label-gap">
-        <div className="flex items-baseline gap-2">
-          <span className={`text-[56px] font-light leading-none ${mirror.primary}`}>
-            {hour12}:{String(now.getMinutes()).padStart(2, "0")}
-          </span>
-          <span className={`text-[13px] font-medium ${mirror.secondary}`}>{period}</span>
-        </div>
-
-        <div className={`flex items-center gap-1.5 text-[13px] ${mirror.secondary}`}>
-          <span>{formatDate(now)}</span>
-          {weather && (
-            <span>
-              · {weather.icon} {weather.tempC}°C
-            </span>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Avatar
-            name={displayName}
-            color={avatarColor}
-            textColor={avatarTextColor}
-            imageUrl={avatarImageUrl}
-            size={AVATAR_SIZE.mirror}
-          />
-          <span className={`text-[13px] ${mirror.secondary}`}>{statusText}</span>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-3">
+    <div className="flex flex-col gap-label-gap">
+      <div className="flex items-center justify-end gap-3">
         <Link href="/notifications" aria-label="알림">
           <IconBell size={20} className={mirror.secondary} />
         </Link>
         <Link href="/settings" aria-label="설정">
           <IconSettings size={20} className={mirror.secondary} />
         </Link>
+      </div>
+
+      <div className="flex items-start justify-between gap-4">
+        {/* 왼쪽: 날씨 — 구글 스마트 디스플레이 스타일 대칭 배치 */}
+        <div className="flex min-w-0 flex-col gap-1">
+          <div className="flex items-baseline gap-1.5">
+            <span className={`text-[40px] font-light leading-none ${mirror.primary}`}>
+              {weather ? `${weather.tempC}°` : "-°"}
+            </span>
+            {weather && <span className="text-[26px] leading-none">{weather.icon}</span>}
+          </div>
+          {weather && (
+            <span className={`truncate text-[15px] ${mirror.primary}`}>
+              {weather.description}
+            </span>
+          )}
+          <span className={`text-[10px] uppercase tracking-[0.15em] ${mirror.muted}`}>
+            서울
+          </span>
+        </div>
+
+        {/* 오른쪽: 시간 — 오른쪽 정렬 */}
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          <div className="flex items-baseline gap-2">
+            <span className={`text-[56px] font-light leading-none ${mirror.primary}`}>
+              {hour12}:{String(now.getMinutes()).padStart(2, "0")}
+            </span>
+            <span className={`text-[13px] font-medium ${mirror.secondary}`}>{period}</span>
+          </div>
+          <span className={`text-[12px] ${mirror.secondary}`}>{formatDate(now)}</span>
+        </div>
+      </div>
+
+      <div className="flex min-w-0 items-center gap-2">
+        <Avatar
+          name={displayName}
+          color={avatarColor}
+          textColor={avatarTextColor}
+          imageUrl={avatarImageUrl}
+          size={AVATAR_SIZE.mirror}
+        />
+        <span className={`min-w-0 flex-1 truncate text-[13px] ${mirror.secondary}`}>
+          {statusText}
+        </span>
       </div>
     </div>
   );

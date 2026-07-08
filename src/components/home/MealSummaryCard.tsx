@@ -2,7 +2,6 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
-import { tagHourLabel } from "@/lib/mealUtils";
 import { mirror } from "@/lib/homeTheme";
 import type { Meal } from "@/types";
 
@@ -33,26 +32,25 @@ export function MealSummaryCard({ meals }: { meals: MealSummaryItem[] }) {
       <div
         ref={containerRef}
         onScroll={handleScroll}
-        className="flex snap-x snap-mandatory overflow-x-auto"
+        className="scrollbar-hide flex snap-x snap-mandatory overflow-x-auto"
       >
         {meals.map((meal) => {
-          const timeLabel =
-            meal.type === "외식" && meal.reservation_time
-              ? meal.reservation_time
-              : tagHourLabel(meal.tag);
           const subline = [meal.sides.join(", "), meal.participantNames.join(", ")]
             .filter(Boolean)
             .join(" · ");
 
           return (
             <Link key={meal.id} href="/food" className="flex w-full shrink-0 snap-center flex-col gap-1">
-              <div className="flex items-baseline gap-2">
-                <span className={`truncate text-[26px] font-medium ${mirror.primary}`}>
+              <div className="flex min-w-0 items-baseline gap-2">
+                <span className={`min-w-0 flex-1 truncate text-[22px] font-medium ${mirror.primary}`}>
                   {meal.emoji} {meal.main_menu}
                 </span>
               </div>
               <div className={`text-[13px] ${mirror.secondary}`}>
-                {meal.tag} · {meal.type} · {timeLabel}
+                {meal.tag} · {meal.type}
+                {meal.type === "외식" && meal.reservation_time
+                  ? ` · ${meal.reservation_time}`
+                  : ""}
               </div>
               {subline && (
                 <div className={`text-[12px] ${mirror.muted}`}>+ {subline}</div>

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { Input } from "@/components/ui/Input";
 import { joinWorkspace } from "../../actions";
 
 export default async function JoinWorkspacePage({
@@ -44,11 +45,11 @@ export default async function JoinWorkspacePage({
       </div>
 
       <form action={handleJoin} className="flex w-full max-w-[320px] flex-col gap-3">
-        <input
+        <Input
           name="displayName"
           required
           placeholder="내 호칭 (예: 첫째)"
-          className="h-12 w-full rounded-2xl border border-border-light bg-white px-4 text-[15px] text-ink placeholder:text-stone focus:outline-none"
+          className="h-12 w-full rounded-2xl px-4 text-[15px]"
         />
         <button
           type="submit"

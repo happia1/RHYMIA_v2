@@ -43,7 +43,7 @@ export default async function NotificationsPage() {
             <Link
               key={n.id}
               href="/board"
-              className="flex flex-col gap-1 rounded-2xl border border-border-light bg-white p-4"
+              className="flex flex-col gap-1 rounded-2xl border border-border-light bg-surface p-4"
             >
               {n.title && (
                 <span className="text-[14px] font-medium text-ink">📌 {n.title}</span>

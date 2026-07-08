@@ -52,10 +52,29 @@ export default async function SchedulePage({
       ? yearRange(anchor)
       : { start: getWeekDates(anchor)[0], end: getWeekDates(anchor)[6] };
 
-  const { data: memberRows } = await supabase
-    .from("workspace_member")
-    .select("user_id, display_name, users(avatar_color, avatar_text_color)")
-    .eq("workspace_id", workspaceId);
+  const today = new Date();
+
+  const [{ data: memberRows }, { data: scheduleRows }, weather, { data: myRoutineRows }] =
+    await Promise.all([
+      supabase
+        .from("workspace_member")
+        .select("user_id, display_name, users(avatar_color, avatar_text_color)")
+        .eq("workspace_id", workspaceId),
+      supabase
+        .from("schedule")
+        .select("*")
+        .eq("workspace_id", workspaceId)
+        .gte("date_start", range.start)
+        .lte("date_start", range.end)
+        .or(`is_shared.eq.true,author_id.eq.${user.id}`)
+        .order("date_start", { ascending: true }),
+      getCurrentWeather(),
+      supabase
+        .from("routine")
+        .select("blocks")
+        .eq("user_id", user.id)
+        .eq("day_of_week", today.getDay()),
+    ]);
 
   const members = (memberRows ?? []).map((m) => {
     const u = Array.isArray(m.users) ? m.users[0] : m.users;
@@ -66,15 +85,6 @@ export default async function SchedulePage({
       avatar_text_color: u?.avatar_text_color ?? "#0F6E56",
     };
   });
-
-  const { data: scheduleRows } = await supabase
-    .from("schedule")
-    .select("*")
-    .eq("workspace_id", workspaceId)
-    .gte("date_start", range.start)
-    .lte("date_start", range.end)
-    .or(`is_shared.eq.true,author_id.eq.${user.id}`)
-    .order("date_start", { ascending: true });
 
   let schedules = (scheduleRows ?? []) as Schedule[];
 
@@ -96,14 +106,6 @@ export default async function SchedulePage({
       schedules = schedules.filter((s) => s.keyword_sub === params.keywordSub);
     }
   }
-
-  const today = new Date();
-  const weather = await getCurrentWeather();
-  const { data: myRoutineRows } = await supabase
-    .from("routine")
-    .select("blocks")
-    .eq("user_id", user.id)
-    .eq("day_of_week", today.getDay());
 
   const myBlocks = (myRoutineRows ?? []).flatMap((r) => (r.blocks as never[]) ?? []);
   const myBlock = getCurrentBlock(myBlocks as never, today);

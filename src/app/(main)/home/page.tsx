@@ -5,11 +5,15 @@ import { getCurrentBlock, STATUS_EMOJI, DEFAULT_STATUS_EMOJI } from "@/lib/routi
 import { getCurrentWeather } from "@/lib/weather";
 import { mapWorkspaceMembers } from "@/lib/members";
 import { mirror } from "@/lib/homeTheme";
+import { resolveHomeLayout } from "@/lib/homeLayout";
+import { IconToolsKitchen2, IconCalendar, IconUsers } from "@tabler/icons-react";
 import { HomeHeader } from "@/components/home/HomeHeader";
 import { MealSummaryCard, type MealSummaryItem } from "@/components/home/MealSummaryCard";
 import { TodayEvents, type MemberInfo } from "@/components/home/TodayEvents";
 import { FamilyStatusCard, type FamilyMemberStatus } from "@/components/home/FamilyStatusCard";
 import { BoardPreview } from "@/components/home/BoardPreview";
+import { SectionLabel } from "@/components/home/SectionLabel";
+import { HomeSections } from "@/components/home/HomeSections";
 import type { RoutineBlock } from "@/types";
 
 export default async function HomePage() {
@@ -21,28 +25,13 @@ export default async function HomePage() {
   const weekStart = weekDates[0];
   const weekEnd = weekDates[6];
 
-  const { data: memberRows } = await supabase
-    .from("workspace_member")
-    .select("user_id, display_name, users(avatar_color, avatar_text_color, avatar_image_url)")
-    .eq("workspace_id", workspaceId);
-
-  const members = mapWorkspaceMembers(memberRows ?? []);
-
-  const membersById: Record<string, MemberInfo> = Object.fromEntries(
-    members.map((m) => [m.user_id, { display_name: m.display_name, avatar_color: m.avatar_color }])
-  );
-  const membersByIdFull = Object.fromEntries(members.map((m) => [m.user_id, m]));
-
-  const memberIds = members.map((m) => m.user_id);
-
-  const [weather, { data: routineRows }, { data: schedules }, { data: meals }, { data: shoppingItems }, { data: stickers }] =
+  const [{ data: memberRows }, weather, { data: schedules }, { data: meals }, { data: shoppingItems }, { data: stickers }, { data: myUserRow }] =
     await Promise.all([
-      getCurrentWeather(),
       supabase
-        .from("routine")
-        .select("user_id, blocks")
-        .in("user_id", memberIds.length ? memberIds : [""])
-        .eq("day_of_week", today.getDay()),
+        .from("workspace_member")
+        .select("user_id, display_name, users(avatar_color, avatar_text_color, avatar_image_url)")
+        .eq("workspace_id", workspaceId),
+      getCurrentWeather(),
       supabase
         .from("schedule")
         .select("*")
@@ -71,7 +60,25 @@ export default async function HomePage() {
         .or(`expire_at.is.null,expire_at.gt.${new Date().toISOString()}`)
         .order("created_at", { ascending: false })
         .limit(5),
+      supabase.from("users").select("home_layout").eq("id", user.id).single(),
     ]);
+
+  const homeSectionOrder = resolveHomeLayout(myUserRow?.home_layout);
+
+  const members = mapWorkspaceMembers(memberRows ?? []);
+
+  const membersById: Record<string, MemberInfo> = Object.fromEntries(
+    members.map((m) => [m.user_id, { display_name: m.display_name, avatar_color: m.avatar_color }])
+  );
+  const membersByIdFull = Object.fromEntries(members.map((m) => [m.user_id, m]));
+
+  const memberIds = members.map((m) => m.user_id);
+
+  const { data: routineRows } = await supabase
+    .from("routine")
+    .select("user_id, blocks")
+    .in("user_id", memberIds.length ? memberIds : [""])
+    .eq("day_of_week", today.getDay());
 
   // 오늘 뭐먹지? — 오늘 등록된 끼니를 전부 시간순으로 보여주고,
   // 오늘 등록된 끼니가 없으면 가장 가까운 다음 끼니 하나로 대체한다.
@@ -100,11 +107,9 @@ export default async function HomePage() {
     routineByUser[r.user_id as string] = (r.blocks as RoutineBlock[]) ?? [];
   }
 
+  // 지금 우리 가족은 — 루틴 기반 상태만 표시 (일정 병기는 "오늘 뭐하지" 섹션 전담, 중복 제거)
   const familyStatus: FamilyMemberStatus[] = members.map((m) => {
     const block = getCurrentBlock(routineByUser[m.user_id] ?? [], today);
-    const targetedSchedule = todaySchedules.find(
-      (s) => s.target_members.length === 0 || s.target_members.includes(m.user_id)
-    );
 
     let statusText = "쉬는 중";
     let emoji = DEFAULT_STATUS_EMOJI;
@@ -112,12 +117,6 @@ export default async function HomePage() {
     if (block) {
       statusText = block.label;
       emoji = STATUS_EMOJI[block.status] ?? DEFAULT_STATUS_EMOJI;
-    }
-
-    if (targetedSchedule) {
-      statusText = block
-        ? `${statusText} · ${targetedSchedule.title}`
-        : targetedSchedule.title;
     }
 
     return {
@@ -134,55 +133,87 @@ export default async function HomePage() {
   const myStatus = familyStatus.find((f) => f.user_id === user.id);
   const otherFamilyStatus = familyStatus.filter((f) => f.user_id !== user.id);
 
+  const headerNode = (
+    <HomeHeader
+      displayName={myStatus?.display_name ?? "가족"}
+      avatarColor={myStatus?.avatar_color ?? "#E1F5EE"}
+      avatarTextColor={myStatus?.avatar_text_color ?? "#0F6E56"}
+      avatarImageUrl={myStatus?.avatar_image_url ?? null}
+      statusText={myStatus?.statusText ?? "쉬는 중"}
+      weather={weather}
+      nowIso={new Date().toISOString()}
+    />
+  );
+
+  const mealSection = (
+    <section className="flex flex-col gap-label-gap">
+      <SectionLabel icon={IconToolsKitchen2}>오늘 뭐먹지</SectionLabel>
+      <div className="pl-section-indent">
+        <MealSummaryCard meals={mealsToShow} />
+      </div>
+    </section>
+  );
+
+  const todaySection = (
+    <section className="flex flex-col gap-label-gap">
+      <SectionLabel icon={IconCalendar}>오늘 뭐하지</SectionLabel>
+      <div className="pl-section-indent">
+        <TodayEvents todaySchedules={todaySchedules} membersById={membersById} />
+      </div>
+    </section>
+  );
+
+  const familySection = (
+    <section className="flex flex-col gap-label-gap">
+      <SectionLabel icon={IconUsers}>지금 우리 가족은</SectionLabel>
+      <div className="pl-section-indent">
+        <FamilyStatusCard members={otherFamilyStatus} />
+      </div>
+    </section>
+  );
+
+  // 홈 위젯 순서 변경 단위 ②: "오늘 뭐하지"+"지금 우리 가족은"을 2단으로 묶은 하나의 섹션
+  const todayFamilySection = (
+    <div className="grid grid-cols-2 gap-4">
+      {todaySection}
+      <div className={`border-l pl-4 ${mirror.hairline}`}>{familySection}</div>
+    </div>
+  );
+
+  const boardSection = (
+    <BoardPreview
+      stickers={stickers ?? []}
+      shoppingItems={shoppingItems ?? []}
+      membersById={membersByIdFull}
+    />
+  );
+
   return (
     <div className={`min-h-screen ${mirror.bg} px-4 pb-24 pt-6`}>
-      <div className="flex flex-col gap-section lg:grid lg:grid-cols-mirror lg:items-stretch lg:gap-0">
-        <div className="flex flex-col justify-center lg:pr-8">
-          <HomeHeader
-            displayName={myStatus?.display_name ?? "가족"}
-            avatarColor={myStatus?.avatar_color ?? "#E1F5EE"}
-            avatarTextColor={myStatus?.avatar_text_color ?? "#0F6E56"}
-            avatarImageUrl={myStatus?.avatar_image_url ?? null}
-            statusText={myStatus?.statusText ?? "쉬는 중"}
-            weather={weather}
-            nowIso={new Date().toISOString()}
-          />
-        </div>
+      {/* 모바일: 위젯처럼 길게 눌러 순서를 바꿀 수 있는 3개 섹션(끼니/오늘+가족/게시판) */}
+      <div className="flex flex-col gap-section lg:hidden">
+        {headerNode}
+        <div className={`h-px w-full ${mirror.hairlineBg}`} />
+        <HomeSections
+          initialOrder={homeSectionOrder}
+          sections={{ meal: mealSection, today: todayFamilySection, board: boardSection }}
+        />
+      </div>
+
+      {/* 태블릿 이상: 고정 3단 쇼케이스 레이아웃 (순서 변경 대상 아님) */}
+      <div className="hidden lg:grid lg:grid-cols-mirror lg:items-stretch lg:gap-0">
+        <div className="flex flex-col justify-center lg:pr-8">{headerNode}</div>
 
         <div className={`flex flex-col gap-section lg:border-l lg:px-8 ${mirror.hairline}`}>
-          <section className="flex flex-col gap-label-gap">
-            <span className={mirror.label}>오늘 뭐먹지</span>
-            <MealSummaryCard meals={mealsToShow} />
-          </section>
-
+          {mealSection}
           <div className={`h-px w-full ${mirror.hairlineBg}`} />
-
-          <section className="flex flex-col gap-label-gap">
-            <span className={mirror.label}>오늘 뭐하지</span>
-            <TodayEvents
-              todaySchedules={todaySchedules}
-              weekSchedules={schedules ?? []}
-              weekDates={weekDates}
-              membersById={membersById}
-            />
-          </section>
-
+          {todaySection}
           <div className={`h-px w-full ${mirror.hairlineBg}`} />
-
-          <section className="flex flex-col gap-label-gap">
-            <span className={mirror.label}>지금 우리 가족은</span>
-            <FamilyStatusCard members={otherFamilyStatus} />
-          </section>
+          {familySection}
         </div>
 
-        <div className={`h-px w-full ${mirror.hairlineBg} lg:hidden`} />
-
         <div className={`flex flex-col lg:border-l lg:pl-8 ${mirror.hairline}`}>
-          <BoardPreview
-            stickers={stickers ?? []}
-            shoppingItems={shoppingItems ?? []}
-            membersById={membersByIdFull}
-          />
+          {boardSection}
         </div>
       </div>
     </div>

@@ -12,7 +12,7 @@ export function WeekCalendar({
   datesWithMeals: Set<string>;
 }) {
   return (
-    <div className="grid grid-cols-7 gap-1 rounded-2xl border border-border-light bg-white p-3">
+    <div className="grid grid-cols-7 gap-1 rounded-2xl border border-border-light bg-surface p-3">
       {weekDates.map((date, i) => {
         const day = new Date(date).getDate();
         const active = date === selectedDate;

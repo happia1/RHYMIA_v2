@@ -4,6 +4,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { CopyLinkButton } from "@/components/ui/CopyLinkButton";
 import { AvatarUploader } from "@/components/settings/AvatarUploader";
 import { ThemeToggle } from "@/components/settings/ThemeToggle";
+import { ShareLinkSection } from "@/components/settings/ShareLinkSection";
 import { signOut } from "./actions";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -41,7 +42,7 @@ export default async function SettingsPage() {
 
       <section className="flex flex-col gap-3">
         <span className="text-[12px] font-medium text-stone">내 프로필</span>
-        <div className="rounded-2xl border border-border-light bg-white p-4">
+        <div className="rounded-2xl border border-border-light bg-surface p-4">
           <AvatarUploader
             userId={user.id}
             displayName={me?.display_name ?? "가족"}
@@ -59,7 +60,7 @@ export default async function SettingsPage() {
 
       <section className="flex flex-col gap-3">
         <span className="text-[12px] font-medium text-stone">가족 구성원</span>
-        <div className="flex flex-col gap-3 rounded-2xl border border-border-light bg-white p-4">
+        <div className="flex flex-col gap-3 rounded-2xl border border-border-light bg-surface p-4">
           {members.map((m) => (
             <div key={m.user_id} className="flex items-center gap-3">
               <Avatar
@@ -88,12 +89,16 @@ export default async function SettingsPage() {
         <p className="text-[12px] text-stone">
           읽기 전용 링크예요. 돌봄자·조부모에게 전달해보세요.
         </p>
-        <CopyLinkButton path={`/share/${workspaceId}`} />
+        <ShareLinkSection
+          workspaceId={workspaceId}
+          shareToken={workspace?.share_token ?? ""}
+          isOwner={role === "owner"}
+        />
       </section>
 
       <section className="flex flex-col gap-3">
         <span className="text-[12px] font-medium text-stone">플랜</span>
-        <div className="rounded-2xl border border-border-light bg-white p-4">
+        <div className="rounded-2xl border border-border-light bg-surface p-4">
           <p className="text-[14px] text-ink">
             {workspace?.plan === "pro" ? "Pro 플랜" : "Free 플랜"}
           </p>
@@ -106,7 +111,7 @@ export default async function SettingsPage() {
       <form action={signOut}>
         <button
           type="submit"
-          className="flex h-11 w-full items-center justify-center rounded-2xl bg-white text-[15px] font-medium text-terra"
+          className="flex h-11 w-full items-center justify-center rounded-2xl bg-surface text-[15px] font-medium text-terra"
         >
           로그아웃
         </button>

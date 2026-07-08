@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { useToast } from "@/components/ui/Toast";
+import { Input, Textarea } from "@/components/ui/Input";
 import { createTodo } from "@/app/(main)/schedule/actions";
 import { toDateStr } from "@/lib/date";
 import { KEYWORD_GROUPS } from "@/lib/scheduleKeywords";
@@ -75,11 +76,11 @@ export function TodoSheet({
       <div className="flex flex-col gap-4">
         <h2 className="text-[17px] font-medium text-ink">할 일 등록</h2>
 
-        <input
+        <Input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="할 일 제목"
-          className="h-11 rounded-xl border border-border-light px-3 text-[14px] text-ink placeholder:text-stone focus:outline-none"
+          className="h-11 rounded-xl px-3 text-[14px]"
         />
 
         <div className="flex flex-col gap-2">
@@ -105,21 +106,21 @@ export function TodoSheet({
             ))}
           </div>
           {quickPick === "custom" && (
-            <input
+            <Input
               type="date"
               value={customDate}
               onChange={(e) => setCustomDate(e.target.value)}
-              className="h-11 rounded-xl border border-border-light px-3 text-[13px] text-ink focus:outline-none"
+              className="h-11 rounded-xl px-3 text-[13px]"
             />
           )}
         </div>
 
-        <textarea
+        <Textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="설명 (선택)"
           rows={2}
-          className="rounded-xl border border-border-light p-3 text-[13px] text-ink placeholder:text-stone focus:outline-none"
+          className="rounded-xl p-3 text-[13px]"
         />
 
         <label className="flex items-center justify-between text-[13px] text-ink">

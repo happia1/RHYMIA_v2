@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { IconPlus, IconPin } from "@tabler/icons-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Avatar } from "@/components/ui/Avatar";
+import { Input, Textarea } from "@/components/ui/Input";
 import { addNotice, deleteNotice, addNoticeComment } from "@/app/(main)/board/actions";
 import { formatPostTimestamp } from "@/lib/date";
 import { AVATAR_SIZE } from "@/lib/uiTokens";
@@ -11,6 +12,8 @@ import type { WorkspaceMemberInfo } from "@/lib/members";
 import type { Notice, NoticeComment, NoticeType } from "@/types";
 
 const STICKER_COLORS = ["#FFF9C4", "#FFE0E0", "#E1F5EE", "#E3E8FF", "#F3E1FF"];
+// 스티커는 배경이 항상 밝은 파스텔이라, 테마와 무관하게 항상 어두운 고정색 텍스트를 쓴다.
+const STICKER_TEXT_COLOR = "#3A3520";
 
 function daysLeft(expireAt: string | null) {
   if (!expireAt) return null;
@@ -54,7 +57,7 @@ export function BoardSection({
   };
 
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-border-light bg-white p-4">
+    <div className="flex flex-col gap-3">
       <div className="flex items-center justify-end">
         <button onClick={() => setAdding(true)} aria-label="새글 등록">
           <IconPlus size={18} className="text-stone" />
@@ -73,10 +76,16 @@ export function BoardSection({
                   className="flex h-24 w-24 flex-col rounded-2xl p-2.5 text-left"
                   style={{ backgroundColor: s.color }}
                 >
-                  <span className="truncate text-[9px] text-ink/50">
+                  <span
+                    className="truncate text-[9px] opacity-60"
+                    style={{ color: STICKER_TEXT_COLOR }}
+                  >
                     {author?.display_name ?? "가족"}
                   </span>
-                  <span className="mt-1 line-clamp-3 text-[12px] text-ink">
+                  <span
+                    className="mt-1 line-clamp-3 text-[12px]"
+                    style={{ color: STICKER_TEXT_COLOR }}
+                  >
                     {s.content}
                   </span>
                 </button>
@@ -91,29 +100,35 @@ export function BoardSection({
         </div>
       )}
 
-      <div className="flex flex-col gap-2">
+      {stickers.length > 0 && posts.length > 0 && (
+        <div className="h-px w-full bg-border-light" />
+      )}
+
+      <div className="flex flex-col">
         {posts.length === 0 && stickers.length === 0 && (
           <p className="text-[13px] text-stone">등록된 글이 없어요</p>
         )}
-        {posts.map((n) => {
+        {posts.map((n, i) => {
           const author = authorOf(n.created_by);
           return (
             <button
               key={n.id}
               onClick={() => setDetail(n)}
-              className="flex flex-col gap-1 rounded-xl border border-border-light p-3 text-left"
+              className={`flex flex-col gap-1 py-3 text-left ${
+                i > 0 ? "border-t border-border-light" : ""
+              }`}
             >
-              <div className="flex items-center gap-1.5 text-[11px] text-stone">
-                {n.is_pinned && <IconPin size={12} className="shrink-0 text-terra" />}
-                <span className="font-medium">{author?.display_name ?? "가족"}</span>
-                <span>· {formatPostTimestamp(n.created_at)}</span>
-              </div>
               {n.title && (
                 <span className="truncate text-[14px] font-medium text-ink">
                   {n.type === "notice" ? `📌 ${n.title}` : n.title}
                 </span>
               )}
-              <p className="line-clamp-2 text-[13px] text-ink">{n.content}</p>
+              <p className="line-clamp-2 text-[12px] text-ink">{n.content}</p>
+              <div className="flex items-center gap-1.5 text-[11px] text-muted">
+                {n.is_pinned && <IconPin size={12} className="shrink-0 text-terra" />}
+                <span className="font-medium">{author?.display_name ?? "가족"}</span>
+                <span>· {formatPostTimestamp(n.created_at)}</span>
+              </div>
             </button>
           );
         })}
@@ -133,17 +148,17 @@ export function BoardSection({
                 {detail.type === "notice" ? `📌 ${detail.title}` : detail.title}
               </h2>
             )}
+            <p className="whitespace-pre-wrap text-[13px] text-ink">
+              {detail.content}
+            </p>
             {detail.type !== "sticky" && (
-              <div className="flex items-center gap-1.5 text-[12px] text-stone">
+              <div className="flex items-center gap-1.5 text-[11px] text-muted">
                 <span className="font-medium">
                   {authorOf(detail.created_by)?.display_name ?? "가족"}
                 </span>
                 <span>· {formatPostTimestamp(detail.created_at)}</span>
               </div>
             )}
-            <p className="whitespace-pre-wrap text-[14px] text-ink">
-              {detail.content}
-            </p>
             {detail.created_by === currentUserId && (
               <button
                 onClick={() =>
@@ -183,12 +198,12 @@ export function BoardSection({
                   );
                 })}
                 <div className="flex items-center gap-2">
-                  <input
+                  <Input
                     value={commentDraft}
                     onChange={(e) => setCommentDraft(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleComment()}
                     placeholder="댓글을 남겨보세요"
-                    className="h-11 flex-1 rounded-xl border border-border-light bg-white px-3 text-[13px] text-ink placeholder:text-stone focus:outline-none"
+                    className="h-11 flex-1 rounded-xl px-3 text-[13px]"
                   />
                   <button
                     onClick={handleComment}
@@ -299,12 +314,12 @@ function AddPostSheet({
                 />
               ))}
             </div>
-            <textarea
+            <Textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder="자유롭게 적어보세요"
               rows={3}
-              className="rounded-xl border border-border-light p-3 text-[14px] text-ink placeholder:text-stone focus:outline-none"
+              className="rounded-xl p-3 text-[14px]"
             />
             <div className="flex gap-2">
               {[1, 2, 3].map((d) => (
@@ -322,18 +337,18 @@ function AddPostSheet({
           </>
         ) : (
           <>
-            <input
+            <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="제목"
-              className="h-11 rounded-xl border border-border-light px-3 text-[14px] text-ink placeholder:text-stone focus:outline-none"
+              className="h-11 rounded-xl px-3 text-[14px]"
             />
-            <textarea
+            <Textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder="내용을 입력하세요"
               rows={4}
-              className="rounded-xl border border-border-light p-3 text-[14px] text-ink placeholder:text-stone focus:outline-none"
+              className="rounded-xl p-3 text-[14px]"
             />
             <label className="flex items-center gap-2 text-[13px] text-ink">
               <input
