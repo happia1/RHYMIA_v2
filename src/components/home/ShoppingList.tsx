@@ -12,6 +12,8 @@ import {
 import { SHOPPING_DOT_SIZE } from "@/lib/uiTokens";
 import type { ShoppingItem } from "@/types";
 
+const PREVIEW_COUNT = 3;
+
 export function ShoppingList({
   workspaceId,
   items,
@@ -20,9 +22,11 @@ export function ShoppingList({
   items: ShoppingItem[];
 }) {
   const [draft, setDraft] = useState("");
+  const [expanded, setExpanded] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const active = items.filter((i) => !i.is_purchased);
+  const visible = expanded ? active : active.slice(0, PREVIEW_COUNT);
 
   const handleAdd = () => {
     const value = draft.trim();
@@ -34,7 +38,7 @@ export function ShoppingList({
   };
 
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-border-light bg-surface p-4">
+    <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2">
         <Input
           value={draft}
@@ -44,15 +48,15 @@ export function ShoppingList({
           className="h-9 flex-1 rounded-xl px-3 text-[13px]"
         />
         <button onClick={handleAdd} aria-label="추가" disabled={isPending}>
-          <IconPlus size={20} className="text-stone" />
+          <IconPlus size={20} className="text-[var(--text-muted)]" />
         </button>
       </div>
 
       <div className="flex flex-col gap-2">
         {active.length === 0 && (
-          <p className="text-[13px] text-stone">장바구니가 비어있어요</p>
+          <p className="text-[13px] text-[var(--text-muted)]">장바구니가 비어있어요</p>
         )}
-        {active.map((item) => (
+        {visible.map((item) => (
           <div key={item.id} className="flex items-center gap-2">
             <CheckToggle
               checked={item.is_purchased}
@@ -68,10 +72,18 @@ export function ShoppingList({
               onClick={() => startTransition(() => deleteShoppingItem(item.id))}
               aria-label="삭제"
             >
-              <IconX size={16} className="text-stone" />
+              <IconX size={16} className="text-[var(--text-muted)]" />
             </button>
           </div>
         ))}
+        {active.length > PREVIEW_COUNT && (
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            className="self-end text-[11px] text-[var(--text-muted)]"
+          >
+            {expanded ? "접기" : "더보기"}
+          </button>
+        )}
       </div>
     </div>
   );

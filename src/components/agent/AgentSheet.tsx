@@ -5,9 +5,8 @@ import Link from "next/link";
 import { IconX, IconCamera, IconMicrophone, IconSend } from "@tabler/icons-react";
 import { ConfirmCards } from "./ConfirmCards";
 import { Input } from "@/components/ui/Input";
-import { callAgent, type AgentSchedule } from "@/lib/agentApi";
+import { callAgent, type AgentSchedule, type AgentMemberOption } from "@/lib/agentApi";
 import { mirror } from "@/lib/homeTheme";
-import type { WorkspaceMemberInfo } from "@/lib/members";
 
 type ChatMessage =
   | { id: string; role: "user"; kind: "text"; text: string }
@@ -31,7 +30,7 @@ export function AgentSheet({
   open: boolean;
   onClose: () => void;
   workspaceId: string;
-  members: WorkspaceMemberInfo[];
+  members: AgentMemberOption[];
 }) {
   const [mounted, setMounted] = useState(open);
   const [fullscreen, setFullscreen] = useState(false);
@@ -238,7 +237,7 @@ function ChatBubble({
 }: {
   message: ChatMessage;
   workspaceId: string;
-  members: WorkspaceMemberInfo[];
+  members: AgentMemberOption[];
   onCloseSheet: () => void;
   onCardsProcessed: (summary: { registered: number; skipped: number }) => void;
 }) {

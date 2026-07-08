@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { IconArrowLeft } from "@tabler/icons-react";
 import { requireWorkspaceContext } from "@/lib/workspace";
 import { mapWorkspaceMembers } from "@/lib/members";
 import { Avatar } from "@/components/ui/Avatar";
@@ -35,8 +37,13 @@ export default async function SettingsPage() {
 
   return (
     <div className="flex flex-col gap-6 px-4 pb-6 pt-6">
-      <div>
-        <h1 className="text-[20px] font-medium text-ink">설정</h1>
+      <div className="flex flex-col gap-1">
+        <header className="flex h-8 items-center gap-2">
+          <Link href="/home" aria-label="뒤로가기">
+            <IconArrowLeft size={22} className="text-ink" />
+          </Link>
+          <h1 className="text-[20px] font-medium text-ink">설정</h1>
+        </header>
         <p className="text-[13px] text-stone">{workspace?.name}</p>
       </div>
 

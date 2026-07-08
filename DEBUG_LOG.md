@@ -135,6 +135,13 @@
 - 관련 파일: `src/app/globals.css`, `tailwind.config.ts`, `src/components/ui/Input.tsx`(신규), `src/app/(auth)/login/page.tsx`, `src/app/workspace/page.tsx`, `src/app/workspace/join/[workspaceId]/page.tsx`, `src/components/schedule/{AddEventSheet,TodoSheet,HabitSheet,DiarySheet,RoutineEditor,PlaceInput}.tsx`, `src/components/food/{MealDetail,AddMealScreen}.tsx`, `src/components/home/{ShoppingList,BoardSection}.tsx`, `src/components/agent/{AgentSheet,ConfirmCards}.tsx`
 - 상태: 해결됨. 앞으로 입력 필드를 새로 만들 때는 반드시 `components/ui/Input.tsx`의 `Input`/`Textarea`를 사용하고, 배경색 없이 raw `<input>`/`<textarea>`를 쓰지 않을 것
 
+### 이슈: 프로필 사진 업로드 시 "Invalid key" 에러
+- 증상: 설정 탭에서 "사진 변경"으로 이미지를 고르면 "업로드에 실패했어요: Invalid key: {userId}/{timestamp}-스크린샷 2021-06-07 오전 11.46.22.png" 같은 에러가 뜸. 파일명에 한글/공백이 없는 파일(예: `photo.jpg`)은 정상 업로드됨
+- 원인: `AvatarUploader`가 업로드 경로를 `${userId}/${Date.now()}-${file.name}`으로 만들면서 사용자가 고른 원본 파일명을 그대로 붙이고 있었음. Supabase Storage는 오브젝트 키에 공백·한글 등 비-ASCII 문자가 섞이면 서버에서 곧바로 "Invalid key"로 거부함(클라이언트 라이브러리가 아니라 스토리지 서버 쪽 키 검증) — 스크린샷 파일명처럼 한글+공백이 포함된 기본 파일명에서 항상 재현됨
+- 해결: 원본 파일명을 아예 쓰지 않고, 확장자만 안전하게 추출해 `${userId}/${Date.now()}.${ext}` 형태로 키를 생성하도록 변경 (확장자를 못 찾으면 `png`로 폴백)
+- 관련 파일: `src/components/settings/AvatarUploader.tsx`
+- 상태: 해결됨. 앞으로 Storage에 사용자 파일을 올릴 때는 원본 파일명을 키에 그대로 쓰지 말고, 항상 안전하게 생성한 이름(또는 화이트리스트로 정제한 이름)을 사용할 것
+
 ---
 
 ### 기록 규칙

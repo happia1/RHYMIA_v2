@@ -43,7 +43,11 @@ export function AvatarUploader({
     }
 
     const supabase = createClient();
-    const path = `${userId}/${Date.now()}-${file.name}`;
+    // Supabase Storage 키는 공백/한글 등 비-ASCII 문자를 포함하면 "Invalid key" 에러로
+    // 거부한다 (원본 파일명을 그대로 붙이면 실패). 확장자만 남기고 나머지는 안전하게 생성한다.
+    const extMatch = file.name.match(/\.([a-zA-Z0-9]+)$/);
+    const ext = extMatch ? extMatch[1].toLowerCase() : "png";
+    const path = `${userId}/${Date.now()}.${ext}`;
     const { error: uploadError } = await supabase.storage
       .from("avatars")
       .upload(path, file, { upsert: true });

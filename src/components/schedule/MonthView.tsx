@@ -5,6 +5,7 @@ import { IconPaperclip } from "@tabler/icons-react";
 import { getKeywordColor } from "@/lib/scheduleKeywords";
 import { toDateStr } from "@/lib/date";
 import { getHoliday } from "@/lib/holidays";
+import { targetLabel, type MemberInfo } from "@/lib/scheduleTargets";
 import type { Schedule } from "@/types";
 
 const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
@@ -12,15 +13,18 @@ const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
 export function MonthView({
   anchorDate,
   schedules,
+  membersById,
 }: {
   anchorDate: string;
   schedules: Schedule[];
+  membersById: Record<string, MemberInfo>;
 }) {
   const [selectedDate, setSelectedDate] = useState(anchorDate);
 
   const anchor = new Date(anchorDate);
   const year = anchor.getFullYear();
   const month = anchor.getMonth();
+  const todayStr = toDateStr(new Date());
 
   const byDate = useMemo(() => {
     const map: Record<string, Schedule[]> = {};
@@ -45,69 +49,80 @@ export function MonthView({
   const selectedSchedules = byDate[selectedDate] ?? [];
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="rounded-2xl border border-border-light bg-surface p-3">
-        <div className="grid grid-cols-7 gap-y-2 text-center">
-          {WEEKDAY_LABELS.map((label) => (
-            <span key={label} className="text-[11px] text-stone">
-              {label}
-            </span>
-          ))}
-          {cells.map((date, i) => {
-            if (!date) return <div key={`empty-${i}`} />;
-            const daySchedules = byDate[date] ?? [];
-            const grocery = daySchedules.find((s) => s.is_grocery && s.amount);
-            const active = date === selectedDate;
-            const holiday = getHoliday(date);
-            return (
-              <button
-                key={date}
-                onClick={() => setSelectedDate(date)}
-                className={`flex flex-col items-center gap-0.5 rounded-xl py-1.5 ${
-                  active ? "bg-honey/15" : ""
+    <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-7 gap-y-2 text-center">
+        {WEEKDAY_LABELS.map((label) => (
+          <span key={label} className="text-[11px] text-[var(--text-muted)]">
+            {label}
+          </span>
+        ))}
+        {cells.map((date, i) => {
+          if (!date) return <div key={`empty-${i}`} />;
+          const daySchedules = byDate[date] ?? [];
+          const grocery = daySchedules.find((s) => s.is_grocery && s.amount);
+          const isToday = date === todayStr;
+          const isSelected = date === selectedDate;
+          const holiday = getHoliday(date);
+          return (
+            <button
+              key={date}
+              onClick={() => setSelectedDate(date)}
+              className={`flex flex-col items-center gap-0.5 rounded-full py-1.5 ${
+                isToday ? "bg-honey/15" : isSelected ? "ring-1 ring-honey/40" : ""
+              }`}
+            >
+              <span
+                className={`text-[13px] ${
+                  isToday
+                    ? "font-medium text-honey"
+                    : holiday
+                    ? "font-medium text-terra"
+                    : "text-ink"
                 }`}
               >
-                <span
-                  className={`text-[13px] ${
-                    active ? "font-medium text-honey" : holiday ? "font-medium text-terra" : "text-ink"
-                  }`}
-                >
-                  {Number(date.slice(-2))}
+                {Number(date.slice(-2))}
+              </span>
+              <div className="flex gap-0.5">
+                {daySchedules.slice(0, 3).map((s) => (
+                  <span
+                    key={s.id}
+                    className="h-1.5 w-1.5 rounded-full"
+                    style={{ backgroundColor: getKeywordColor(s.keyword_main) }}
+                  />
+                ))}
+              </div>
+              {grocery && (
+                <span className="text-[9px] text-[var(--text-muted)]">
+                  {grocery.amount!.toLocaleString()}
                 </span>
-                <div className="flex gap-0.5">
-                  {daySchedules.slice(0, 3).map((s) => (
-                    <span
-                      key={s.id}
-                      className="h-1.5 w-1.5 rounded-full"
-                      style={{ backgroundColor: getKeywordColor(s.keyword_main) }}
-                    />
-                  ))}
-                </div>
-                {grocery && (
-                  <span className="text-[9px] text-stone">{grocery.amount!.toLocaleString()}</span>
-                )}
-              </button>
-            );
-          })}
-        </div>
+              )}
+            </button>
+          );
+        })}
       </div>
 
-      <div className="flex flex-col gap-2">
+      <div className={`h-px w-full bg-border-light`} />
+
+      <div className="flex flex-col">
         {getHoliday(selectedDate) && (
-          <p className="px-1 text-[12px] font-medium text-terra">{getHoliday(selectedDate)}</p>
+          <p className="pb-2 text-[12px] font-medium text-terra">{getHoliday(selectedDate)}</p>
         )}
         {selectedSchedules.length === 0 && (
-          <p className="py-4 text-center text-[13px] text-stone">일정이 없어요</p>
+          <p className="py-4 text-center text-[13px] text-[var(--text-muted)]">일정이 없어요</p>
         )}
-        {selectedSchedules.map((s) => (
+        {selectedSchedules.map((s, i) => (
           <div
             key={s.id}
-            className="flex items-center gap-2 rounded-2xl border border-border-light bg-surface p-3"
+            className={`flex items-center gap-3 py-2.5 ${
+              i > 0 ? "border-t border-border-light" : ""
+            }`}
           >
             <span
-              className="h-2 w-2 shrink-0 rounded-full"
-              style={{ backgroundColor: getKeywordColor(s.keyword_main) }}
-            />
+              className="w-12 shrink-0 text-[13px] text-honey"
+              style={{ fontVariantNumeric: "tabular-nums" }}
+            >
+              {s.time_start ? s.time_start.slice(0, 5) : "종일"}
+            </span>
             <span
               className={`min-w-0 flex-1 truncate text-[14px] ${
                 s.is_important ? "font-medium text-terra" : "text-ink"
@@ -115,10 +130,10 @@ export function MonthView({
             >
               {s.title}
             </span>
-            {s.time_start && (
-              <span className="text-[12px] text-stone">{s.time_start.slice(0, 5)}</span>
-            )}
-            {s.memo && <IconPaperclip size={14} className="text-stone" />}
+            {s.memo && <IconPaperclip size={12} className="shrink-0 text-[var(--text-muted)]" />}
+            <span className="ml-auto shrink-0 text-[11px] text-[var(--text-muted)]">
+              {targetLabel(s.target_members, membersById)}
+            </span>
           </div>
         ))}
       </div>

@@ -3,23 +3,10 @@
 import Link from "next/link";
 import { IconPlus, IconPaperclip } from "@tabler/icons-react";
 import { mirror } from "@/lib/homeTheme";
+import { targetLabel, type MemberInfo } from "@/lib/scheduleTargets";
 import type { Schedule } from "@/types";
 
-export interface MemberInfo {
-  display_name: string;
-  avatar_color: string;
-}
-
-function targetLabel(
-  targetMembers: string[],
-  membersById: Record<string, MemberInfo>
-) {
-  if (targetMembers.length === 0) return "가족";
-  if (targetMembers.length === 1) {
-    return membersById[targetMembers[0]]?.display_name ?? "가족";
-  }
-  return `가족 외 ${targetMembers.length}`;
-}
+export type { MemberInfo };
 
 /** "오늘 뭐하지" — 오늘 일정만 표시(이번 주 보기는 일정 탭 전담), 최대 3개 + 더보기 */
 export function TodayEvents({

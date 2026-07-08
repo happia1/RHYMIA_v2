@@ -42,14 +42,14 @@ export function EventFilters({
   const activeGroup = KEYWORD_GROUPS.find((g) => g.main === keywordMain);
 
   return (
-    <div className="flex flex-col gap-2 rounded-2xl border border-border-light bg-surface p-3">
-      <div className="flex gap-2">
+    <div className="flex flex-col gap-2.5">
+      <div className="flex gap-3">
         {SCOPES.map((s) => (
           <button
             key={s.value}
             onClick={() => setParam("scope", s.value === "all" ? null : s.value)}
-            className={`rounded-full px-3 py-1 text-[12px] font-medium ${
-              scope === s.value ? "bg-ink text-cream" : "bg-cream text-stone"
+            className={`text-[12px] font-medium ${
+              scope === s.value ? "text-ink" : "text-[var(--text-muted)]"
             }`}
           >
             {s.label}
@@ -59,7 +59,7 @@ export function EventFilters({
 
       <button
         onClick={() => setTargetOpen((v) => !v)}
-        className="flex items-center gap-1 self-start text-[12px] font-medium text-stone"
+        className="flex items-center gap-1 self-start text-[12px] font-medium text-[var(--text-muted)]"
       >
         대상 필터
         <IconChevronDown
@@ -69,11 +69,11 @@ export function EventFilters({
       </button>
 
       {targetOpen && (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-3">
           <button
             onClick={() => setParam("target", null)}
-            className={`rounded-full px-3 py-1 text-[12px] font-medium ${
-              target === "all" ? "bg-ink text-cream" : "bg-cream text-stone"
+            className={`text-[12px] font-medium ${
+              target === "all" ? "text-ink" : "text-[var(--text-muted)]"
             }`}
           >
             전체
@@ -82,8 +82,8 @@ export function EventFilters({
             <button
               key={m.user_id}
               onClick={() => setParam("target", m.user_id)}
-              className={`rounded-full px-3 py-1 text-[12px] font-medium ${
-                target === m.user_id ? "bg-ink text-cream" : "bg-cream text-stone"
+              className={`text-[12px] font-medium ${
+                target === m.user_id ? "text-ink" : "text-[var(--text-muted)]"
               }`}
             >
               {m.display_name}
@@ -92,7 +92,7 @@ export function EventFilters({
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-3">
         {KEYWORD_GROUPS.map((g) => (
           <TagChip
             key={g.main}
@@ -113,7 +113,7 @@ export function EventFilters({
       </div>
 
       {activeGroup && activeGroup.subs.length > 0 && (
-        <div className="flex flex-wrap gap-2 pl-2">
+        <div className="flex flex-wrap gap-3 pl-2">
           {activeGroup.subs.map((sub) => (
             <TagChip
               key={sub}

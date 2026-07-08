@@ -1,7 +1,9 @@
+import { IconShoppingCart } from "@tabler/icons-react";
 import { requireWorkspaceContext } from "@/lib/workspace";
 import { mapWorkspaceMembers } from "@/lib/members";
 import { BoardSection } from "@/components/home/BoardSection";
 import { ShoppingList } from "@/components/home/ShoppingList";
+import { SectionLabel } from "@/components/home/SectionLabel";
 import type { NoticeComment } from "@/types";
 
 export default async function BoardPage() {
@@ -44,28 +46,25 @@ export default async function BoardPage() {
   }
 
   return (
-    <div className="flex flex-col gap-4 px-4 pb-6 pt-6">
+    <div className="flex flex-col gap-section px-4 pb-24 pt-6">
       <h1 className="text-[20px] font-medium text-ink">게시판</h1>
 
-      <div className="grid grid-cols-board gap-4">
-        <div className="flex flex-col gap-2">
-          <span className="px-1 text-[11px] font-medium text-stone">스티커 · 공지 · 메모</span>
-          <BoardSection
-            workspaceId={workspaceId}
-            notices={notices ?? []}
-            currentUserId={user.id}
-            membersById={membersById}
-            commentsByNotice={commentsByNotice}
-          />
-        </div>
+      <BoardSection
+        workspaceId={workspaceId}
+        notices={notices ?? []}
+        currentUserId={user.id}
+        membersById={membersById}
+        commentsByNotice={commentsByNotice}
+      />
 
-        <div className="flex flex-col gap-2">
-          <span className="px-1 text-[11px] font-medium text-stone">장바구니</span>
-          <div className="max-h-[70vh] overflow-y-auto">
-            <ShoppingList workspaceId={workspaceId} items={shoppingItems ?? []} />
-          </div>
+      <div className="h-px w-full bg-border-light" />
+
+      <section className="flex flex-col gap-label-gap">
+        <SectionLabel icon={IconShoppingCart}>장바구니</SectionLabel>
+        <div className="pl-section-indent">
+          <ShoppingList workspaceId={workspaceId} items={shoppingItems ?? []} />
         </div>
-      </div>
+      </section>
     </div>
   );
 }

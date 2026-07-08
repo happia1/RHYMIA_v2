@@ -1,3 +1,4 @@
+import { IconCalendar } from "@tabler/icons-react";
 import { requireWorkspaceContext } from "@/lib/workspace";
 import { toDateStr, getWeekDates } from "@/lib/date";
 import { getCurrentBlock, STATUS_EMOJI, DEFAULT_STATUS_EMOJI } from "@/lib/routineUtils";
@@ -8,7 +9,15 @@ import { MonthView } from "@/components/schedule/MonthView";
 import { WeekView } from "@/components/schedule/WeekView";
 import { YearView } from "@/components/schedule/YearView";
 import { AddEventEntry } from "@/components/schedule/AddEventEntry";
+import { AgentLauncher } from "@/components/agent/AgentLauncher";
+import { SectionLabel } from "@/components/home/SectionLabel";
 import type { Schedule } from "@/types";
+
+const VIEW_LABEL: Record<"month" | "week" | "year", string> = {
+  month: "월간 일정",
+  week: "주간 일정",
+  year: "연간 일정",
+};
 
 type ViewMode = "month" | "week" | "year";
 
@@ -113,8 +122,10 @@ export default async function SchedulePage({
     ? `${STATUS_EMOJI[(myBlock as { status: string }).status] ?? DEFAULT_STATUS_EMOJI} ${(myBlock as { label: string }).label}`
     : `${DEFAULT_STATUS_EMOJI} 쉬는 중`;
 
+  const membersById = Object.fromEntries(members.map((m) => [m.user_id, m]));
+
   return (
-    <div className="flex flex-col gap-4 px-4 pb-6 pt-6">
+    <div className="flex flex-col gap-section px-4 pb-24 pt-6">
       <ScheduleTabs anchorDate={anchorStr} view={view} myStatusText={myStatusText} />
       <EventFilters
         members={members}
@@ -124,13 +135,26 @@ export default async function SchedulePage({
         keywordSub={params.keywordSub}
       />
 
-      {view === "month" && (
-        <MonthView anchorDate={anchorStr} schedules={schedules} />
-      )}
-      {view === "week" && (
-        <WeekView weekDates={getWeekDates(anchor)} schedules={schedules} />
-      )}
-      {view === "year" && <YearView anchorDate={anchorStr} schedules={schedules} />}
+      <div className="h-px w-full bg-border-light" />
+
+      <section className="flex flex-col gap-label-gap">
+        <SectionLabel icon={IconCalendar}>{VIEW_LABEL[view]}</SectionLabel>
+        <div className="pl-section-indent">
+          {view === "month" && (
+            <MonthView anchorDate={anchorStr} schedules={schedules} membersById={membersById} />
+          )}
+          {view === "week" && (
+            <WeekView
+              weekDates={getWeekDates(anchor)}
+              schedules={schedules}
+              membersById={membersById}
+            />
+          )}
+          {view === "year" && (
+            <YearView anchorDate={anchorStr} schedules={schedules} membersById={membersById} />
+          )}
+        </div>
+      </section>
 
       <AddEventEntry
         workspaceId={workspaceId}
@@ -139,6 +163,7 @@ export default async function SchedulePage({
         autoOpen={params.new === "1"}
         weather={weather}
       />
+      <AgentLauncher workspaceId={workspaceId} members={members} />
     </div>
   );
 }

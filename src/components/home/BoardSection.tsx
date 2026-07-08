@@ -1,15 +1,18 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { IconPlus, IconPin } from "@tabler/icons-react";
+import { IconPlus, IconPin, IconNote, IconMessage2 } from "@tabler/icons-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Avatar } from "@/components/ui/Avatar";
 import { Input, Textarea } from "@/components/ui/Input";
+import { SectionLabel } from "@/components/home/SectionLabel";
 import { addNotice, deleteNotice, addNoticeComment } from "@/app/(main)/board/actions";
 import { formatPostTimestamp } from "@/lib/date";
 import { AVATAR_SIZE } from "@/lib/uiTokens";
 import type { WorkspaceMemberInfo } from "@/lib/members";
 import type { Notice, NoticeComment, NoticeType } from "@/types";
+
+const POSTS_PREVIEW_COUNT = 3;
 
 const STICKER_COLORS = ["#FFF9C4", "#FFE0E0", "#E1F5EE", "#E3E8FF", "#F3E1FF"];
 // 스티커는 배경이 항상 밝은 파스텔이라, 테마와 무관하게 항상 어두운 고정색 텍스트를 쓴다.
@@ -38,6 +41,7 @@ export function BoardSection({
 }) {
   const [detail, setDetail] = useState<Notice | null>(null);
   const [adding, setAdding] = useState(false);
+  const [postsExpanded, setPostsExpanded] = useState(false);
   const [commentDraft, setCommentDraft] = useState("");
   const [isPending, startTransition] = useTransition();
 
@@ -45,6 +49,7 @@ export function BoardSection({
   const posts = notices
     .filter((n) => n.type !== "sticky")
     .sort((a, b) => Number(b.is_pinned) - Number(a.is_pinned));
+  const visiblePosts = postsExpanded ? posts : posts.slice(0, POSTS_PREVIEW_COUNT);
 
   const authorOf = (userId: string | null) =>
     (userId && membersById[userId]) || null;
@@ -57,82 +62,98 @@ export function BoardSection({
   };
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-section">
       <div className="flex items-center justify-end">
         <button onClick={() => setAdding(true)} aria-label="새글 등록">
-          <IconPlus size={18} className="text-stone" />
+          <IconPlus size={18} className="text-[var(--text-muted)]" />
         </button>
       </div>
 
-      {stickers.length > 0 && (
-        <div className="flex gap-3 overflow-x-auto pb-1">
-          {stickers.map((s) => {
-            const left = daysLeft(s.expire_at);
-            const author = authorOf(s.created_by);
+      <section className="flex flex-col gap-label-gap">
+        <SectionLabel icon={IconNote}>스티커</SectionLabel>
+        <div className="pl-section-indent">
+          {stickers.length === 0 ? (
+            <p className="text-[13px] text-[var(--text-muted)]">등록된 스티커가 없어요</p>
+          ) : (
+            <div className="flex gap-3 overflow-x-auto pb-1">
+              {stickers.map((s) => {
+                const left = daysLeft(s.expire_at);
+                const author = authorOf(s.created_by);
+                return (
+                  <div key={s.id} className="flex w-24 shrink-0 flex-col gap-1">
+                    <button
+                      onClick={() => setDetail(s)}
+                      className="flex h-24 w-24 flex-col rounded-2xl p-2.5 text-left"
+                      style={{ backgroundColor: s.color }}
+                    >
+                      <span
+                        className="truncate text-[9px] opacity-60"
+                        style={{ color: STICKER_TEXT_COLOR }}
+                      >
+                        {author?.display_name ?? "가족"}
+                      </span>
+                      <span
+                        className="mt-1 line-clamp-3 text-[12px]"
+                        style={{ color: STICKER_TEXT_COLOR }}
+                      >
+                        {s.content}
+                      </span>
+                    </button>
+                    {left !== null && (
+                      <span className="self-end text-[10px] text-[var(--text-muted)]">
+                        D-{Math.max(left, 0)}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </section>
+
+      <div className="h-px w-full bg-border-light" />
+
+      <section className="flex flex-col gap-label-gap">
+        <SectionLabel icon={IconMessage2}>메모 · 공지</SectionLabel>
+        <div className="flex flex-col pl-section-indent">
+          {posts.length === 0 && (
+            <p className="text-[13px] text-[var(--text-muted)]">등록된 글이 없어요</p>
+          )}
+          {visiblePosts.map((n, i) => {
+            const author = authorOf(n.created_by);
             return (
-              <div key={s.id} className="flex w-24 shrink-0 flex-col gap-1">
-                <button
-                  onClick={() => setDetail(s)}
-                  className="flex h-24 w-24 flex-col rounded-2xl p-2.5 text-left"
-                  style={{ backgroundColor: s.color }}
-                >
-                  <span
-                    className="truncate text-[9px] opacity-60"
-                    style={{ color: STICKER_TEXT_COLOR }}
-                  >
-                    {author?.display_name ?? "가족"}
-                  </span>
-                  <span
-                    className="mt-1 line-clamp-3 text-[12px]"
-                    style={{ color: STICKER_TEXT_COLOR }}
-                  >
-                    {s.content}
-                  </span>
-                </button>
-                {left !== null && (
-                  <span className="self-end text-[10px] text-stone/70">
-                    D-{Math.max(left, 0)}
+              <button
+                key={n.id}
+                onClick={() => setDetail(n)}
+                className={`flex flex-col gap-1 py-3 text-left ${
+                  i > 0 ? "border-t border-border-light" : ""
+                }`}
+              >
+                {n.title && (
+                  <span className="truncate text-[14px] font-medium text-ink">
+                    {n.type === "notice" ? `📌 ${n.title}` : n.title}
                   </span>
                 )}
-              </div>
+                <p className="line-clamp-2 text-[12px] text-ink">{n.content}</p>
+                <div className="flex items-center gap-1.5 text-[11px] text-[var(--text-muted)]">
+                  {n.is_pinned && <IconPin size={12} className="shrink-0 text-terra" />}
+                  <span className="font-medium">{author?.display_name ?? "가족"}</span>
+                  <span>· {formatPostTimestamp(n.created_at)}</span>
+                </div>
+              </button>
             );
           })}
-        </div>
-      )}
-
-      {stickers.length > 0 && posts.length > 0 && (
-        <div className="h-px w-full bg-border-light" />
-      )}
-
-      <div className="flex flex-col">
-        {posts.length === 0 && stickers.length === 0 && (
-          <p className="text-[13px] text-stone">등록된 글이 없어요</p>
-        )}
-        {posts.map((n, i) => {
-          const author = authorOf(n.created_by);
-          return (
+          {posts.length > POSTS_PREVIEW_COUNT && (
             <button
-              key={n.id}
-              onClick={() => setDetail(n)}
-              className={`flex flex-col gap-1 py-3 text-left ${
-                i > 0 ? "border-t border-border-light" : ""
-              }`}
+              onClick={() => setPostsExpanded((v) => !v)}
+              className="self-end text-[11px] text-[var(--text-muted)]"
             >
-              {n.title && (
-                <span className="truncate text-[14px] font-medium text-ink">
-                  {n.type === "notice" ? `📌 ${n.title}` : n.title}
-                </span>
-              )}
-              <p className="line-clamp-2 text-[12px] text-ink">{n.content}</p>
-              <div className="flex items-center gap-1.5 text-[11px] text-muted">
-                {n.is_pinned && <IconPin size={12} className="shrink-0 text-terra" />}
-                <span className="font-medium">{author?.display_name ?? "가족"}</span>
-                <span>· {formatPostTimestamp(n.created_at)}</span>
-              </div>
+              {postsExpanded ? "접기" : "더보기"}
             </button>
-          );
-        })}
-      </div>
+          )}
+        </div>
+      </section>
 
       <BottomSheet
         open={!!detail}
@@ -152,7 +173,7 @@ export function BoardSection({
               {detail.content}
             </p>
             {detail.type !== "sticky" && (
-              <div className="flex items-center gap-1.5 text-[11px] text-muted">
+              <div className="flex items-center gap-1.5 text-[11px] text-[var(--text-muted)]">
                 <span className="font-medium">
                   {authorOf(detail.created_by)?.display_name ?? "가족"}
                 </span>

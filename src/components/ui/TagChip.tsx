@@ -15,12 +15,8 @@ export function TagChip({
     <Tag
       onClick={onClick}
       type={onClick ? "button" : undefined}
-      className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium"
-      style={{
-        color: color ?? "#888780",
-        backgroundColor: color ? `${color}1A` : "#E8E6E01A",
-        border: selected ? `1px solid ${color ?? "#888780"}` : "1px solid transparent",
-      }}
+      className={`text-[12px] font-medium ${selected ? "" : "text-[var(--text-muted)]"}`}
+      style={selected ? { color: color ?? "var(--text-primary)" } : undefined}
     >
       {label}
     </Tag>

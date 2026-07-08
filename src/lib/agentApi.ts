@@ -1,3 +1,8 @@
+export interface AgentMemberOption {
+  user_id: string;
+  display_name: string;
+}
+
 export interface AgentSchedule {
   title: string;
   date_start: string | null;

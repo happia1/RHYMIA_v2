@@ -6,8 +6,7 @@ import { createSchedule } from "@/app/(main)/schedule/actions";
 import { Input } from "@/components/ui/Input";
 import { KEYWORD_GROUPS } from "@/lib/scheduleKeywords";
 import { useToast } from "@/components/ui/Toast";
-import type { WorkspaceMemberInfo } from "@/lib/members";
-import type { AgentSchedule } from "@/lib/agentApi";
+import type { AgentSchedule, AgentMemberOption } from "@/lib/agentApi";
 
 type CardStatus = "pending" | "registered" | "skipped";
 
@@ -22,7 +21,7 @@ interface CardState {
 /** target_hint를 멤버 표시 이름과 대조해 대상을 미리 선택해 준다. 최종 선택은 사용자가 카드에서 직접 조정한다. */
 function matchTargets(
   targetHint: string | null,
-  members: WorkspaceMemberInfo[]
+  members: AgentMemberOption[]
 ): { targets: string[]; isShared: boolean } {
   const hint = (targetHint || "").trim();
   if (!hint || hint.includes("가족") || hint.includes("전체")) {
@@ -42,7 +41,7 @@ export function ConfirmCards({
   onAllProcessed,
 }: {
   workspaceId: string;
-  members: WorkspaceMemberInfo[];
+  members: AgentMemberOption[];
   schedules: AgentSchedule[];
   onAllProcessed: (summary: { registered: number; skipped: number }) => void;
 }) {

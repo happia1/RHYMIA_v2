@@ -38,13 +38,15 @@ export function ScheduleTabs({
         </div>
       )}
 
-      <div className="flex rounded-full border border-border-light bg-surface p-1">
+      <div className="flex gap-4 border-b border-border-light">
         {VIEWS.map(({ key, label }) => (
           <Link
             key={key}
             href={`/schedule?view=${key}&date=${anchorDate}`}
-            className={`flex-1 rounded-full py-1.5 text-center text-[13px] font-medium ${
-              view === key ? "bg-ink text-cream" : "text-stone"
+            className={`border-b-2 pb-2 text-[13px] font-medium ${
+              view === key
+                ? "border-ink text-ink"
+                : "border-transparent text-[var(--text-muted)]"
             }`}
           >
             {label}
