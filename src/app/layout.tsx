@@ -16,10 +16,15 @@ const geistMono = localFont({
   weight: "100 900",
 });
 // "하고싶은 말"(스티키노트) 전용 손글씨 폰트 — 나눔손글씨 계열, 다른 곳에는 적용하지 않음
+// adjustFontFallback: Next가 이 폰트의 폴백 메트릭(레이아웃 시프트 보정용)을 자체 DB에서
+// 못 찾아서 매 컴파일마다 "Failed to find font override values" 경고를 찍는다 — try/catch로
+// 감싸져 있어 빌드/렌더링에는 영향 없는 콘솔 경고일 뿐이지만(폰트 자체는 정상 로드/적용됨),
+// 굳이 못 찾을 자동 보정을 계속 시도하지 않도록 꺼서 경고 자체를 없앤다.
 const handwriting = Nanum_Pen_Script({
   subsets: ["latin"],
   weight: "400",
   variable: "--font-handwriting",
+  adjustFontFallback: false,
 });
 
 export const metadata: Metadata = {
