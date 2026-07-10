@@ -1,6 +1,6 @@
 import { requireWorkspaceContext } from "@/lib/workspace";
 import { getWeekDates, toDateStr } from "@/lib/date";
-import { findUpcomingMeal, tagOrderIndex } from "@/lib/mealUtils";
+import { tagOrderIndex } from "@/lib/mealUtils";
 import { getCurrentBlock, STATUS_EMOJI, DEFAULT_STATUS_EMOJI } from "@/lib/routineUtils";
 import { getCurrentWeather } from "@/lib/weather";
 import { mapWorkspaceMembers } from "@/lib/members";
@@ -28,7 +28,9 @@ export default async function HomePage() {
     await Promise.all([
       supabase
         .from("workspace_member")
-        .select("user_id, display_name, users(avatar_color, avatar_text_color, avatar_image_url)")
+        .select(
+          "id, user_id, member_type, display_name, name, avatar_color, avatar_image_url, birth_year, users(avatar_color, avatar_text_color, avatar_image_url)"
+        )
         .eq("workspace_id", workspaceId),
       getCurrentWeather(),
       supabase
@@ -39,13 +41,12 @@ export default async function HomePage() {
         .lte("date_start", weekEnd)
         .or(`is_shared.eq.true,author_id.eq.${user.id}`)
         .order("date_start", { ascending: true }),
+      // 홈은 "오늘 등록된 것만" 보여주는 상태판 — 등록된 게 없으면 다른 날짜로 대체하지 않고 비워둔다
       supabase
         .from("meal")
         .select("*, meal_participation(user_id, status)")
         .eq("workspace_id", workspaceId)
-        .gte("date", todayStr)
-        .order("date", { ascending: true })
-        .limit(20),
+        .eq("date", todayStr),
       supabase
         .from("shopping_item")
         .select("*")
@@ -66,49 +67,52 @@ export default async function HomePage() {
 
   const members = mapWorkspaceMembers(memberRows ?? []);
 
+  // 대상 선택/표시용(target_members, routine.member_id 등): workspace_member.id로 키
   const membersById: Record<string, MemberInfo> = Object.fromEntries(
-    members.map((m) => [m.user_id, { display_name: m.display_name, avatar_color: m.avatar_color }])
+    members.map((m) => [m.id, { display_name: m.display_name, avatar_color: m.avatar_color }])
   );
-  const membersByIdFull = Object.fromEntries(members.map((m) => [m.user_id, m]));
+  // 작성자/참여자 표시용(meal_participation.user_id, notice.created_by 등 실제 로그인 user 기준):
+  // user_id로 키 — managed 멤버는 user_id가 없어 이 맵엔 절대 등장하지 않음(의도된 동작)
+  const membersByUserId: Record<string, (typeof members)[number]> = Object.fromEntries(
+    members.filter((m): m is typeof m & { user_id: string } => Boolean(m.user_id)).map((m) => [m.user_id, m])
+  );
 
-  const memberIds = members.map((m) => m.user_id);
+  const memberIds = members.map((m) => m.id);
 
   const { data: routineRows } = await supabase
     .from("routine")
-    .select("user_id, blocks")
-    .in("user_id", memberIds.length ? memberIds : [""])
+    .select("member_id, blocks")
+    .in("member_id", memberIds.length ? memberIds : [""])
     .eq("day_of_week", today.getDay());
 
-  // 오늘 뭐먹지? — 오늘 등록된 끼니를 전부 시간순으로 보여주고,
-  // 오늘 등록된 끼니가 없으면 가장 가까운 다음 끼니 하나로 대체한다.
+  // 오늘 뭐먹지? — 오늘 등록된 끼니만 시간순으로 보여준다 (등록된 게 없으면 빈 상태)
   const toParticipantNames = (meal: {
     meal_participation?: { user_id: string; status: boolean | null }[];
   }): string[] =>
     (meal.meal_participation ?? [])
       .filter((p) => p.status === true)
-      .map((p) => membersById[p.user_id]?.display_name)
+      .map((p) => membersByUserId[p.user_id]?.display_name)
       .filter((name): name is string => Boolean(name));
 
-  const todayMeals = (meals ?? [])
-    .filter((m) => m.date === todayStr)
-    .sort((a, b) => tagOrderIndex(a.tag) - tagOrderIndex(b.tag));
-  const upcomingFallback = todayMeals.length === 0 ? findUpcomingMeal(meals ?? [], today) : null;
-  const mealsToShow: MealSummaryItem[] = (todayMeals.length > 0 ? todayMeals : [upcomingFallback].filter(Boolean))
-    .filter((m): m is NonNullable<typeof m> => m !== null)
+  const mealsToShow: MealSummaryItem[] = (meals ?? [])
+    .sort((a, b) => tagOrderIndex(a.tag) - tagOrderIndex(b.tag))
     .map((m) => ({ ...m, participantNames: toParticipantNames(m) }));
 
   // 오늘 뭐하지?
   const todaySchedules = (schedules ?? []).filter((s) => s.date_start === todayStr);
 
   // 지금 우리 가족은
-  const routineByUser: Record<string, RoutineBlock[]> = {};
+  const routineByMember: Record<string, RoutineBlock[]> = {};
   for (const r of routineRows ?? []) {
-    routineByUser[r.user_id as string] = (r.blocks as RoutineBlock[]) ?? [];
+    routineByMember[r.member_id as string] = (r.blocks as RoutineBlock[]) ?? [];
   }
 
   // 지금 우리 가족은 — 루틴 기반 상태만 표시 (일정 병기는 "오늘 뭐하지" 섹션 전담, 중복 제거)
+  // managed 멤버(자녀 등)도 동일하게 루틴 기반 상태를 보여준다. 다른 account 멤버의 루틴은
+  // RLS(can_read_routine)가 자기 자신 것만 허용하므로 routineByMember에 아예 없을 수 있고,
+  // 그 경우 기본 상태("쉬는 중")로 표시된다 — 의도된 프라이버시 동작.
   const familyStatus: FamilyMemberStatus[] = members.map((m) => {
-    const block = getCurrentBlock(routineByUser[m.user_id] ?? [], today);
+    const block = getCurrentBlock(routineByMember[m.id] ?? [], today);
 
     let statusText = "쉬는 중";
     let emoji = DEFAULT_STATUS_EMOJI;
@@ -119,7 +123,7 @@ export default async function HomePage() {
     }
 
     return {
-      user_id: m.user_id,
+      id: m.id,
       display_name: m.display_name,
       avatar_color: m.avatar_color,
       avatar_text_color: m.avatar_text_color,
@@ -130,7 +134,7 @@ export default async function HomePage() {
   });
 
   const memberOptions = members.map((m) => ({
-    user_id: m.user_id,
+    id: m.id,
     display_name: m.display_name,
   }));
 
@@ -157,9 +161,10 @@ export default async function HomePage() {
   const boardSection = (
     <BoardPreview
       workspaceId={workspaceId}
+      currentUserId={user.id}
       stickers={stickers ?? []}
       shoppingItems={shoppingItems ?? []}
-      membersById={membersByIdFull}
+      membersById={membersByUserId}
     />
   );
 

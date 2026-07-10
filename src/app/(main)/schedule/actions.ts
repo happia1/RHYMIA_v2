@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import type { HabitRepeatType, NotifyOffset } from "@/types";
+import type { HabitRepeatType, NotifyOffset, RoutineBlock } from "@/types";
 
 export interface ScheduleInput {
   title: string;
@@ -110,6 +110,7 @@ export async function deleteSchedule(scheduleId: string) {
 }
 
 export async function upsertRoutine(
+  memberId: string,
   dayOfWeek: number,
   semester: string,
   blocks: unknown
@@ -120,21 +121,53 @@ export async function upsertRoutine(
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  // RLS(can_write_routine)가 본인 루틴 또는 같은 워크스페이스 managed 멤버 루틴만 허용
   const { error } = await supabase.from("routine").upsert(
     {
-      user_id: user!.id,
+      member_id: memberId,
       day_of_week: dayOfWeek,
       semester,
       blocks,
       updated_at: new Date().toISOString(),
     },
-    { onConflict: "user_id,day_of_week,semester" }
+    { onConflict: "member_id,day_of_week,semester" }
   );
 
   if (error) throw new Error(error.message);
 
   revalidatePath("/schedule/routine");
   revalidatePath("/home");
+}
+
+/** 에이전트 루틴 카드가 겹침 확인/병합을 위해 특정 멤버의 요일별 기존 블록을 조회할 때 사용. */
+export async function getRoutineBlocks(
+  memberId: string,
+  days: number[],
+  semester = "default"
+): Promise<Record<number, RoutineBlock[]>> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  if (!memberId || days.length === 0) return {};
+
+  // RLS(can_read_routine)가 본인 루틴 또는 같은 워크스페이스 managed 멤버 루틴만 허용
+  const { data, error } = await supabase
+    .from("routine")
+    .select("day_of_week, blocks")
+    .eq("member_id", memberId)
+    .eq("semester", semester)
+    .in("day_of_week", days);
+
+  if (error) throw new Error(error.message);
+
+  const result: Record<number, RoutineBlock[]> = {};
+  for (const row of data ?? []) {
+    result[row.day_of_week] = (row.blocks as RoutineBlock[]) ?? [];
+  }
+  return result;
 }
 
 export interface DiaryInput {

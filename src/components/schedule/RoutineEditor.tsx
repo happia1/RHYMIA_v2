@@ -9,6 +9,7 @@ import { RoutineWheel } from "@/components/schedule/RoutineWheel";
 import { STATUS_OPTIONS, STATUS_EMOJI } from "@/lib/routineUtils";
 import { STATUS_COLOR_VAR, DEFAULT_STATUS_COLOR_VAR } from "@/lib/routineColors";
 import type { Routine, RoutineBlock } from "@/types";
+import type { WorkspaceMemberInfo } from "@/lib/members";
 
 // routine.semester 컬럼은 유지하되, UI에서는 학기 구분을 없애고 항상 'default'로 고정한다.
 const SEMESTER = "default";
@@ -29,14 +30,26 @@ function sortBlocks(blocks: RoutineBlock[]) {
   return [...blocks].sort((a, b) => (a.start < b.start ? -1 : 1));
 }
 
-export function RoutineEditor({ initialRoutines }: { initialRoutines: Routine[] }) {
+export function RoutineEditor({
+  initialRoutines,
+  members,
+  defaultMemberId,
+}: {
+  initialRoutines: Routine[];
+  members: WorkspaceMemberInfo[];
+  defaultMemberId: string;
+}) {
+  // key: `${memberId}-${dayOfWeek}-${semester}`
   const [byKey, setByKey] = useState<Record<string, RoutineBlock[]>>(() => {
     const map: Record<string, RoutineBlock[]> = {};
     for (const r of initialRoutines) {
-      map[`${r.day_of_week}-${r.semester}`] = r.blocks;
+      map[`${r.member_id}-${r.day_of_week}-${r.semester}`] = r.blocks;
     }
     return map;
   });
+
+  // 누구의 루틴인지 — 기본은 나 자신, managed 멤버를 선택하면 그 멤버의 루틴을 편집
+  const [activeMemberId, setActiveMemberId] = useState(defaultMemberId || members[0]?.id || "");
 
   // 요일 칩 다중 선택 — 배열 순서 = 선택한 순서, 마지막 항목이 차트/리스트에 보여줄 "기준 요일".
   const [selectedDays, setSelectedDays] = useState<number[]>(() => [new Date().getDay()]);
@@ -52,13 +65,19 @@ export function RoutineEditor({ initialRoutines }: { initialRoutines: Routine[] 
   const [label, setLabel] = useState("");
   const [memo, setMemo] = useState("");
 
-  const key = `${primaryDay}-${SEMESTER}`;
+  const key = `${activeMemberId}-${primaryDay}-${SEMESTER}`;
   const blocks = useMemo(() => sortBlocks(byKey[key] ?? []), [byKey, key]);
 
   const touchStartX = useRef<number | null>(null);
 
   const setBlocksFor = (targetKey: string, next: RoutineBlock[]) => {
     setByKey((prev) => ({ ...prev, [targetKey]: next }));
+  };
+
+  const switchMember = (memberId: string) => {
+    setActiveMemberId(memberId);
+    setSelectedDays([new Date().getDay()]);
+    setHighlightedIndex(null);
   };
 
   const toggleDay = (value: number) => {
@@ -98,7 +117,7 @@ export function RoutineEditor({ initialRoutines }: { initialRoutines: Routine[] 
     setByKey((prev) => {
       const next = { ...prev };
       for (const day of selectedDays) {
-        const dayKey = `${day}-${SEMESTER}`;
+        const dayKey = `${activeMemberId}-${day}-${SEMESTER}`;
         next[dayKey] = [...(prev[dayKey] ?? []), block];
       }
       return next;
@@ -116,8 +135,8 @@ export function RoutineEditor({ initialRoutines }: { initialRoutines: Routine[] 
   const save = () => {
     startTransition(async () => {
       for (const day of selectedDays) {
-        const dayKey = `${day}-${SEMESTER}`;
-        await upsertRoutine(day, SEMESTER, byKey[dayKey] ?? []);
+        const dayKey = `${activeMemberId}-${day}-${SEMESTER}`;
+        await upsertRoutine(activeMemberId, day, SEMESTER, byKey[dayKey] ?? []);
       }
       setSavedMessage("저장되었습니다");
       setTimeout(() => setSavedMessage(""), 1500);
@@ -139,6 +158,25 @@ export function RoutineEditor({ initialRoutines }: { initialRoutines: Routine[] 
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
+        {members.length > 1 && (
+          <div className="flex flex-col gap-2">
+            <span className="text-[12px] font-medium text-stone">누구의 루틴인가요</span>
+            <div className="flex flex-wrap gap-2">
+              {members.map((m) => (
+                <button
+                  key={m.id}
+                  onClick={() => switchMember(m.id)}
+                  className={`rounded-full px-3.5 py-1.5 text-[13px] font-medium ${
+                    activeMemberId === m.id ? "bg-ink text-cream" : "bg-surface text-stone"
+                  }`}
+                >
+                  {m.display_name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <RoutineWheel
           blocks={blocks}
           highlightedIndex={highlightedIndex}
@@ -280,7 +318,7 @@ export function RoutineEditor({ initialRoutines }: { initialRoutines: Routine[] 
 
         <button
           onClick={save}
-          disabled={isPending}
+          disabled={isPending || !activeMemberId}
           className="flex h-12 items-center justify-center rounded-2xl bg-ink text-[15px] font-medium text-cream disabled:opacity-50"
         >
           {savedMessage || "저장하기"}

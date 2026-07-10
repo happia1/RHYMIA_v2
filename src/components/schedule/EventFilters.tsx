@@ -19,7 +19,7 @@ export function EventFilters({
   keywordMain,
   keywordSub,
 }: {
-  members: { user_id: string; display_name: string }[];
+  members: { id: string; display_name: string }[];
   scope: string;
   target: string;
   keywordMain?: string;
@@ -80,10 +80,10 @@ export function EventFilters({
           </button>
           {members.map((m) => (
             <button
-              key={m.user_id}
-              onClick={() => setParam("target", m.user_id)}
+              key={m.id}
+              onClick={() => setParam("target", m.id)}
               className={`text-[12px] font-medium ${
-                target === m.user_id ? "text-ink" : "text-[var(--text-muted)]"
+                target === m.id ? "text-ink" : "text-[var(--text-muted)]"
               }`}
             >
               {m.display_name}

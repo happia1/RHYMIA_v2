@@ -94,8 +94,8 @@ export function MealDetail({
 
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center gap-1.5">
-            <span className="text-[11px] font-medium text-stone">{meal.tag}</span>
-            <span className="text-[11px] font-medium text-honey">{meal.type}</span>
+            <span className="text-[11px] font-medium text-honey">{meal.tag}</span>
+            <span className="text-[11px] font-medium text-sage">{meal.type}</span>
           </div>
           <p className="text-[19px] font-medium text-ink">{meal.main_menu}</p>
           {meal.sides.length > 0 && (
@@ -108,9 +108,9 @@ export function MealDetail({
             href={`https://map.kakao.com/link/search/${encodeURIComponent(meal.place)}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 rounded-2xl border border-border-light bg-surface p-3 text-[13px] text-ink"
+            className="flex items-center gap-1.5 text-[13px] text-ink"
           >
-            <IconMapPin size={18} className="text-ocean" />
+            <IconMapPin size={18} className="text-honey" />
             {meal.place}
             {meal.reservation_time ? ` · ${meal.reservation_time}` : ""}
           </a>
@@ -131,7 +131,7 @@ export function MealDetail({
           </div>
         )}
 
-        <div className="flex items-center justify-between rounded-2xl border border-border-light bg-surface p-4">
+        <div className="flex items-center justify-between border-t border-border-light pt-4">
           <div className="flex -space-x-2">
             {checkedInMembers.map((m) => (
               <Avatar

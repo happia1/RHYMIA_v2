@@ -1,15 +1,18 @@
 "use client";
 
-import { IconPlus, type TablerIcon } from "@tabler/icons-react";
+import { IconPlus } from "@tabler/icons-react";
 import { mirror } from "@/lib/homeTheme";
 
 export function SectionLabel({
-  icon: Icon,
+  icon,
   children,
   onAdd,
   addLabel = "추가",
 }: {
-  icon: TablerIcon;
+  /** 미리 렌더링된 아이콘 엘리먼트(예: `<IconCalendar size={14} />`)를 전달 — 컴포넌트
+   * 참조 자체(`IconCalendar`)를 넘기면 서버 컴포넌트에서 이 클라이언트 컴포넌트로 props를
+   * 넘길 때 직렬화할 수 없어 런타임 에러가 남("Functions cannot be passed directly..."). */
+  icon: React.ReactNode;
   children: React.ReactNode;
   onAdd?: () => void;
   addLabel?: string;
@@ -17,7 +20,7 @@ export function SectionLabel({
   return (
     <div className="flex items-center justify-between">
       <div className={`flex items-center gap-1.5 ${mirror.label}`}>
-        <Icon size={14} />
+        {icon}
         <span>{children}</span>
       </div>
       {onAdd && (

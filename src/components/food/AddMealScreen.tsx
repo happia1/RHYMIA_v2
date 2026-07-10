@@ -5,6 +5,7 @@ import Link from "next/link";
 import { IconArrowLeft, IconFridge } from "@tabler/icons-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Input, Textarea } from "@/components/ui/Input";
+import { mirror } from "@/lib/homeTheme";
 import { createMeal, updateMeal, addFridgeItem, deleteFridgeItem } from "@/app/(main)/food/actions";
 import { MEAL_TAGS } from "@/lib/mealUtils";
 import type { FridgeCategory, FridgeItem, Meal, MealType } from "@/types";
@@ -22,6 +23,27 @@ const FRIDGE_CATEGORIES: { value: FridgeCategory; label: string }[] = [
   { value: "frozen", label: "냉동" },
   { value: "room", label: "상온" },
 ];
+
+function TextToggle({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`shrink-0 text-[13px] font-medium ${
+        active ? "text-ink" : "text-[var(--text-muted)]"
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
 
 export function AddMealScreen({
   workspaceId,
@@ -41,7 +63,6 @@ export function AddMealScreen({
   const [reservationTime, setReservationTime] = useState(
     existingMeal?.reservation_time ?? ""
   );
-  const [sides, setSides] = useState(existingMeal?.sides.join(", ") ?? "");
   const [memo, setMemo] = useState(existingMeal?.memo ?? "");
   const [fridgeOpen, setFridgeOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -64,10 +85,8 @@ export function AddMealScreen({
       tag,
       type,
       main_menu: mainMenu.trim(),
-      sides: sides
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean),
+      // 사이드 전용 입력 필드는 제거됨(메뉴 쉼표 입력으로 통합) — 수정 시 기존 값은 그대로 보존, 신규 등록은 항상 빈 배열
+      sides: existingMeal?.sides ?? [],
       place: type === "외식" ? place || null : null,
       reservation_time: type === "외식" ? reservationTime || null : null,
       memo: memo || null,
@@ -98,69 +117,56 @@ export function AddMealScreen({
 
       <div className="flex flex-col gap-6 px-4">
         <section className="flex flex-col gap-2">
-          <span className="text-[12px] font-medium text-stone">끼니</span>
-          <div className="flex gap-2 overflow-x-auto">
+          <span className={mirror.label}>끼니</span>
+          <div className="flex gap-4 overflow-x-auto">
             {MEAL_TAGS.map((t) => (
-              <button
-                key={t}
-                onClick={() => setTag(t)}
-                className={`shrink-0 rounded-full px-3.5 py-2 text-[13px] font-medium ${
-                  tag === t ? "bg-ink text-cream" : "bg-surface text-stone"
-                }`}
-              >
-                {t}
-              </button>
+              <TextToggle key={t} label={t} active={tag === t} onClick={() => setTag(t)} />
             ))}
           </div>
         </section>
 
         <section className="flex flex-col gap-2">
-          <span className="text-[12px] font-medium text-stone">식사 유형</span>
-          <div className="flex gap-2">
+          <span className={mirror.label}>식사 유형</span>
+          <div className="flex gap-4">
             {MEAL_TYPES.map((t) => (
-              <button
-                key={t}
-                onClick={() => setType(t)}
-                className={`rounded-full px-3.5 py-2 text-[13px] font-medium ${
-                  type === t ? "bg-ink text-cream" : "bg-surface text-stone"
-                }`}
-              >
-                {t}
-              </button>
+              <TextToggle key={t} label={t} active={type === t} onClick={() => setType(t)} />
             ))}
           </div>
           {type === "외식" && (
-            <div className="mt-1 flex gap-2">
+            <div className="mt-1 flex gap-4">
               <Input
+                variant="underline"
                 value={place}
                 onChange={(e) => setPlace(e.target.value)}
                 placeholder="장소"
-                className="h-11 flex-1 rounded-xl px-3 text-[13px]"
+                className="h-10 flex-1 px-0 text-[13px]"
               />
               <Input
+                variant="underline"
                 value={reservationTime}
                 onChange={(e) => setReservationTime(e.target.value)}
                 placeholder="시간"
-                className="h-11 w-24 rounded-xl px-3 text-[13px]"
+                className="h-10 w-20 px-0 text-[13px]"
               />
             </div>
           )}
         </section>
 
         <section className="flex flex-col gap-2">
-          <span className="text-[12px] font-medium text-stone">메뉴 (쉼표로 여러 개)</span>
+          <span className={mirror.label}>메뉴 (쉼표로 여러 개)</span>
           <Input
+            variant="underline"
             value={mainMenu}
             onChange={(e) => setMainMenu(e.target.value)}
             placeholder="예: 된장찌개, 계란말이"
-            className="h-11 rounded-xl px-3 text-[14px]"
+            className="h-11 px-0 text-[14px]"
           />
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-3">
             {SUGGESTIONS[type].map((item) => (
               <button
                 key={item}
                 onClick={() => appendMenu(item)}
-                className="rounded-full bg-surface px-3 py-1.5 text-[12px] text-stone"
+                className="text-[12px] font-medium text-[var(--text-muted)]"
               >
                 {item}
               </button>
@@ -171,7 +177,7 @@ export function AddMealScreen({
         <section>
           <button
             onClick={() => setFridgeOpen(true)}
-            className="flex items-center gap-1.5 text-[13px] font-medium text-ocean"
+            className="flex items-center gap-1.5 text-[13px] font-medium text-honey"
           >
             <IconFridge size={18} />
             현재 재고 확인
@@ -179,30 +185,21 @@ export function AddMealScreen({
         </section>
 
         <section className="flex flex-col gap-2">
-          <span className="text-[12px] font-medium text-stone">사이드 (선택)</span>
-          <Input
-            value={sides}
-            onChange={(e) => setSides(e.target.value)}
-            placeholder="예: 김치, 나물"
-            className="h-11 rounded-xl px-3 text-[14px]"
-          />
-        </section>
-
-        <section className="flex flex-col gap-2">
-          <span className="text-[12px] font-medium text-stone">메모 (선택)</span>
+          <span className={mirror.label}>메모 (선택)</span>
           <Textarea
+            variant="underline"
             value={memo}
             onChange={(e) => setMemo(e.target.value)}
             rows={3}
             placeholder="자유롭게 적어보세요"
-            className="rounded-xl p-3 text-[14px]"
+            className="px-0 py-2 text-[14px]"
           />
         </section>
 
         <button
           onClick={handleSubmit}
           disabled={isPending}
-          className="flex h-12 items-center justify-center rounded-2xl bg-ink text-[15px] font-medium text-cream"
+          className="flex h-12 items-center justify-center rounded-2xl bg-btn-surface text-[15px] font-medium text-btn-surface-text"
         >
           {existingMeal ? "수정하기" : "등록하기"}
         </button>

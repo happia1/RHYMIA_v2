@@ -5,7 +5,12 @@ import Link from "next/link";
 import { IconX, IconCamera, IconMicrophone, IconSend } from "@tabler/icons-react";
 import { ConfirmCards } from "./ConfirmCards";
 import { Input } from "@/components/ui/Input";
-import { callAgent, type AgentSchedule, type AgentMemberOption } from "@/lib/agentApi";
+import {
+  callAgent,
+  type AgentSchedule,
+  type AgentMemberOption,
+  type AgentRoutine,
+} from "@/lib/agentApi";
 import { mirror } from "@/lib/homeTheme";
 
 type ChatMessage =
@@ -13,24 +18,33 @@ type ChatMessage =
   | { id: string; role: "user"; kind: "image"; imageDataUrl: string }
   | { id: string; role: "agent"; kind: "text"; text: string }
   | { id: string; role: "agent"; kind: "loading" }
-  | { id: string; role: "agent"; kind: "cards"; schedules: AgentSchedule[] }
+  | {
+      id: string;
+      role: "agent";
+      kind: "cards";
+      schedules: AgentSchedule[];
+      routines: AgentRoutine[];
+      routineTargetHint: string | null;
+    }
   | { id: string; role: "agent"; kind: "error"; text: string };
 
 let idCounter = 0;
 const nextId = () => `m${Date.now()}_${idCounter++}`;
 
-const GREETING = "일정이 담긴 사진을 올리거나, 텍스트로 알려주세요.";
+const GREETING = "일정이 담긴 사진이나 텍스트, 또는 하루 일과를 알려주세요.";
 
 export function AgentSheet({
   open,
   onClose,
   workspaceId,
   members,
+  currentMemberId,
 }: {
   open: boolean;
   onClose: () => void;
   workspaceId: string;
   members: AgentMemberOption[];
+  currentMemberId: string;
 }) {
   const [mounted, setMounted] = useState(open);
   const [fullscreen, setFullscreen] = useState(false);
@@ -92,7 +106,14 @@ export function AgentSheet({
         replaceMessage(loadingId, { id: loadingId, role: "agent", kind: "text", text: res.message });
       } else {
         setPendingThreadId(null);
-        replaceMessage(loadingId, { id: loadingId, role: "agent", kind: "cards", schedules: res.schedules });
+        replaceMessage(loadingId, {
+          id: loadingId,
+          role: "agent",
+          kind: "cards",
+          schedules: res.schedules,
+          routines: res.routines,
+          routineTargetHint: res.target_hint,
+        });
       }
     } catch {
       replaceMessage(loadingId, {
@@ -180,6 +201,7 @@ export function AgentSheet({
                 message={m}
                 workspaceId={workspaceId}
                 members={members}
+                currentMemberId={currentMemberId}
                 onCloseSheet={onClose}
                 onCardsProcessed={handleCardsProcessed}
               />
@@ -232,12 +254,14 @@ function ChatBubble({
   message,
   workspaceId,
   members,
+  currentMemberId,
   onCloseSheet,
   onCardsProcessed,
 }: {
   message: ChatMessage;
   workspaceId: string;
   members: AgentMemberOption[];
+  currentMemberId: string;
   onCloseSheet: () => void;
   onCardsProcessed: (summary: { registered: number; skipped: number }) => void;
 }) {
@@ -277,7 +301,10 @@ function ChatBubble({
       <ConfirmCards
         workspaceId={workspaceId}
         members={members}
+        currentMemberId={currentMemberId}
         schedules={message.schedules}
+        routines={message.routines}
+        routineTargetHint={message.routineTargetHint}
         onAllProcessed={onCardsProcessed}
       />
     );

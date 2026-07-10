@@ -10,7 +10,7 @@ import { TodoSheet } from "@/components/schedule/TodoSheet";
 import type { WeatherData } from "@/lib/weather";
 
 interface MemberOption {
-  user_id: string;
+  id: string;
   display_name: string;
 }
 

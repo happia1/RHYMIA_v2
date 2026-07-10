@@ -2,18 +2,12 @@ import Link from "next/link";
 import { IconArrowLeft } from "@tabler/icons-react";
 import { requireWorkspaceContext } from "@/lib/workspace";
 import { mapWorkspaceMembers } from "@/lib/members";
-import { Avatar } from "@/components/ui/Avatar";
 import { CopyLinkButton } from "@/components/ui/CopyLinkButton";
 import { AvatarUploader } from "@/components/settings/AvatarUploader";
 import { ThemeToggle } from "@/components/settings/ThemeToggle";
 import { ShareLinkSection } from "@/components/settings/ShareLinkSection";
+import { MemberList } from "@/components/settings/MemberList";
 import { signOut } from "./actions";
-
-const ROLE_LABEL: Record<string, string> = {
-  owner: "오너",
-  member: "멤버",
-  junior: "주니어",
-};
 
 export default async function SettingsPage() {
   const { supabase, user, workspaceId, role } = await requireWorkspaceContext();
@@ -22,7 +16,9 @@ export default async function SettingsPage() {
     supabase.from("family_workspace").select("*").eq("id", workspaceId).single(),
     supabase
       .from("workspace_member")
-      .select("user_id, display_name, role, users(avatar_color, avatar_text_color, avatar_image_url)")
+      .select(
+        "id, user_id, member_type, display_name, name, avatar_color, avatar_image_url, birth_year, role, users(avatar_color, avatar_text_color, avatar_image_url)"
+      )
       .eq("workspace_id", workspaceId)
       .order("role", { ascending: true }),
   ]);
@@ -67,22 +63,7 @@ export default async function SettingsPage() {
 
       <section className="flex flex-col gap-3">
         <span className="text-[12px] font-medium text-stone">가족 구성원</span>
-        <div className="flex flex-col gap-3 rounded-2xl border border-border-light bg-surface p-4">
-          {members.map((m) => (
-            <div key={m.user_id} className="flex items-center gap-3">
-              <Avatar
-                name={m.display_name}
-                color={m.avatar_color}
-                textColor={m.avatar_text_color}
-                imageUrl={m.avatar_image_url}
-              />
-              <span className="text-[14px] font-medium text-ink">{m.display_name}</span>
-              <span className="ml-auto text-[11px] text-stone">
-                {ROLE_LABEL[m.role] ?? m.role}
-              </span>
-            </div>
-          ))}
-        </div>
+        <MemberList workspaceId={workspaceId} members={members} />
         {role === "owner" && (
           <>
             <span className="text-[12px] text-stone">아래 링크로 가족을 초대하세요</span>

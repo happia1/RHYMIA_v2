@@ -7,8 +7,10 @@ import {
   IconToolsKitchen2,
   IconCalendar,
   IconLayoutBoard,
+  IconShoppingCart,
 } from "@tabler/icons-react";
 import { mirror } from "@/lib/homeTheme";
+import { useShoppingSheet } from "@/components/shopping/ShoppingSheetContext";
 
 const TABS = [
   { href: "/home", label: "홈", icon: IconHome },
@@ -19,6 +21,7 @@ const TABS = [
 
 export function DockBar() {
   const pathname = usePathname();
+  const { open } = useShoppingSheet();
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 flex h-[64px] items-center justify-around bg-cream">
@@ -37,6 +40,10 @@ export function DockBar() {
           </Link>
         );
       })}
+      <button onClick={open} className={`flex flex-col items-center gap-1 ${mirror.muted}`}>
+        <IconShoppingCart size={22} stroke={1.75} />
+        <span className="text-[11px] font-medium">장바구니</span>
+      </button>
     </nav>
   );
 }

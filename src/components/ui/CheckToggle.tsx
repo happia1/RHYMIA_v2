@@ -16,7 +16,7 @@ export function CheckToggle({
       type="button"
       onClick={onChange}
       className={`flex shrink-0 items-center justify-center rounded-full transition-colors ${
-        checked ? "bg-sage text-white" : "bg-[#E8E6E0] text-transparent"
+        checked ? "bg-sage text-white" : "bg-border-light text-transparent"
       }`}
       style={{ width: size, height: size }}
     >

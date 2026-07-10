@@ -142,6 +142,64 @@ export async function deleteFridgeItem(itemId: string) {
   revalidatePath("/food/add");
 }
 
+export async function createMealVote(workspaceId: string, date: string, candidates: string[]) {
+  const trimmed = candidates.map((c) => c.trim()).filter(Boolean);
+  if (trimmed.length < 2) return;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const { error } = await supabase.from("meal_vote").insert({
+    workspace_id: workspaceId,
+    date,
+    candidates: trimmed,
+    created_by: user.id,
+  });
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/home");
+  revalidatePath("/food");
+}
+
+export async function castMealVoteBallot(voteId: string, candidateIndex: number) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const { error } = await supabase
+    .from("meal_vote_ballot")
+    .upsert(
+      { vote_id: voteId, user_id: user.id, candidate_index: candidateIndex },
+      { onConflict: "vote_id,user_id" }
+    );
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/home");
+}
+
+/** 마감 시각을 정해두고 자동으로 닫는 백그라운드 잡이 없어, 가족 중 누구나 이 액션으로
+ * 수동 마감하면 그 시점의 최다득표 메뉴를 등록 제안 카드로 보여주는 방식으로 대체한다. */
+export async function closeMealVote(voteId: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("meal_vote").update({ is_closed: true }).eq("id", voteId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/home");
+}
+
+export async function deleteMealVote(voteId: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("meal_vote").delete().eq("id", voteId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/home");
+}
+
 export async function addMealComment(mealId: string, content: string) {
   const trimmed = content.trim();
   if (!trimmed) return;

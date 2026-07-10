@@ -16,7 +16,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from agent import run_agent, run_agent_resume
+from agent import run_agent, run_agent_resume, extract_text_from_image
 
 load_dotenv()
 
@@ -51,11 +51,11 @@ class ProcessScheduleRequest(BaseModel):
 
 @app.post(
     "/process-schedule",
-    summary="일정 파싱",
+    summary="일정/루틴 파싱",
     description=(
-        "사진 또는 텍스트로 일정을 추출합니다. "
-        "완료 시 { status: 'ok', schedules: [...] }, "
-        "날짜 등 정보가 부족하면 { status: 'need_input', message, thread_id }를 반환합니다. "
+        "사진 또는 텍스트로 일정 또는 반복되는 하루 일과(루틴)를 추출합니다. "
+        "완료 시 { status: 'ok', schedules: [...], routines: [...], target_hint }, "
+        "날짜/시간 등 정보가 부족하면 { status: 'need_input', message, thread_id }를 반환합니다. "
         "need_input 응답을 받으면 같은 thread_id와 user_reply로 다시 요청해 재개하세요."
     ),
 )
@@ -82,7 +82,41 @@ def process_schedule(body: ProcessScheduleRequest):
         return {"status": "need_input", "message": message, "thread_id": thread_id}
 
     schedules = result.get("schedules") or []
-    return {"status": "ok", "thread_id": thread_id, "schedules": schedules}
+    routines = result.get("routines") or []
+    target_hint = result.get("routine_target_hint")
+    return {
+        "status": "ok",
+        "thread_id": thread_id,
+        "schedules": schedules,
+        "routines": routines,
+        "target_hint": target_hint,
+    }
+
+
+class ExtractTextRequest(BaseModel):
+    image_base64: str = Field(..., description="이미지 base64 또는 data:image/...;base64,... 문자열")
+
+
+@app.post(
+    "/extract-text",
+    summary="이미지에서 텍스트 추출",
+    description=(
+        "메모/공지 작성 시 첨부한 이미지에서 읽을 수 있는 텍스트만 추출해 { text } 로 반환합니다. "
+        "일정/루틴 파싱과 달리 아무 스키마 변환 없이 텍스트 그대로 돌려주고, 결과는 저장하지 않습니다."
+    ),
+)
+def extract_text(body: ExtractTextRequest):
+    raw = (body.image_base64 or "").strip()
+    if not raw:
+        return {"text": ""}
+    image_path = raw if raw.startswith("data:") else f"data:image/png;base64,{raw}"
+
+    try:
+        text = extract_text_from_image(image_path)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"텍스트 추출 오류: {e}") from e
+
+    return {"text": text}
 
 
 @app.get("/health")

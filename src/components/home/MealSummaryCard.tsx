@@ -9,6 +9,8 @@ export interface MealSummaryItem extends Meal {
   participantNames: string[];
 }
 
+/** 홈은 "오늘 등록된 것만" 보여주는 상태판 — 끼니가 없으면 아무것도 표시하지 않는다.
+ * 메뉴를 고르는 경험(빈 상태/추천/게임)은 식탁 탭이 전담한다. */
 export function MealSummaryCard({ meals }: { meals: MealSummaryItem[] }) {
   const [index, setIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -20,11 +22,7 @@ export function MealSummaryCard({ meals }: { meals: MealSummaryItem[] }) {
   };
 
   if (meals.length === 0) {
-    return (
-      <Link href="/food" className={`text-[15px] ${mirror.muted}`}>
-        등록된 끼니가 없어요
-      </Link>
-    );
+    return null;
   }
 
   return (

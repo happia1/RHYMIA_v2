@@ -20,9 +20,7 @@ export function TodayEvents({
 
   return (
     <div className="flex flex-col gap-row">
-      {todaySchedules.length === 0 ? (
-        <p className={`text-[13px] ${mirror.muted}`}>오늘 등록된 일정이 없어요</p>
-      ) : (
+      {todaySchedules.length > 0 && (
         <div className="flex flex-col gap-row">
           {visible.map((s) => (
             <div key={s.id} className="flex items-center gap-2">

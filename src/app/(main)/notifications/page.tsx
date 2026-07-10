@@ -16,12 +16,16 @@ export default async function NotificationsPage() {
       .order("created_at", { ascending: false }),
     supabase
       .from("workspace_member")
-      .select("user_id, display_name, users(avatar_color, avatar_text_color, avatar_image_url)")
+      .select(
+        "id, user_id, member_type, display_name, name, avatar_color, avatar_image_url, birth_year, users(avatar_color, avatar_text_color, avatar_image_url)"
+      )
       .eq("workspace_id", workspaceId),
   ]);
 
   const membersById = Object.fromEntries(
-    mapWorkspaceMembers(memberRows ?? []).map((m) => [m.user_id, m])
+    mapWorkspaceMembers(memberRows ?? [])
+      .filter((m) => m.user_id)
+      .map((m) => [m.user_id as string, m])
   );
 
   return (
@@ -52,7 +56,7 @@ export default async function NotificationsPage() {
                 <span className="font-medium">{author?.display_name ?? "가족"}</span>
                 <span>· {formatPostTimestamp(n.created_at)}</span>
               </div>
-              <p className="line-clamp-2 text-[13px] text-ink">{n.content}</p>
+              <p className="line-clamp-2 whitespace-pre-wrap text-[13px] text-ink">{n.content}</p>
               <span className="mt-1 self-end text-[12px] font-medium text-ocean">
                 게시판에서 보기
               </span>

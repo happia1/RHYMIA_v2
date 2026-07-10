@@ -7,6 +7,7 @@ import { mirror } from "@/lib/homeTheme";
 import { SectionLabel } from "@/components/home/SectionLabel";
 import { AddPostSheet } from "@/components/home/BoardSection";
 import { ShoppingQuickAddSheet } from "@/components/home/ShoppingQuickAddSheet";
+import { useShoppingSheet } from "@/components/shopping/ShoppingSheetContext";
 import type { Notice, ShoppingItem } from "@/types";
 import type { WorkspaceMemberInfo } from "@/lib/members";
 
@@ -17,17 +18,20 @@ function daysLeft(expireAt: string | null) {
 
 export function BoardPreview({
   workspaceId,
+  currentUserId,
   stickers,
   shoppingItems,
   membersById,
 }: {
   workspaceId: string;
+  currentUserId: string;
   stickers: Notice[];
   shoppingItems: ShoppingItem[];
   membersById: Record<string, WorkspaceMemberInfo>;
 }) {
   const [addingSticker, setAddingSticker] = useState(false);
   const [addingShopping, setAddingShopping] = useState(false);
+  const { open: openShoppingSheet } = useShoppingSheet();
 
   const activeShopping = shoppingItems.filter((i) => !i.is_purchased);
   const previewShopping = activeShopping.slice(0, 4);
@@ -36,12 +40,12 @@ export function BoardPreview({
   return (
     <div className="grid grid-cols-2 gap-6">
       <div className="flex flex-col gap-row">
-        <SectionLabel icon={IconNote} onAdd={() => setAddingSticker(true)} addLabel="스티커 작성">
-          스티커
+        <SectionLabel icon={<IconNote size={14} />} onAdd={() => setAddingSticker(true)} addLabel="하고싶은 말 작성">
+          하고싶은 말
         </SectionLabel>
         <Link href="/board" className="flex flex-col gap-row pl-section-indent">
           {stickers.length === 0 && (
-            <p className={`text-[12px] ${mirror.muted}`}>등록된 스티커가 없어요</p>
+            <p className={`text-[12px] ${mirror.muted}`}>등록된 하고싶은 말이 없어요</p>
           )}
           {stickers.slice(0, 3).map((s) => {
             const author = membersById[s.created_by ?? ""];
@@ -63,13 +67,16 @@ export function BoardPreview({
 
       <div className="flex flex-col gap-row">
         <SectionLabel
-          icon={IconShoppingCart}
+          icon={<IconShoppingCart size={14} />}
           onAdd={() => setAddingShopping(true)}
           addLabel="장바구니 추가"
         >
           장바구니
         </SectionLabel>
-        <Link href="/board" className="flex flex-col gap-row pl-section-indent">
+        <button
+          onClick={openShoppingSheet}
+          className="flex flex-col gap-row pl-section-indent text-left"
+        >
           {previewShopping.length === 0 ? (
             <p className={`text-[12px] ${mirror.muted}`}>장바구니가 비어있어요</p>
           ) : (
@@ -85,13 +92,14 @@ export function BoardPreview({
           {restCount > 0 && (
             <span className={`text-[12px] ${mirror.muted}`}>외 {restCount}개</span>
           )}
-        </Link>
+        </button>
       </div>
 
       <AddPostSheet
         open={addingSticker}
         onClose={() => setAddingSticker(false)}
         workspaceId={workspaceId}
+        currentUserId={currentUserId}
         fixedType="sticky"
       />
       <ShoppingQuickAddSheet

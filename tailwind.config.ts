@@ -36,6 +36,10 @@ const config: Config = {
         board: "3fr 2fr",
         mirror: "1fr 1.4fr 1fr",
       },
+      fontFamily: {
+        // "하고싶은 말"(스티키노트) 전용 손글씨 폰트 — src/app/layout.tsx에서 로드
+        handwriting: ["var(--font-handwriting)"],
+      },
       spacing: {
         section: "30px",
         "label-gap": "12px",

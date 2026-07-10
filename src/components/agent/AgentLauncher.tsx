@@ -9,9 +9,11 @@ import type { AgentMemberOption } from "@/lib/agentApi";
 export function AgentLauncher({
   workspaceId,
   members,
+  currentMemberId,
 }: {
   workspaceId: string;
   members: AgentMemberOption[];
+  currentMemberId: string;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -31,6 +33,7 @@ export function AgentLauncher({
         onClose={() => setOpen(false)}
         workspaceId={workspaceId}
         members={members}
+        currentMemberId={currentMemberId}
       />
     </>
   );

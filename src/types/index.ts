@@ -22,12 +22,22 @@ export interface User {
   created_at: string;
 }
 
+export type MemberType = "account" | "managed";
+
 export interface WorkspaceMember {
   id: string;
   workspace_id: string;
-  user_id: string;
+  /** account 멤버만 존재, managed(계정 없는 관리 멤버)는 null */
+  user_id: string | null;
   role: string;
+  member_type: MemberType;
   display_name: string | null;
+  /** managed 멤버 전용 이름. account 멤버는 display_name을 사용. */
+  name: string | null;
+  /** managed 멤버 전용 아바타. account 멤버는 users.avatar_color/avatar_image_url을 사용. */
+  avatar_color: string | null;
+  avatar_image_url: string | null;
+  birth_year: number | null;
   joined_at: string;
 }
 
@@ -48,7 +58,8 @@ export interface RoutineBlock {
 
 export interface Routine {
   id: string;
-  user_id: string;
+  /** workspace_member.id — 2026-07-09 이전엔 user_id였음 (add_managed_members.sql 참고) */
+  member_id: string;
   day_of_week: number;
   semester: string;
   blocks: RoutineBlock[];
@@ -66,6 +77,7 @@ export interface Schedule {
   time_start: string | null;
   time_end: string | null;
   author_id: string | null;
+  /** workspace_member.id 배열 (2026-07-09 이전엔 users.id 배열이었음) */
   target_members: string[];
   is_shared: boolean;
   keyword_main: string | null;
@@ -167,6 +179,27 @@ export interface MealComment {
   created_at: string;
 }
 
+/** "대신 골라줘" 가족 투표 모드 — 2026-07-11 추가 */
+export interface MealVoteBallot {
+  id: string;
+  vote_id: string;
+  user_id: string;
+  candidate_index: number;
+  created_at: string;
+}
+
+export interface MealVote {
+  id: string;
+  workspace_id: string;
+  date: string;
+  candidates: string[];
+  deadline: string | null;
+  is_closed: boolean;
+  created_by: string | null;
+  created_at: string;
+  meal_vote_ballot?: MealVoteBallot[];
+}
+
 export interface FridgeItem {
   id: string;
   workspace_id: string;
@@ -187,6 +220,8 @@ export interface ShoppingItem {
   purchased_by: string | null;
   linked_schedule_id: string | null;
   receipt_image_url: string | null;
+  /** "장보기 완료"로 묶인 expense — 2026-07-11 추가. NULL이면 아직 그룹핑되지 않은 구매 완료 항목 */
+  expense_id: string | null;
 }
 
 export interface Notice {
@@ -196,6 +231,8 @@ export interface Notice {
   title: string | null;
   content: string;
   color: string;
+  /** "하고싶은 말"(sticky) 전용 — 2026-07-11 추가. memo/notice 첨부 이미지는 Gemini 텍스트 추출용으로만 쓰고 저장하지 않음 */
+  image_url: string | null;
   is_pinned: boolean;
   expire_at: string | null;
   created_by: string | null;
@@ -218,6 +255,8 @@ export interface Expense {
   date: string;
   memo: string | null;
   linked_schedule_id: string | null;
+  /** 2026-07-11 추가 — "장보기 완료" 시 첨부한 영수증 사진. OCR 파싱은 P2 범위 밖, URL 저장만 */
+  receipt_image_url: string | null;
   created_by: string | null;
   created_at: string;
 }

@@ -10,7 +10,7 @@ import { KEYWORD_GROUPS } from "@/lib/scheduleKeywords";
 import type { NotifyOffset } from "@/types";
 
 interface MemberOption {
-  user_id: string;
+  id: string;
   display_name: string;
 }
 
@@ -59,9 +59,9 @@ export function AddEventSheet({
 
   const activeGroup = KEYWORD_GROUPS.find((g) => g.main === keywordMain);
 
-  const toggleTarget = (userId: string) => {
+  const toggleTarget = (memberId: string) => {
     setTargets((prev) =>
-      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
+      prev.includes(memberId) ? prev.filter((id) => id !== memberId) : [...prev, memberId]
     );
   };
 
@@ -199,10 +199,10 @@ export function AddEventSheet({
             </button>
             {members.map((m) => (
               <button
-                key={m.user_id}
-                onClick={() => toggleTarget(m.user_id)}
+                key={m.id}
+                onClick={() => toggleTarget(m.id)}
                 className={`rounded-full px-3 py-1.5 text-[12px] font-medium ${
-                  targets.includes(m.user_id) ? "bg-ink text-cream" : "bg-cream text-stone"
+                  targets.includes(m.id) ? "bg-ink text-cream" : "bg-cream text-stone"
                 }`}
               >
                 {m.display_name}

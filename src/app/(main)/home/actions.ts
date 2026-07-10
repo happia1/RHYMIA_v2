@@ -21,7 +21,6 @@ export async function addShoppingItem(workspaceId: string, name: string) {
   if (error) throw new Error(error.message);
 
   revalidatePath("/home");
-  revalidatePath("/board");
 }
 
 export async function toggleShoppingPurchased(itemId: string, purchased: boolean) {
@@ -43,7 +42,6 @@ export async function toggleShoppingPurchased(itemId: string, purchased: boolean
   if (error) throw new Error(error.message);
 
   revalidatePath("/home");
-  revalidatePath("/board");
 }
 
 export async function deleteShoppingItem(itemId: string) {
@@ -51,7 +49,6 @@ export async function deleteShoppingItem(itemId: string) {
   const { error } = await supabase.from("shopping_item").delete().eq("id", itemId);
   if (error) throw new Error(error.message);
   revalidatePath("/home");
-  revalidatePath("/board");
 }
 
 export async function toggleMealParticipation(

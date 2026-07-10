@@ -3,6 +3,7 @@ import { requireWorkspaceContext } from "@/lib/workspace";
 import { toDateStr, getWeekDates } from "@/lib/date";
 import { getCurrentBlock, STATUS_EMOJI, DEFAULT_STATUS_EMOJI } from "@/lib/routineUtils";
 import { getCurrentWeather } from "@/lib/weather";
+import { mapWorkspaceMembers } from "@/lib/members";
 import { ScheduleTabs } from "@/components/schedule/ScheduleTabs";
 import { EventFilters } from "@/components/schedule/EventFilters";
 import { MonthView } from "@/components/schedule/MonthView";
@@ -63,37 +64,32 @@ export default async function SchedulePage({
 
   const today = new Date();
 
-  const [{ data: memberRows }, { data: scheduleRows }, weather, { data: myRoutineRows }] =
-    await Promise.all([
-      supabase
-        .from("workspace_member")
-        .select("user_id, display_name, users(avatar_color, avatar_text_color)")
-        .eq("workspace_id", workspaceId),
-      supabase
-        .from("schedule")
-        .select("*")
-        .eq("workspace_id", workspaceId)
-        .gte("date_start", range.start)
-        .lte("date_start", range.end)
-        .or(`is_shared.eq.true,author_id.eq.${user.id}`)
-        .order("date_start", { ascending: true }),
-      getCurrentWeather(),
-      supabase
-        .from("routine")
-        .select("blocks")
-        .eq("user_id", user.id)
-        .eq("day_of_week", today.getDay()),
-    ]);
+  const [{ data: memberRows }, { data: scheduleRows }, weather] = await Promise.all([
+    supabase
+      .from("workspace_member")
+      .select(
+        "id, user_id, member_type, display_name, name, avatar_color, avatar_image_url, birth_year, users(avatar_color, avatar_text_color, avatar_image_url)"
+      )
+      .eq("workspace_id", workspaceId),
+    supabase
+      .from("schedule")
+      .select("*")
+      .eq("workspace_id", workspaceId)
+      .gte("date_start", range.start)
+      .lte("date_start", range.end)
+      .or(`is_shared.eq.true,author_id.eq.${user.id}`)
+      .order("date_start", { ascending: true }),
+    getCurrentWeather(),
+  ]);
 
-  const members = (memberRows ?? []).map((m) => {
-    const u = Array.isArray(m.users) ? m.users[0] : m.users;
-    return {
-      user_id: m.user_id as string,
-      display_name: m.display_name ?? "가족",
-      avatar_color: u?.avatar_color ?? "#E1F5EE",
-      avatar_text_color: u?.avatar_text_color ?? "#0F6E56",
-    };
-  });
+  const members = mapWorkspaceMembers(memberRows ?? []);
+  const myMember = members.find((m) => m.user_id === user.id);
+
+  const { data: myRoutineRows } = await supabase
+    .from("routine")
+    .select("blocks")
+    .eq("member_id", myMember?.id ?? "")
+    .eq("day_of_week", today.getDay());
 
   let schedules = (scheduleRows ?? []) as Schedule[];
 
@@ -122,7 +118,7 @@ export default async function SchedulePage({
     ? `${STATUS_EMOJI[(myBlock as { status: string }).status] ?? DEFAULT_STATUS_EMOJI} ${(myBlock as { label: string }).label}`
     : `${DEFAULT_STATUS_EMOJI} 쉬는 중`;
 
-  const membersById = Object.fromEntries(members.map((m) => [m.user_id, m]));
+  const membersById = Object.fromEntries(members.map((m) => [m.id, m]));
 
   return (
     <div className="flex flex-col gap-section px-4 pb-24 pt-6">
@@ -138,10 +134,15 @@ export default async function SchedulePage({
       <div className="h-px w-full bg-border-light" />
 
       <section className="flex flex-col gap-label-gap">
-        <SectionLabel icon={IconCalendar}>{VIEW_LABEL[view]}</SectionLabel>
+        <SectionLabel icon={<IconCalendar size={14} />}>{VIEW_LABEL[view]}</SectionLabel>
         <div className="pl-section-indent">
           {view === "month" && (
-            <MonthView anchorDate={anchorStr} schedules={schedules} membersById={membersById} />
+            <MonthView
+              anchorDate={anchorStr}
+              schedules={schedules}
+              membersById={membersById}
+              workspaceId={workspaceId}
+            />
           )}
           {view === "week" && (
             <WeekView
@@ -163,7 +164,7 @@ export default async function SchedulePage({
         autoOpen={params.new === "1"}
         weather={weather}
       />
-      <AgentLauncher workspaceId={workspaceId} members={members} />
+      <AgentLauncher workspaceId={workspaceId} members={members} currentMemberId={myMember?.id ?? ""} />
     </div>
   );
 }

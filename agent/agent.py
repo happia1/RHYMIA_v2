@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Fridge 일정 파싱 에이전트 (LangGraph 기반)
-Plan -> Execute -> (여러 일정: PrepareMulti | 단일: Refine -> ReturnSingle) 구조.
-날짜가 없으면 Refine에서 interrupt로 멈추고, 사용자 답변으로 재개(resume)한다.
-DB 저장은 하지 않는다 — 파싱 결과만 반환하고, 실제 저장은 Next.js의 createSchedule
+Fridge 일정/루틴 파싱 에이전트 (LangGraph 기반)
+Plan -> ClassifyIntent -> Execute -> (여러 일정: RefineRoutine | 단일: RefineSchedule -> RefineRoutine) -> Finalize 구조.
+날짜(일정)/시간(루틴 블록)이 없으면 각 Refine 노드에서 interrupt로 멈추고, 사용자 답변으로 재개(resume)한다.
+DB 저장은 하지 않는다 — 파싱 결과만 반환하고, 실제 저장은 Next.js의 createSchedule/upsertRoutine
 서버 액션이 사용자 확인(등록 버튼) 후에 수행한다.
 """
 
@@ -38,13 +38,19 @@ class AgentState(TypedDict, total=False):
     image_path: Optional[str]  # 로컬 파일 경로 또는 data:image/...;base64,... URL
     input_type: Optional[Literal["image", "text"]]
 
+    intent: Optional[Literal["schedule", "routine", "mixed"]]
+
     extracted: Optional[dict]        # 단일 일정 (Fridge schedule 스키마)
     extracted_list: Optional[list]   # 여러 일정 (이미지 표/목록 등)
+
+    extracted_routines: Optional[list]     # 추출된 루틴 그룹들 (정규화됨)
+    routine_target_hint: Optional[str]
 
     refinement_question: Optional[str]
     user_reply: Optional[str]
 
     schedules: Optional[list]        # 최종 반환값 (항상 배열)
+    routines: Optional[list]         # 최종 반환값 (항상 배열)
 
 
 # ---------- Fridge schedule 키워드 그룹 (src/lib/scheduleKeywords.ts와 동일하게 유지) ----------
@@ -56,6 +62,21 @@ KEYWORD_GROUPS: dict[str, list[str]] = {
     "건강": ["병원", "검진", "예방접종"],
     "기타": [],
 }
+
+# 루틴 상태 어휘 (src/lib/routineUtils.ts의 STATUS_OPTIONS와 동일하게 유지 — --routine-* 색상 변수와 매핑됨)
+ROUTINE_STATUS_OPTIONS: list[str] = ["업무", "수업", "운동", "공부", "휴식", "취침", "이동", "커스텀"]
+DEFAULT_ROUTINE_STATUS = "커스텀"
+
+# 의도 분류 신호 — 루틴 신호가 하나라도 있으면 "routine"(또는 일정 신호와 겹치면 "mixed"),
+# 없으면 항상 "schedule"로 판단해 기존 일정 파이프라인의 동작을 그대로 보존한다.
+ROUTINE_SIGNALS = [
+    "매주", "평일", "매일", "하루 일과", "하루일과", "루틴", "일과표",
+    "기상", "등원", "하원", "등교", "하교", "출근", "퇴근", "취침",
+]
+SCHEDULE_DATE_PATTERNS = [
+    r"내일", r"모레", r"글피", r"다음\s*주", r"다음\s*달",
+    r"\d{1,2}\s*월\s*\d{1,2}\s*일", r"\d{1,2}[/.\-]\d{1,2}",
+]
 
 
 def _default_schedule() -> dict:
@@ -232,15 +253,19 @@ def _response_text(response) -> str:
     return str(content or "").strip()
 
 
-def _parse_schedule_json(text: str, now: datetime) -> dict | list:
-    """LLM 출력에서 JSON(단일 객체 또는 배열)만 골라 파싱 후 정규화. 실패하면 기본값."""
+def _strip_json_fence(text: str) -> str:
     stripped = text
     if "```" in stripped:
         match = re.search(r"```(?:json)?\s*([\s\S]*?)```", stripped)
         if match:
             stripped = match.group(1).strip()
+    return stripped
+
+
+def _parse_schedule_json(text: str, now: datetime) -> dict | list:
+    """LLM 출력에서 JSON(단일 객체 또는 배열)만 골라 파싱 후 정규화. 실패하면 기본값."""
     try:
-        data = json.loads(stripped)
+        data = json.loads(_strip_json_fence(text))
         if isinstance(data, list):
             return [_normalize_schedule(item, now) for item in data if isinstance(item, dict)]
         if isinstance(data, dict):
@@ -328,6 +353,32 @@ def _image_path_to_data_url(image_path: str) -> Optional[str]:
     return f"data:{mime};base64,{b64}"
 
 
+def extract_text_from_image(image_path: str) -> str:
+    """이미지에서 읽을 수 있는 텍스트만 그대로 추출 (메모/공지 내용란 자동 채우기용, DB 저장 없음)."""
+    image_url = _image_path_to_data_url(image_path)
+    if not image_url:
+        return ""
+
+    llm = ChatGoogleGenerativeAI(
+        model=MODEL_NAME,
+        temperature=0,
+        google_api_key=os.getenv("GEMINI_API_KEY"),
+    )
+    instruction = (
+        "아래 이미지에서 읽을 수 있는 텍스트를 최대한 원문 그대로 추출하세요. "
+        "설명, 마크다운, 따옴표 없이 추출된 텍스트만 출력하세요. "
+        "읽을 수 있는 텍스트가 없으면 빈 문자열만 출력하세요."
+    )
+    message = HumanMessage(
+        content=[
+            {"type": "text", "text": instruction},
+            {"type": "image_url", "image_url": {"url": image_url}},
+        ]
+    )
+    response = llm.invoke([message])
+    return _response_text(response)
+
+
 def _extract_from_image(image_path: str, user_text: str, now: datetime) -> dict | list:
     image_url = _image_path_to_data_url(image_path)
     if not image_url:
@@ -352,10 +403,179 @@ def _extract_from_image(image_path: str, user_text: str, now: datetime) -> dict 
     return _parse_schedule_json(_response_text(response), now)
 
 
+# ---------- 의도 분류 (일정 vs 루틴) ----------
+def _classify_intent(text: str, has_image: bool) -> Literal["schedule", "routine", "mixed"]:
+    """루틴 신호가 전혀 없으면 항상 'schedule' — 기존 일정 파이프라인의 동작을 100% 보존한다.
+    이미지 입력은 루틴(반복 일과)을 아직 지원하지 않아 항상 'schedule'로 처리한다."""
+    if has_image:
+        return "schedule"
+    s = text or ""
+    has_routine = any(sig in s for sig in ROUTINE_SIGNALS)
+    if not has_routine:
+        return "schedule"
+    has_schedule = any(re.search(p, s) for p in SCHEDULE_DATE_PATTERNS)
+    return "mixed" if has_schedule else "routine"
+
+
+# ---------- 루틴 추출/정규화 ----------
+def _routine_status_guide() -> str:
+    return ", ".join(ROUTINE_STATUS_OPTIONS)
+
+
+def _build_routine_instruction(now: datetime) -> str:
+    weekdays = "월화수목금토일"
+    today_label = f"{now.year}년 {now.month}월 {now.day}일 ({weekdays[now.weekday()]}요일)"
+    return f"""오늘은 {today_label}입니다. 아래 텍스트에서 반복되는 하루 일과(루틴)를 추출해 JSON **객체 하나**로만 답하세요.
+
+출력 형식:
+{{
+  "routines": [
+    {{
+      "days": [0~6 정수 배열. 0=일요일, 1=월요일, ..., 6=토요일. "매일"→[0,1,2,3,4,5,6], "평일"→[1,2,3,4,5], "주말"→[0,6], 특정 요일만 언급되면 해당 요일만. 요일 언급이 전혀 없으면 빈 배열 []],
+      "blocks": [
+        {{
+          "start": "HH:MM"(24시간제) 또는 알 수 없으면 null,
+          "end": "HH:MM"(24시간제) 또는 알 수 없으면 null,
+          "status": "다음 중 하나만: {_routine_status_guide()}. 등원/하원/통근처럼 이동이 핵심이면 '이동', 어디에도 맞지 않으면 '커스텀'",
+          "label": "활동 이름 그대로 (예: 기상, 등원준비, 운동, 하원 픽업, 저녁, 취침 준비)",
+          "memo": "추가로 언급된 세부사항, 없으면 null"
+        }}
+      ]
+    }}
+  ],
+  "target_hint": "이 루틴이 누구의 것인지 짐작되는 짧은 표현 (예: 본인, 첫째, 둘째). 알 수 없으면 null"
+}}
+
+시간 처리 규칙 (중요):
+- "7시부터 8시까지"처럼 범위가 있으면 그대로 start/end에 넣으세요.
+- "7시 기상", "6시 저녁"처럼 **시점 하나만** 언급된 활동은 그 시각을 start로, start의 10분 뒤를 end로 설정하세요 (예: "7시 기상" → start "07:00", end "07:10"). 이런 경우는 시각이 명확하므로 null로 두면 안 됩니다.
+- "오전에 운동"처럼 구체적 시각이 **전혀** 없는 경우에만 start와 end를 둘 다 null로 남기세요. 짐작해서 채우지 마세요.
+- 텍스트에 명시적으로 언급된 활동만 블록으로 만드세요. "~하다가", "~까지 쉬고" 같은 언급되지 않은 빈 시간대는 절대 블록으로 만들지 마세요.
+
+같은 텍스트 안에서 요일 그룹이 다르면(예: "평일은 이렇고 주말은 저렇고") routines 배열에 각각 별도 객체로 나누세요.
+JSON 외의 설명은 절대 출력하지 마세요."""
+
+
+def _normalize_days(raw: object) -> list[int]:
+    if not isinstance(raw, list):
+        return []
+    days: set[int] = set()
+    for item in raw:
+        try:
+            d = int(item)
+        except (TypeError, ValueError):
+            continue
+        if 0 <= d <= 6:
+            days.add(d)
+    return sorted(days)
+
+
+def _normalize_routine_block(raw: object) -> Optional[dict]:
+    if not isinstance(raw, dict):
+        return None
+    label = str(raw.get("label") or "").strip()
+    if not label:
+        return None
+
+    start_raw = raw.get("start")
+    end_raw = raw.get("end")
+    start = _normalize_time_str(str(start_raw)) if start_raw else None
+    end = _normalize_time_str(str(end_raw)) if end_raw else None
+
+    status = str(raw.get("status") or "").strip()
+    if status not in ROUTINE_STATUS_OPTIONS:
+        status = DEFAULT_ROUTINE_STATUS
+
+    memo_raw = raw.get("memo")
+    memo = str(memo_raw).strip() if memo_raw else None
+
+    return {"start": start, "end": end, "status": status, "label": label, "memo": memo}
+
+
+def _normalize_routine_group(raw: object) -> Optional[dict]:
+    if not isinstance(raw, dict):
+        return None
+    blocks_raw = raw.get("blocks") or []
+    blocks = [b for b in (_normalize_routine_block(x) for x in blocks_raw) if b]
+    if not blocks:
+        return None
+    return {"days": _normalize_days(raw.get("days")), "blocks": blocks}
+
+
+def _normalize_routines_payload(data: dict) -> dict:
+    routines_raw = data.get("routines")
+    routines: list[dict] = []
+    if isinstance(routines_raw, list):
+        for item in routines_raw:
+            group = _normalize_routine_group(item)
+            if group:
+                routines.append(group)
+
+    target_hint_raw = data.get("target_hint")
+    target_hint = str(target_hint_raw).strip() if target_hint_raw else None
+    return {"routines": routines, "target_hint": target_hint or None}
+
+
+def _parse_routine_json(text: str) -> dict:
+    try:
+        data = json.loads(_strip_json_fence(text))
+        if isinstance(data, dict):
+            return _normalize_routines_payload(data)
+    except (json.JSONDecodeError, TypeError):
+        pass
+    return {"routines": [], "target_hint": None}
+
+
+def _extract_routines_from_text(user_text: str, now: datetime) -> dict:
+    if not (user_text or "").strip():
+        return {"routines": [], "target_hint": None}
+
+    llm = ChatGoogleGenerativeAI(
+        model=MODEL_NAME,
+        temperature=0,
+        google_api_key=os.getenv("GEMINI_API_KEY"),
+    )
+    instruction = _build_routine_instruction(now)
+    prompt = f"{instruction}\n\n텍스트:\n{user_text}"
+    response = llm.invoke(prompt)
+    return _parse_routine_json(_response_text(response))
+
+
+# 루틴 refine에서 받은 답변("오전 10시부터 11시", "10:00~11:00" 등)에서 시각을 순서대로 추출
+_TIME_TOKEN = re.compile(
+    r"(오전|오후)?\s*(\d{1,2})\s*시\s*(?:(\d{1,2})\s*분)?|(\d{1,2}):(\d{2})"
+)
+
+
+def _extract_times_from_reply(text: str) -> list[str]:
+    times: list[str] = []
+    for m in _TIME_TOKEN.finditer(text or ""):
+        meridiem, hour_kr, minute_kr, hour_colon, minute_colon = m.groups()
+        if hour_colon is not None:
+            hour, minute = int(hour_colon), int(minute_colon)
+        else:
+            hour, minute = int(hour_kr), int(minute_kr or 0)
+            if meridiem == "오후" and hour < 12:
+                hour += 12
+            if meridiem == "오전" and hour == 12:
+                hour = 0
+        if 0 <= hour <= 23 and 0 <= minute <= 59:
+            times.append(f"{hour:02d}:{minute:02d}")
+    return times
+
+
+def _find_missing_time_block(routines: list[dict]) -> Optional[tuple[int, int]]:
+    """start/end가 둘 다 없는(=완전히 애매한) 첫 블록의 (routine index, block index)를 찾는다."""
+    for ri, group in enumerate(routines):
+        for bi, block in enumerate(group.get("blocks") or []):
+            if not block.get("start") and not block.get("end"):
+                return ri, bi
+    return None
+
+
 # ---------- 1) Plan 노드 ----------
 def plan_node(state: AgentState) -> AgentState:
     """입력이 이미지인지 텍스트인지 구분한다."""
-    user_text = state.get("user_text")
     image_path = state.get("image_path")
 
     if image_path and (image_path.startswith("data:") or os.path.isfile(image_path)):
@@ -368,50 +588,95 @@ def plan_node(state: AgentState) -> AgentState:
     return next_state
 
 
-# ---------- 2) Execute 노드 ----------
+# ---------- 2) ClassifyIntent 노드 ----------
+def classify_intent_node(state: AgentState) -> AgentState:
+    """일정인지 루틴인지(또는 둘 다인지) 판별한다. 재개(resume) 흐름에서는 재분류하지 않는다."""
+    if state.get("intent"):
+        return state
+
+    has_image = state.get("input_type") == "image"
+    intent = _classify_intent(state.get("user_text") or "", has_image)
+    _log_node("ClassifyIntent", {"intent": intent})
+    return {**state, "intent": intent}
+
+
+# ---------- 3) Execute 노드 ----------
 def execute_node(state: AgentState) -> AgentState:
-    """Gemini 2.5 Flash로 이미지 또는 텍스트에서 일정 정보를 추출한다."""
+    """Gemini 2.5 Flash로 이미지 또는 텍스트에서 일정/루틴 정보를 추출한다."""
     now = datetime.now()
     user_reply = state.get("user_reply")
 
-    # Refine에서 질문한 뒤 받은 답변으로 기존 추출 결과 보완 (재추출하지 않음)
+    # RefineSchedule에서 질문한 뒤 받은 답변으로 기존 추출 결과 보완 (재추출하지 않음)
     if user_reply and state.get("extracted"):
         extracted = _apply_user_reply_to_extracted(state["extracted"], user_reply, now)
         next_state = {**state, "extracted": extracted, "extracted_list": None}
         _log_node("Execute (사용자 답변 반영)", extracted)
         return next_state
 
+    intent = state.get("intent") or "schedule"
     image_path = state.get("image_path")
     user_text = state.get("user_text") or ""
     image_available = bool(image_path) and (
         image_path.startswith("data:") or os.path.isfile(image_path)
     )
 
-    raw = _extract_from_image(image_path, user_text, now) if image_available else _extract_from_text(user_text, now)
+    extracted: Optional[dict] = None
+    extracted_list: Optional[list] = None
+    extracted_routines: list = []
+    routine_target_hint: Optional[str] = None
 
-    if isinstance(raw, list) and len(raw) > 1:
-        next_state = {**state, "extracted": None, "extracted_list": raw}
-        _log_node("Execute (여러 일정)", raw)
-        return next_state
+    if intent in ("schedule", "mixed"):
+        raw = (
+            _extract_from_image(image_path, user_text, now)
+            if image_available
+            else _extract_from_text(user_text, now)
+        )
+        if isinstance(raw, list) and len(raw) > 1:
+            extracted_list = raw
+        else:
+            single = raw[0] if isinstance(raw, list) else raw
+            extracted = single or _default_schedule()
 
-    single = raw[0] if isinstance(raw, list) else raw
-    if not single:
-        single = _default_schedule()
-    next_state = {**state, "extracted": single, "extracted_list": None}
-    _log_node("Execute", single)
+    if intent in ("routine", "mixed") and not image_available:
+        routine_payload = _extract_routines_from_text(user_text, now)
+        extracted_routines = routine_payload.get("routines") or []
+        routine_target_hint = routine_payload.get("target_hint")
+
+    next_state = {
+        **state,
+        "extracted": extracted,
+        "extracted_list": extracted_list,
+        "extracted_routines": extracted_routines,
+        "routine_target_hint": routine_target_hint,
+    }
+    _log_node(
+        "Execute",
+        {
+            "intent": intent,
+            "extracted": extracted,
+            "extracted_list": extracted_list,
+            "extracted_routines": extracted_routines,
+            "routine_target_hint": routine_target_hint,
+        },
+    )
     return next_state
 
 
-def _route_after_execute(state: AgentState) -> Literal["refine", "prepare_multi"]:
+def _route_after_execute(state: AgentState) -> Literal["refine_schedule", "refine_routine"]:
     extracted_list = state.get("extracted_list") or []
-    return "prepare_multi" if len(extracted_list) > 1 else "refine"
+    # 이미지에서 여러 일정이 나온 경우는 기존 동작과 동일하게 날짜 refine을 건너뛴다.
+    return "refine_routine" if len(extracted_list) > 1 else "refine_schedule"
 
 
-# ---------- 3) Refine 노드 (Cycle: 날짜 없으면 사용자에게 질문) ----------
-def refine_node(state: AgentState) -> AgentState:
-    """date_start가 없으면 interrupt로 멈추고 사용자 입력을 기다린다 (Fridge schedule.date_start는 NOT NULL)."""
-    extracted = state.get("extracted") or _default_schedule()
-    _log_node("Refine (검사할 추출 데이터)", extracted)
+# ---------- 4) RefineSchedule 노드 (Cycle: 날짜 없으면 사용자에게 질문) ----------
+def refine_schedule_node(state: AgentState) -> AgentState:
+    """date_start가 없으면 interrupt로 멈추고 사용자 입력을 기다린다 (Fridge schedule.date_start는 NOT NULL).
+    이번 턴에 단일 일정이 추출되지 않았으면(루틴 전용 입력 등) 그대로 통과한다."""
+    extracted = state.get("extracted")
+    if extracted is None:
+        return {**state, "refinement_question": None}
+
+    _log_node("RefineSchedule (검사할 추출 데이터)", extracted)
 
     if extracted.get("date_start"):
         return {**state, "refinement_question": None}
@@ -428,19 +693,52 @@ def refine_node(state: AgentState) -> AgentState:
     }
 
 
-# ---------- 4) 여러 일정 / 단일 일정 반환 노드 ----------
-def prepare_multi_node(state: AgentState) -> AgentState:
-    """이미지에서 추출한 여러 일정을 그대로 반환 (저장은 사용자 확인 후 Next.js에서)."""
+# ---------- 5) RefineRoutine 노드 (Cycle: 완전히 애매한 블록마다 반복 질문) ----------
+def refine_routine_node(state: AgentState) -> AgentState:
+    """start/end가 둘 다 없는 블록이 남아있는 동안 하나씩 interrupt로 시간을 확인한다."""
+    routines = state.get("extracted_routines") or []
+    if not routines:
+        return {**state, "refinement_question": None}
+
+    while True:
+        found = _find_missing_time_block(routines)
+        if not found:
+            break
+        ri, bi = found
+        block = routines[ri]["blocks"][bi]
+        _log_node("RefineRoutine (시간 확인 필요)", block)
+
+        question = f"'{block.get('label') or '해당 활동'}'의 시작/종료 시간을 알려주세요. (예: 오전 10시~11시)"
+        reply = interrupt(question)
+        reply_str = reply if isinstance(reply, str) else str(reply or "")
+        times = _extract_times_from_reply(reply_str)
+
+        updated_block = dict(block)
+        if len(times) >= 2:
+            updated_block["start"], updated_block["end"] = times[0], times[1]
+        elif len(times) == 1:
+            updated_block["start"] = times[0]
+            updated_block["end"] = times[0]
+        routines[ri]["blocks"][bi] = updated_block
+
+    return {**state, "extracted_routines": routines, "refinement_question": None}
+
+
+# ---------- 6) Finalize 노드 ----------
+def finalize_node(state: AgentState) -> AgentState:
+    """단일/다중 일정과 루틴 추출 결과를 최종 반환 스키마로 모은다."""
     extracted_list = state.get("extracted_list") or []
-    next_state = {**state, "schedules": extracted_list}
-    _log_node("PrepareMulti", extracted_list)
-    return next_state
+    if extracted_list:
+        schedules = extracted_list
+    elif state.get("extracted") is not None:
+        schedules = [state["extracted"]]
+    else:
+        schedules = []
 
+    routines = state.get("extracted_routines") or []
 
-def return_single_node(state: AgentState) -> AgentState:
-    extracted = state.get("extracted") or _default_schedule()
-    next_state = {**state, "schedules": [extracted]}
-    _log_node("ReturnSingle", [extracted])
+    next_state = {**state, "schedules": schedules, "routines": routines}
+    _log_node("Finalize", {"schedules": schedules, "routines": routines})
     return next_state
 
 
@@ -449,19 +747,23 @@ def build_graph() -> StateGraph:
     builder = StateGraph(AgentState)
 
     builder.add_node("plan", plan_node)
+    builder.add_node("classify_intent", classify_intent_node)
     builder.add_node("execute", execute_node)
-    builder.add_node("refine", refine_node)
-    builder.add_node("return_single", return_single_node)
-    builder.add_node("prepare_multi", prepare_multi_node)
+    builder.add_node("refine_schedule", refine_schedule_node)
+    builder.add_node("refine_routine", refine_routine_node)
+    builder.add_node("finalize", finalize_node)
 
     builder.add_edge(START, "plan")
-    builder.add_edge("plan", "execute")
+    builder.add_edge("plan", "classify_intent")
+    builder.add_edge("classify_intent", "execute")
     builder.add_conditional_edges(
-        "execute", _route_after_execute, {"refine": "refine", "prepare_multi": "prepare_multi"}
+        "execute",
+        _route_after_execute,
+        {"refine_schedule": "refine_schedule", "refine_routine": "refine_routine"},
     )
-    builder.add_edge("refine", "return_single")
-    builder.add_edge("return_single", END)
-    builder.add_edge("prepare_multi", END)
+    builder.add_edge("refine_schedule", "refine_routine")
+    builder.add_edge("refine_routine", "finalize")
+    builder.add_edge("finalize", END)
 
     return builder
 
@@ -499,7 +801,11 @@ if __name__ == "__main__":
             print("사용법: python agent.py --resume <thread_id> <답변>")
             sys.exit(1)
         out = run_agent_resume(thread_id=sys.argv[2], user_reply=sys.argv[3])
-        print(json.dumps(out.get("schedules") or out.get("__interrupt__"), ensure_ascii=False, indent=2))
+        if out.get("__interrupt__"):
+            print("질문:", out["__interrupt__"])
+        else:
+            print("일정:", json.dumps(out.get("schedules"), ensure_ascii=False, indent=2))
+            print("루틴:", json.dumps(out.get("routines"), ensure_ascii=False, indent=2))
         sys.exit(0)
 
     text = sys.argv[1] if len(sys.argv) > 1 else "다음 주 화요일 오후 2시 소풍, 준비물: 도시락, 물"
@@ -508,4 +814,5 @@ if __name__ == "__main__":
         print("질문:", out["__interrupt__"])
         print("답변 후 재개: python agent.py --resume", thread_id, "<답변>")
     else:
-        print(json.dumps(out.get("schedules"), ensure_ascii=False, indent=2))
+        print("일정:", json.dumps(out.get("schedules"), ensure_ascii=False, indent=2))
+        print("루틴:", json.dumps(out.get("routines"), ensure_ascii=False, indent=2))

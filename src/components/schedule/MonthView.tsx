@@ -6,6 +6,9 @@ import { getKeywordColor } from "@/lib/scheduleKeywords";
 import { toDateStr } from "@/lib/date";
 import { getHoliday } from "@/lib/holidays";
 import { targetLabel, type MemberInfo } from "@/lib/scheduleTargets";
+import { ActivitySuggestionSection } from "@/components/schedule/ActivitySuggestionSection";
+import { ACTIVITY_SUGGESTION_POOL, pickActivityCandidates } from "@/lib/activitySuggestions";
+import { pickDeterministic } from "@/lib/randomPick";
 import type { Schedule } from "@/types";
 
 const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
@@ -14,10 +17,12 @@ export function MonthView({
   anchorDate,
   schedules,
   membersById,
+  workspaceId,
 }: {
   anchorDate: string;
   schedules: Schedule[];
   membersById: Record<string, MemberInfo>;
+  workspaceId: string;
 }) {
   const [selectedDate, setSelectedDate] = useState(anchorDate);
 
@@ -47,6 +52,11 @@ export function MonthView({
   }, [year, month]);
 
   const selectedSchedules = byDate[selectedDate] ?? [];
+  const activitySuggestion = useMemo(
+    () => pickDeterministic(ACTIVITY_SUGGESTION_POOL, selectedDate),
+    [selectedDate]
+  );
+  const activityCandidates = useMemo(() => pickActivityCandidates(selectedDate), [selectedDate]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -108,7 +118,15 @@ export function MonthView({
           <p className="pb-2 text-[12px] font-medium text-terra">{getHoliday(selectedDate)}</p>
         )}
         {selectedSchedules.length === 0 && (
-          <p className="py-4 text-center text-[13px] text-[var(--text-muted)]">일정이 없어요</p>
+          <>
+            <p className="py-4 text-center text-[13px] text-[var(--text-muted)]">일정이 없어요</p>
+            <ActivitySuggestionSection
+              workspaceId={workspaceId}
+              selectedDate={selectedDate}
+              suggestion={activitySuggestion}
+              candidatePool={activityCandidates}
+            />
+          </>
         )}
         {selectedSchedules.map((s, i) => (
           <div

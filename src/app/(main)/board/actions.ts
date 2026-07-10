@@ -13,6 +13,7 @@ export async function addNotice(
     color?: string;
     isPinned?: boolean;
     expireDays?: number;
+    imageUrl?: string | null;
   }
 ) {
   const content = input.content.trim();
@@ -35,6 +36,7 @@ export async function addNotice(
     title: input.title?.trim() || null,
     content,
     color: input.color ?? "#FFF9C4",
+    image_url: input.type === "sticky" ? input.imageUrl ?? null : null,
     is_pinned: input.isPinned ?? false,
     expire_at: expireAt,
     created_by: user.id,

@@ -14,25 +14,66 @@ export function tagOrderIndex(tag: string) {
   return idx === -1 ? MEAL_TAGS.length : idx;
 }
 
-export function findUpcomingMeal<T extends { date: string; tag: string }>(
-  meals: T[],
-  now = new Date()
-): T | null {
-  const todayStr = now.toISOString().slice(0, 10);
-  const currentHour = now.getHours() + now.getMinutes() / 60;
-
-  const sorted = [...meals].sort((a, b) => {
-    if (a.date !== b.date) return a.date < b.date ? -1 : 1;
-    return tagOrderIndex(a.tag) - tagOrderIndex(b.tag);
-  });
-
-  const upcoming = sorted.find((meal) => {
-    if (meal.date > todayStr) return true;
-    if (meal.date === todayStr) {
-      return (TAG_HOUR[meal.tag] ?? 0) >= currentHour;
+/** 현재 시각과 가장 가까운 끼니 태그 — "늘 먹던 걸로"/"대신 골라줘" 원클릭 등록 시 기본값으로 사용. */
+export function currentMealTag(now = new Date()): (typeof MEAL_TAGS)[number] {
+  const hour = now.getHours() + now.getMinutes() / 60;
+  let best: (typeof MEAL_TAGS)[number] = MEAL_TAGS[0];
+  let bestDiff = Infinity;
+  for (const tag of MEAL_TAGS) {
+    const diff = Math.abs(TAG_HOUR[tag] - hour);
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      best = tag;
     }
-    return false;
-  });
+  }
+  return best;
+}
 
-  return upcoming ?? sorted[0] ?? null;
+/** 과거 meal 기록에서 자주(그다음 최근) 등록한 메뉴 이름을 뽑는다 — "늘 먹던 걸로" 칩에 사용.
+ * main_menu는 쉼표로 여러 메뉴가 들어있을 수 있어 개별 메뉴 단위로 집계한다. */
+export function getFrequentMenus(
+  meals: { main_menu: string; date: string }[],
+  limit = 3
+): string[] {
+  const stats = new Map<string, { count: number; lastDate: string }>();
+  for (const m of meals) {
+    for (const menu of m.main_menu.split(",").map((s) => s.trim()).filter(Boolean)) {
+      const entry = stats.get(menu);
+      if (entry) {
+        entry.count += 1;
+        if (m.date > entry.lastDate) entry.lastDate = m.date;
+      } else {
+        stats.set(menu, { count: 1, lastDate: m.date });
+      }
+    }
+  }
+  return Array.from(stats.entries())
+    .sort((a, b) => b[1].count - a[1].count || (a[1].lastDate < b[1].lastDate ? 1 : -1))
+    .slice(0, limit)
+    .map(([menu]) => menu);
+}
+
+// 룰렛/이상형 월드컵 후보가 8개보다 적을 때 채워 넣는 기본 메뉴 풀 (등록 기록이 적은 초반에도 재미 요소가 동작하도록)
+export const DEFAULT_MENU_POOL = [
+  "된장찌개", "김치볶음밥", "제육볶음", "계란말이", "돈까스", "파스타",
+  "초밥", "고기구이", "치킨", "피자", "짜장면", "떡볶이", "김치찌개", "비빔밥",
+];
+
+// "오늘의 제안" 주말 활동 카드용 정적 큐레이션 풀 (DB 없이 클라이언트에서 랜덤 선택)
+export const WEEKEND_ACTIVITY_POOL = [
+  "동네 산책하기", "가족 보드게임 하기", "홈베이킹 도전하기", "근처 공원 나들이",
+  "다 같이 영화 보기", "방 대청소하기", "자전거 타기", "새로운 카페 가보기",
+];
+
+/** 룰렛/이상형 월드컵 후보를 최근 메뉴 → 기본 풀 순서로 중복 없이 채워 지정한 개수(기본 8개)를 맞춘다. */
+export function buildCandidatePool(recentMenus: string[], size = 8): string[] {
+  const seen = new Set<string>();
+  const pool: string[] = [];
+  for (const menu of [...recentMenus, ...DEFAULT_MENU_POOL]) {
+    if (seen.has(menu)) continue;
+    seen.add(menu);
+    pool.push(menu);
+    if (pool.length >= size) break;
+  }
+  return pool;
 }

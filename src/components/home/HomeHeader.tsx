@@ -10,7 +10,7 @@ import { AVATAR_SIZE } from "@/lib/uiTokens";
 import { mirror } from "@/lib/homeTheme";
 
 export interface FamilyMemberStatus {
-  user_id: string;
+  id: string;
   display_name: string;
   avatar_color: string;
   avatar_text_color: string;
@@ -84,7 +84,7 @@ export function HomeHeader({
 
       <div className="flex items-center gap-4 overflow-x-auto">
         {familyStatus.map((m) => (
-          <div key={m.user_id} className="flex shrink-0 items-center gap-1.5">
+          <div key={m.id} className="flex shrink-0 items-center gap-1.5">
             <Avatar
               name={m.display_name}
               color={m.avatar_color}

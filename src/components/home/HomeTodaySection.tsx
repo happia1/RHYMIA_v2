@@ -16,7 +16,7 @@ export function HomeTodaySection({
 }: {
   todaySchedules: Schedule[];
   membersById: Record<string, MemberInfo>;
-  members: { user_id: string; display_name: string }[];
+  members: { id: string; display_name: string }[];
   workspaceId: string;
   defaultDate: string;
 }) {
@@ -24,7 +24,7 @@ export function HomeTodaySection({
 
   return (
     <section className="flex flex-col gap-label-gap">
-      <SectionLabel icon={IconCalendar} onAdd={() => setAdding(true)} addLabel="일정 등록">
+      <SectionLabel icon={<IconCalendar size={14} />} onAdd={() => setAdding(true)} addLabel="일정 등록">
         오늘 뭐하지
       </SectionLabel>
       <div className="pl-section-indent">

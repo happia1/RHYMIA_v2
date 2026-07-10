@@ -23,13 +23,18 @@ export default async function MealDetailPage({
       .maybeSingle(),
     supabase
       .from("workspace_member")
-      .select("user_id, display_name, users(avatar_color, avatar_text_color, avatar_image_url)")
+      .select(
+        "id, user_id, member_type, display_name, name, avatar_color, avatar_image_url, birth_year, users(avatar_color, avatar_text_color, avatar_image_url)"
+      )
       .eq("workspace_id", workspaceId),
   ]);
 
   if (!meal) notFound();
 
-  const members = mapWorkspaceMembers(memberRows ?? []);
+  // 끼니 작성자/참여자/댓글은 전부 실제 로그인 user_id 기준이라 managed 멤버는 대상이 될 수 없음
+  const members = mapWorkspaceMembers(memberRows ?? []).filter(
+    (m): m is typeof m & { user_id: string } => Boolean(m.user_id)
+  );
 
   const participation =
     (meal as unknown as {
