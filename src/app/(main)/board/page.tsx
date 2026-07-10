@@ -9,7 +9,7 @@ export default async function BoardPage() {
   const [{ data: notices }, { data: memberRows }] = await Promise.all([
     supabase
       .from("notice")
-      .select("*")
+      .select("*, notice_like(user_id)")
       .eq("workspace_id", workspaceId)
       .or(`expire_at.is.null,expire_at.gt.${new Date().toISOString()}`)
       .order("created_at", { ascending: false }),

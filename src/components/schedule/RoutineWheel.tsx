@@ -4,44 +4,25 @@ import { useEffect, useState } from "react";
 import { STATUS_COLOR_VAR, DEFAULT_STATUS_COLOR_VAR } from "@/lib/routineColors";
 import type { RoutineBlock } from "@/types";
 
-const SIZE = 220;
-const CENTER = SIZE / 2;
-const RADIUS = 88;
-const STROKE = 20;
-
 function timeToMinutes(hhmm: string): number {
   const [h, m] = hhmm.split(":").map(Number);
   return (h || 0) * 60 + (m || 0);
 }
 
-function polarToXY(angleDeg: number, radius: number) {
-  const rad = (angleDeg * Math.PI) / 180;
-  return {
-    x: CENTER + radius * Math.sin(rad),
-    y: CENTER - radius * Math.cos(rad),
-  };
-}
-
-/** 자정=12시 방향(각도 0), 시계 방향으로 진행하는 아크 path. endAngle이 360을 넘어도
- * (자정을 가로지르는 블록) 좌표는 mod 360으로, 방향/크기는 실제 각도차로 계산한다. */
-function describeArc(startAngle: number, endAngle: number, radius: number) {
-  const start = polarToXY(startAngle % 360, radius);
-  const end = polarToXY(endAngle % 360, radius);
-  const sweep = endAngle - startAngle;
-  const largeArcFlag = sweep > 180 ? 1 : 0;
-  return `M ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${end.x} ${end.y}`;
-}
-
 /** 내 루틴 화면 상단의 24시간 도넛형 시각화. 보기 전용 — 블록은 여기서 편집하지 않고
- * 아래 폼/리스트로 편집하며, 이 차트는 결과를 즉시 반영해서 보여주기만 한다. */
+ * 아래 폼/리스트로 편집하며, 이 차트는 결과를 즉시 반영해서 보여주기만 한다.
+ * size로 크기를 조절할 수 있어(비율은 고정, 220px 기준) 일정 탭 상단 위젯 등 더 작은
+ * 자리에서도 재사용한다. */
 export function RoutineWheel({
   blocks,
   highlightedIndex,
   onSelectBlock,
+  size = 220,
 }: {
   blocks: RoutineBlock[];
   highlightedIndex: number | null;
   onSelectBlock: (index: number | null) => void;
+  size?: number;
 }) {
   const [now, setNow] = useState(() => new Date());
 
@@ -50,13 +31,36 @@ export function RoutineWheel({
     return () => clearInterval(timer);
   }, []);
 
+  const CENTER = size / 2;
+  const RADIUS = size * 0.4;
+  const STROKE = size * (20 / 220);
+  const FONT_SIZE = size * (20 / 220);
+
+  function polarToXY(angleDeg: number, radius: number) {
+    const rad = (angleDeg * Math.PI) / 180;
+    return {
+      x: CENTER + radius * Math.sin(rad),
+      y: CENTER - radius * Math.cos(rad),
+    };
+  }
+
+  // 자정=12시 방향(각도 0), 시계 방향으로 진행하는 아크 path. endAngle이 360을 넘어도
+  // (자정을 가로지르는 블록) 좌표는 mod 360으로, 방향/크기는 실제 각도차로 계산한다.
+  function describeArc(startAngle: number, endAngle: number, radius: number) {
+    const start = polarToXY(startAngle % 360, radius);
+    const end = polarToXY(endAngle % 360, radius);
+    const sweep = endAngle - startAngle;
+    const largeArcFlag = sweep > 180 ? 1 : 0;
+    return `M ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${end.x} ${end.y}`;
+  }
+
   const nowAngle = ((now.getHours() * 60 + now.getMinutes()) / 1440) * 360;
   const needleEnd = polarToXY(nowAngle, RADIUS + STROKE / 2 + 6);
-  const needleStart = polarToXY(nowAngle, 16);
+  const needleStart = polarToXY(nowAngle, size * (16 / 220));
 
   return (
     <div className="flex justify-center">
-      <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
         <circle
           cx={CENTER}
           cy={CENTER}
@@ -123,7 +127,7 @@ export function RoutineWheel({
           y={CENTER}
           textAnchor="middle"
           dominantBaseline="middle"
-          fontSize={20}
+          fontSize={FONT_SIZE}
           fontWeight={300}
           fill="var(--text-primary)"
         >

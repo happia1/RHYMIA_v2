@@ -13,6 +13,8 @@ export interface WorkspaceMemberInfo {
   avatar_text_color: string;
   avatar_image_url: string | null;
   birth_year: number | null;
+  /** 2026-07-11 추가 — 일정 탭 상단 "내 루틴" 위젯 표시 여부. 컬럼이 없던 시절 데이터는 true로 취급. */
+  routine_enabled: boolean;
 }
 
 interface RawUserEmbed {
@@ -30,6 +32,7 @@ interface RawMemberRow {
   avatar_color?: string | null;
   avatar_image_url?: string | null;
   birth_year?: number | null;
+  routine_enabled?: boolean | null;
   users?: RawUserEmbed | RawUserEmbed[] | null;
 }
 
@@ -51,6 +54,7 @@ export function mapWorkspaceMembers(rows: RawMemberRow[]): WorkspaceMemberInfo[]
         : u?.avatar_text_color ?? "#0F6E56",
       avatar_image_url: (isManaged ? m.avatar_image_url : u?.avatar_image_url) ?? null,
       birth_year: m.birth_year ?? null,
+      routine_enabled: m.routine_enabled ?? true,
     };
   });
 }

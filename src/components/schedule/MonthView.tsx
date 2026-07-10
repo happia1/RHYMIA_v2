@@ -1,12 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { IconPaperclip } from "@tabler/icons-react";
+import Link from "next/link";
+import { IconPaperclip, IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
 import { getKeywordColor } from "@/lib/scheduleKeywords";
-import { toDateStr } from "@/lib/date";
+import { toDateStr, formatYearMonth, addMonths } from "@/lib/date";
 import { getHoliday } from "@/lib/holidays";
 import { targetLabel, type MemberInfo } from "@/lib/scheduleTargets";
 import { ActivitySuggestionSection } from "@/components/schedule/ActivitySuggestionSection";
+import { KeywordFilterRow } from "@/components/schedule/KeywordFilterRow";
 import { ACTIVITY_SUGGESTION_POOL, pickActivityCandidates } from "@/lib/activitySuggestions";
 import { pickDeterministic } from "@/lib/randomPick";
 import type { Schedule } from "@/types";
@@ -18,11 +20,15 @@ export function MonthView({
   schedules,
   membersById,
   workspaceId,
+  keywordMain,
+  keywordSub,
 }: {
   anchorDate: string;
   schedules: Schedule[];
   membersById: Record<string, MemberInfo>;
   workspaceId: string;
+  keywordMain?: string;
+  keywordSub?: string;
 }) {
   const [selectedDate, setSelectedDate] = useState(anchorDate);
 
@@ -60,6 +66,16 @@ export function MonthView({
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-center gap-4">
+        <Link href={`/schedule?view=month&date=${addMonths(anchorDate, -1)}`} aria-label="이전 달">
+          <IconChevronLeft size={20} className="text-stone" />
+        </Link>
+        <span className="text-[15px] font-medium text-ink">{formatYearMonth(anchorDate)}</span>
+        <Link href={`/schedule?view=month&date=${addMonths(anchorDate, 1)}`} aria-label="다음 달">
+          <IconChevronRight size={20} className="text-stone" />
+        </Link>
+      </div>
+
       <div className="grid grid-cols-7 gap-y-2 text-center">
         {WEEKDAY_LABELS.map((label) => (
           <span key={label} className="text-[11px] text-[var(--text-muted)]">
@@ -112,6 +128,8 @@ export function MonthView({
       </div>
 
       <div className={`h-px w-full bg-border-light`} />
+
+      <KeywordFilterRow keywordMain={keywordMain} keywordSub={keywordSub} />
 
       <div className="flex flex-col">
         {getHoliday(selectedDate) && (

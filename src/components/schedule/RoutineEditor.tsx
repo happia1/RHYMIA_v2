@@ -3,8 +3,9 @@
 import { useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { IconArrowLeft, IconTrash } from "@tabler/icons-react";
-import { upsertRoutine } from "@/app/(main)/schedule/actions";
+import { upsertRoutine, updateRoutineEnabled } from "@/app/(main)/schedule/actions";
 import { Input } from "@/components/ui/Input";
+import { CheckToggle } from "@/components/ui/CheckToggle";
 import { RoutineWheel } from "@/components/schedule/RoutineWheel";
 import { STATUS_OPTIONS, STATUS_EMOJI } from "@/lib/routineUtils";
 import { STATUS_COLOR_VAR, DEFAULT_STATUS_COLOR_VAR } from "@/lib/routineColors";
@@ -50,6 +51,17 @@ export function RoutineEditor({
 
   // 누구의 루틴인지 — 기본은 나 자신, managed 멤버를 선택하면 그 멤버의 루틴을 편집
   const [activeMemberId, setActiveMemberId] = useState(defaultMemberId || members[0]?.id || "");
+
+  // 일정 탭 상단 "내 루틴" 위젯 표시 여부 — 멤버별로 켜고 끌 수 있다
+  const [routineEnabledByMember, setRoutineEnabledByMember] = useState<Record<string, boolean>>(
+    () => Object.fromEntries(members.map((m) => [m.id, m.routine_enabled]))
+  );
+  const routineEnabled = routineEnabledByMember[activeMemberId] ?? true;
+  const toggleRoutineEnabled = () => {
+    const next = !routineEnabled;
+    setRoutineEnabledByMember((prev) => ({ ...prev, [activeMemberId]: next }));
+    startTransition(() => updateRoutineEnabled(activeMemberId, next));
+  };
 
   // 요일 칩 다중 선택 — 배열 순서 = 선택한 순서, 마지막 항목이 차트/리스트에 보여줄 "기준 요일".
   const [selectedDays, setSelectedDays] = useState<number[]>(() => [new Date().getDay()]);
@@ -176,6 +188,13 @@ export function RoutineEditor({
             </div>
           </div>
         )}
+
+        <div className="flex items-center justify-between">
+          <span className="text-[12px] font-medium text-stone">
+            일정 탭 상단에 내 루틴 표시
+          </span>
+          <CheckToggle checked={routineEnabled} onChange={toggleRoutineEnabled} size={22} />
+        </div>
 
         <RoutineWheel
           blocks={blocks}

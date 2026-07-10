@@ -1,12 +1,29 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
-import { IconPlus, IconPin, IconNote, IconMessage2, IconCamera, IconLoader2, IconX } from "@tabler/icons-react";
+import { useEffect, useRef, useState, useTransition } from "react";
+import {
+  IconPlus,
+  IconPin,
+  IconNote,
+  IconMessage2,
+  IconCamera,
+  IconLoader2,
+  IconX,
+  IconPencil,
+  IconHeart,
+  IconHeartFilled,
+} from "@tabler/icons-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Avatar } from "@/components/ui/Avatar";
 import { Input, Textarea } from "@/components/ui/Input";
 import { SectionLabel } from "@/components/home/SectionLabel";
-import { addNotice, deleteNotice, addNoticeComment } from "@/app/(main)/board/actions";
+import {
+  addNotice,
+  updateNotice,
+  deleteNotice,
+  toggleNoticeLike,
+  addNoticeComment,
+} from "@/app/(main)/board/actions";
 import { formatPostTimestamp } from "@/lib/date";
 import { AVATAR_SIZE } from "@/lib/uiTokens";
 import { createClient } from "@/lib/supabase/client";
@@ -60,9 +77,15 @@ export function BoardSection({
   commentsByNotice: Record<string, NoticeComment[]>;
 }) {
   const [detail, setDetail] = useState<Notice | null>(null);
-  const [adding, setAdding] = useState(false);
+  const [addingSticky, setAddingSticky] = useState(false);
+  const [addingPost, setAddingPost] = useState(false);
+  const [editingNotice, setEditingNotice] = useState<Notice | null>(null);
   const [postsExpanded, setPostsExpanded] = useState(false);
   const [commentDraft, setCommentDraft] = useState("");
+  const [isEditingDetail, setIsEditingDetail] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editContent, setEditContent] = useState("");
   const [isPending, startTransition] = useTransition();
 
   const stickers = notices.filter((n) => n.type === "sticky");
@@ -74,6 +97,16 @@ export function BoardSection({
   const authorOf = (userId: string | null) =>
     (userId && membersById[userId]) || null;
 
+  // 상세 시트를 열 때마다(대상이 바뀔 때 포함) 수정/삭제 확인 상태를 초기화한다.
+  useEffect(() => {
+    setIsEditingDetail(false);
+    setDeleteConfirmOpen(false);
+    if (detail) {
+      setEditTitle(detail.title ?? "");
+      setEditContent(detail.content);
+    }
+  }, [detail]);
+
   const handleComment = () => {
     const value = commentDraft.trim();
     if (!value || !detail) return;
@@ -81,83 +114,123 @@ export function BoardSection({
     startTransition(() => addNoticeComment(detail.id, value));
   };
 
+  const handleSaveDetailEdit = () => {
+    if (!detail || !editContent.trim()) return;
+    startTransition(async () => {
+      await updateNotice(detail.id, {
+        title: editTitle,
+        content: editContent,
+        isPinned: detail.is_pinned,
+      });
+      setDetail(null);
+    });
+  };
+
+  const handleConfirmDelete = () => {
+    if (!detail) return;
+    startTransition(async () => {
+      await deleteNotice(detail.id);
+      setDetail(null);
+    });
+  };
+
+  const detailLikes = detail?.notice_like ?? [];
+  const detailLikedByMe = detailLikes.some((l) => l.user_id === currentUserId);
+
   return (
     <div className="flex flex-col gap-section">
-      <div className="flex items-center justify-end">
-        <button onClick={() => setAdding(true)} aria-label="새글 등록">
-          <IconPlus size={18} className="text-[var(--text-muted)]" />
-        </button>
-      </div>
-
       <section className="flex flex-col gap-label-gap">
         <SectionLabel icon={<IconNote size={14} />}>하고싶은 말</SectionLabel>
         <div className="pl-section-indent">
-          {stickers.length === 0 ? (
-            <p className="text-[13px] text-[var(--text-muted)]">등록된 하고싶은 말이 없어요</p>
-          ) : (
-            <div className="flex gap-3 overflow-x-auto pb-1">
-              {stickers.map((s) => {
-                const left = daysLeft(s.expire_at);
-                const author = authorOf(s.created_by);
-                return (
-                  <div key={s.id} className="flex w-28 shrink-0 flex-col gap-1">
-                    <button
-                      onClick={() => setDetail(s)}
-                      className="relative flex min-h-28 w-28 flex-col p-2.5 text-left"
-                      style={{ backgroundColor: s.color }}
-                    >
+          <div className="flex gap-3 overflow-x-auto pb-1">
+            {stickers.map((s) => {
+              const left = daysLeft(s.expire_at);
+              const author = authorOf(s.created_by);
+              return (
+                <div key={s.id} className="flex w-28 shrink-0 flex-col gap-1">
+                  <div
+                    onClick={() => setDetail(s)}
+                    className="relative flex min-h-28 w-28 cursor-pointer flex-col p-2.5 text-left"
+                    style={{ backgroundColor: s.color }}
+                  >
+                    <div className="flex items-center justify-between gap-1">
                       <span
                         className="truncate text-[9px] opacity-60"
                         style={{ color: STICKER_TEXT_COLOR }}
                       >
                         {author?.display_name ?? "가족"}
                       </span>
-                      {s.image_url && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={s.image_url}
-                          alt=""
-                          className="mt-1 h-12 w-full shrink-0 object-cover"
-                        />
+                      {s.created_by === currentUserId && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingNotice(s);
+                          }}
+                          aria-label="수정"
+                          className="shrink-0 opacity-60"
+                        >
+                          <IconPencil size={12} style={{ color: STICKER_TEXT_COLOR }} />
+                        </button>
                       )}
-                      <span
-                        className="mt-1 line-clamp-5 whitespace-pre-wrap font-handwriting text-[16px] leading-snug"
-                        style={{ color: STICKER_TEXT_COLOR }}
-                      >
-                        {s.content}
-                      </span>
-                      {/* 오른쪽 아래 모서리 접힘 효과 */}
-                      <span
-                        aria-hidden
-                        className="pointer-events-none absolute bottom-0 right-0"
-                        style={{
-                          width: 0,
-                          height: 0,
-                          borderStyle: "solid",
-                          borderWidth: `0 0 ${STICKER_FOLD_SIZE}px ${STICKER_FOLD_SIZE}px`,
-                          borderColor: `transparent transparent ${
-                            STICKER_FOLD_COLORS[s.color] ?? "rgba(0,0,0,0.15)"
-                          } transparent`,
-                        }}
+                    </div>
+                    {s.image_url && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={s.image_url}
+                        alt=""
+                        className="mt-1 h-12 w-full shrink-0 object-cover"
                       />
-                    </button>
-                    {left !== null && (
-                      <span className="self-end text-[10px] text-[var(--text-muted)]">
-                        D-{Math.max(left, 0)}
-                      </span>
                     )}
+                    <span
+                      className="mt-1 line-clamp-5 whitespace-pre-wrap font-handwriting text-[16px] leading-snug"
+                      style={{ color: STICKER_TEXT_COLOR }}
+                    >
+                      {s.content}
+                    </span>
+                    {/* 오른쪽 아래 모서리 접힘 효과 */}
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute bottom-0 right-0"
+                      style={{
+                        width: 0,
+                        height: 0,
+                        borderStyle: "solid",
+                        borderWidth: `0 0 ${STICKER_FOLD_SIZE}px ${STICKER_FOLD_SIZE}px`,
+                        borderColor: `transparent transparent ${
+                          STICKER_FOLD_COLORS[s.color] ?? "rgba(0,0,0,0.15)"
+                        } transparent`,
+                      }}
+                    />
                   </div>
-                );
-              })}
-            </div>
-          )}
+                  {left !== null && (
+                    <span className="self-end text-[10px] text-[var(--text-muted)]">
+                      D-{Math.max(left, 0)}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+            <button
+              onClick={() => setAddingSticky(true)}
+              aria-label="하고싶은 말 작성"
+              className="flex min-h-28 w-28 shrink-0 items-center justify-center border border-dashed border-border-light text-[var(--text-muted)]"
+            >
+              <IconPlus size={20} />
+            </button>
+          </div>
         </div>
       </section>
 
       <div className="h-px w-full bg-border-light" />
 
       <section className="flex flex-col gap-label-gap">
-        <SectionLabel icon={<IconMessage2 size={14} />}>메모 · 공지</SectionLabel>
+        <SectionLabel
+          icon={<IconMessage2 size={14} />}
+          onAdd={() => setAddingPost(true)}
+          addLabel="메모/공지 작성"
+        >
+          메모 · 공지
+        </SectionLabel>
         <div className="flex flex-col pl-section-indent">
           {posts.length === 0 && (
             <p className="text-[13px] text-[var(--text-muted)]">등록된 글이 없어요</p>
@@ -165,25 +238,38 @@ export function BoardSection({
           {visiblePosts.map((n, i) => {
             const author = authorOf(n.created_by);
             return (
-              <button
+              <div
                 key={n.id}
                 onClick={() => setDetail(n)}
-                className={`flex flex-col gap-1 py-3 text-left ${
+                className={`flex cursor-pointer flex-col gap-1 py-3 text-left ${
                   i > 0 ? "border-t border-border-light" : ""
                 }`}
               >
                 {n.title && (
-                  <span className="truncate text-[14px] font-medium text-ink">
+                  <span className="truncate text-[13px] font-medium text-ink">
                     {n.type === "notice" ? `📌 ${n.title}` : n.title}
                   </span>
                 )}
-                <p className="line-clamp-2 whitespace-pre-wrap text-[12px] text-ink">{n.content}</p>
+                <p className="truncate text-[12px] text-[var(--text-muted)]">{n.content}</p>
                 <div className="flex items-center gap-1.5 text-[11px] text-[var(--text-muted)]">
                   {n.is_pinned && <IconPin size={12} className="shrink-0 text-terra" />}
-                  <span className="font-medium">{author?.display_name ?? "가족"}</span>
-                  <span>· {formatPostTimestamp(n.created_at)}</span>
+                  <div className="ml-auto flex items-center gap-1.5">
+                    <span className="font-medium">{author?.display_name ?? "가족"}</span>
+                    <span>· {formatPostTimestamp(n.created_at)}</span>
+                    {n.created_by === currentUserId && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingNotice(n);
+                        }}
+                        aria-label="수정"
+                      >
+                        <IconPencil size={13} className="text-[var(--text-muted)]" />
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </button>
+              </div>
             );
           })}
           {posts.length > POSTS_PREVIEW_COUNT && (
@@ -206,46 +292,147 @@ export function BoardSection({
       >
         {detail && (
           <div className="flex flex-col gap-3">
-            {detail.title && (
-              <h2 className="text-[17px] font-medium text-ink">
-                {detail.type === "notice" ? `📌 ${detail.title}` : detail.title}
-              </h2>
-            )}
-            {detail.type === "sticky" && detail.image_url && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={detail.image_url} alt="" className="max-h-56 w-full rounded-xl object-cover" />
-            )}
-            <p
-              className={`whitespace-pre-wrap text-[13px] text-ink ${
-                detail.type === "sticky" ? "font-handwriting text-[18px]" : ""
-              }`}
-            >
-              {detail.content}
-            </p>
-            {detail.type !== "sticky" && (
-              <div className="flex items-center gap-1.5 text-[11px] text-[var(--text-muted)]">
-                <span className="font-medium">
-                  {authorOf(detail.created_by)?.display_name ?? "가족"}
-                </span>
-                <span>· {formatPostTimestamp(detail.created_at)}</span>
+            {detail.type !== "sticky" && detail.created_by === currentUserId && !deleteConfirmOpen && (
+              <div className="flex justify-end">
+                <button
+                  onClick={() => setIsEditingDetail((v) => !v)}
+                  aria-label="수정"
+                  className={isEditingDetail ? "text-honey" : "text-[var(--text-muted)]"}
+                >
+                  <IconPencil size={16} />
+                </button>
               </div>
             )}
-            {detail.created_by === currentUserId && (
-              <button
-                onClick={() =>
-                  startTransition(() => {
-                    deleteNotice(detail.id);
-                    setDetail(null);
-                  })
-                }
-                disabled={isPending}
-                className="self-start text-[13px] text-terra"
-              >
-                삭제하기
-              </button>
+
+            {deleteConfirmOpen ? (
+              <div className="flex flex-col gap-3">
+                <p className="text-[13px] text-ink">정말 삭제하시겠어요?</p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setDeleteConfirmOpen(false)}
+                    className="flex-1 rounded-xl bg-cream py-2.5 text-[13px] font-medium text-stone"
+                  >
+                    취소
+                  </button>
+                  <button
+                    onClick={handleConfirmDelete}
+                    disabled={isPending}
+                    className="flex flex-1 items-center justify-center rounded-xl bg-terra py-2.5 text-[13px] font-medium text-white disabled:opacity-50"
+                  >
+                    삭제하기
+                  </button>
+                </div>
+              </div>
+            ) : detail.type !== "sticky" && isEditingDetail ? (
+              <>
+                <Input
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  placeholder="제목"
+                  className="h-11 rounded-xl px-3 text-[14px]"
+                />
+                <Textarea
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
+                  rows={4}
+                  className="rounded-xl p-3 text-[14px]"
+                />
+                <div className="flex items-center justify-end gap-1.5 text-[11px] text-[var(--text-muted)]">
+                  <span className="font-medium">
+                    {authorOf(detail.created_by)?.display_name ?? "가족"}
+                  </span>
+                  <span>· {formatPostTimestamp(detail.created_at)}</span>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setDeleteConfirmOpen(true)}
+                    className="flex-1 rounded-xl bg-cream py-2.5 text-[13px] font-medium text-terra"
+                  >
+                    삭제
+                  </button>
+                  <button
+                    onClick={handleSaveDetailEdit}
+                    disabled={isPending || !editContent.trim()}
+                    className="flex flex-1 items-center justify-center rounded-xl bg-ink py-2.5 text-[13px] font-medium text-cream disabled:opacity-50"
+                  >
+                    저장
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                {detail.title && (
+                  <h2 className="text-[17px] font-medium text-ink">
+                    {detail.type === "notice" ? `📌 ${detail.title}` : detail.title}
+                  </h2>
+                )}
+                {detail.type === "sticky" && detail.image_url && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={detail.image_url}
+                    alt=""
+                    className="max-h-56 w-full rounded-xl object-cover"
+                  />
+                )}
+                <p
+                  className={`whitespace-pre-wrap text-[13px] text-ink ${
+                    detail.type === "sticky" ? "font-handwriting text-[16px]" : ""
+                  }`}
+                >
+                  {detail.content}
+                </p>
+
+                {detail.type === "sticky" ? (
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-medium text-[var(--text-muted)]">
+                      {authorOf(detail.created_by)?.display_name ?? "가족"}
+                    </span>
+                    <button
+                      onClick={() =>
+                        startTransition(() => toggleNoticeLike(detail.id, !detailLikedByMe))
+                      }
+                      aria-label="좋아요"
+                      className="flex items-center gap-1"
+                    >
+                      {detailLikedByMe ? (
+                        <IconHeartFilled size={18} className="text-rose" />
+                      ) : (
+                        <IconHeart size={18} className="text-[var(--text-muted)]" />
+                      )}
+                      {detailLikes.length > 0 && (
+                        <span className="text-[11px] text-[var(--text-muted)]">
+                          {detailLikes.length}
+                        </span>
+                      )}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-end gap-1.5 text-[11px] text-[var(--text-muted)]">
+                    <span className="font-medium">
+                      {authorOf(detail.created_by)?.display_name ?? "가족"}
+                    </span>
+                    <span>· {formatPostTimestamp(detail.created_at)}</span>
+                  </div>
+                )}
+
+                {detail.type === "sticky" && detail.created_by === currentUserId && (
+                  <button
+                    onClick={() =>
+                      startTransition(() => {
+                        deleteNotice(detail.id);
+                        setDetail(null);
+                      })
+                    }
+                    disabled={isPending}
+                    className="self-start text-[13px] text-terra"
+                  >
+                    삭제하기
+                  </button>
+                )}
+              </>
             )}
 
-            {detail.type !== "sticky" && (
+            {detail.type !== "sticky" && !isEditingDetail && !deleteConfirmOpen && (
               <div className="mt-2 flex flex-col gap-3 border-t border-border-light pt-3">
                 <span className="text-[12px] font-medium text-stone">댓글</span>
                 {(commentsByNotice[detail.id] ?? []).map((c) => {
@@ -291,10 +478,17 @@ export function BoardSection({
       </BottomSheet>
 
       <AddPostSheet
-        open={adding}
-        onClose={() => setAdding(false)}
+        open={addingSticky || addingPost || !!editingNotice}
+        onClose={() => {
+          setAddingSticky(false);
+          setAddingPost(false);
+          setEditingNotice(null);
+        }}
         workspaceId={workspaceId}
         currentUserId={currentUserId}
+        fixedType={addingSticky ? "sticky" : undefined}
+        initialType={addingPost ? "memo" : undefined}
+        existingNotice={editingNotice}
       />
     </div>
   );
@@ -306,15 +500,21 @@ export function AddPostSheet({
   workspaceId,
   currentUserId,
   fixedType,
+  initialType,
+  existingNotice,
 }: {
   open: boolean;
   onClose: () => void;
   workspaceId: string;
   currentUserId: string;
-  /** 지정하면 타입 선택 UI를 숨기고 이 타입으로 고정 (예: 홈의 "하고싶은 말" 섹션 + 버튼) */
+  /** 지정하면 타입 선택 UI를 숨기고 이 타입으로 고정 (예: "하고싶은 말" 작성 버튼) */
   fixedType?: NoticeType;
+  /** fixedType이 없을 때(메모/공지 작성 버튼) 기본 선택 타입 — 픽커는 항상 메모/공지만 보여줌 */
+  initialType?: NoticeType;
+  /** 지정하면 수정 모드로 열림 — 기존 내용으로 채우고 저장 시 새로 만들지 않고 updateNotice로 반영 */
+  existingNotice?: Notice | null;
 }) {
-  const [type, setType] = useState<NoticeType>(fixedType ?? "sticky");
+  const [type, setType] = useState<NoticeType>(fixedType ?? initialType ?? "memo");
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [color, setColor] = useState(STICKER_COLORS[0]);
@@ -329,16 +529,30 @@ export function AddPostSheet({
   const stickyFileInputRef = useRef<HTMLInputElement>(null);
   const ocrFileInputRef = useRef<HTMLInputElement>(null);
 
-  const reset = () => {
-    setType(fixedType ?? "sticky");
-    setTitle("");
-    setContent("");
-    setColor(STICKER_COLORS[0]);
-    setExpireDays(1);
-    setIsPinned(false);
-    setImageUrl(null);
+  // 시트가 열릴 때마다(수정 대상이 바뀔 때 포함) 필드를 다시 채운다 — 시트 자체는
+  // 계속 마운트된 채 open만 토글되므로, 최초 마운트 시 useState 초기값만으로는
+  // "추가"→"수정"으로 열릴 때 이전 내용이 남는 문제가 생긴다.
+  useEffect(() => {
+    if (!open) return;
+    if (existingNotice) {
+      setType(existingNotice.type);
+      setTitle(existingNotice.title ?? "");
+      setContent(existingNotice.content);
+      setColor(existingNotice.color);
+      setImageUrl(existingNotice.image_url);
+      setIsPinned(existingNotice.is_pinned);
+    } else {
+      setType(fixedType ?? initialType ?? "memo");
+      setTitle("");
+      setContent("");
+      setColor(STICKER_COLORS[0]);
+      setExpireDays(1);
+      setIsPinned(false);
+      setImageUrl(null);
+    }
     setAttachError("");
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, existingNotice, fixedType, initialType]);
 
   const handleStickyImageSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -401,34 +615,36 @@ export function AddPostSheet({
   const handleSubmit = () => {
     if (!content.trim()) return;
     startTransition(async () => {
-      await addNotice(workspaceId, {
-        type,
-        title: type === "sticky" ? undefined : title,
-        content,
-        color: type === "sticky" ? color : undefined,
-        isPinned: type !== "sticky" ? isPinned : undefined,
-        expireDays: type === "sticky" ? expireDays : undefined,
-        imageUrl: type === "sticky" ? imageUrl : undefined,
-      });
-      reset();
+      if (existingNotice) {
+        await updateNotice(existingNotice.id, {
+          title: type === "sticky" ? undefined : title,
+          content,
+          color: type === "sticky" ? color : undefined,
+          isPinned: type !== "sticky" ? isPinned : undefined,
+          imageUrl: type === "sticky" ? imageUrl : undefined,
+        });
+      } else {
+        await addNotice(workspaceId, {
+          type,
+          title: type === "sticky" ? undefined : title,
+          content,
+          color: type === "sticky" ? color : undefined,
+          isPinned: type !== "sticky" ? isPinned : undefined,
+          expireDays: type === "sticky" ? expireDays : undefined,
+          imageUrl: type === "sticky" ? imageUrl : undefined,
+        });
+      }
       onClose();
     });
   };
 
   return (
-    <BottomSheet
-      open={open}
-      onClose={() => {
-        reset();
-        onClose();
-      }}
-    >
+    <BottomSheet open={open} onClose={onClose}>
       <div className="flex flex-col gap-4">
-        {!fixedType && (
+        {!fixedType && !existingNotice && (
           <div className="flex gap-2">
             {(
               [
-                ["sticky", "하고싶은 말"],
                 ["memo", "메모"],
                 ["notice", "공지"],
               ] as [NoticeType, string][]
@@ -502,19 +718,21 @@ export function AddPostSheet({
                 onChange={handleStickyImageSelected}
               />
             </div>
-            <div className="flex gap-2">
-              {[1, 2, 3].map((d) => (
-                <button
-                  key={d}
-                  onClick={() => setExpireDays(d)}
-                  className={`rounded-full px-3 py-1.5 text-[13px] font-medium ${
-                    expireDays === d ? "bg-ink text-cream" : "bg-cream text-stone"
-                  }`}
-                >
-                  {d}일
-                </button>
-              ))}
-            </div>
+            {!existingNotice && (
+              <div className="flex gap-2">
+                {[1, 2, 3].map((d) => (
+                  <button
+                    key={d}
+                    onClick={() => setExpireDays(d)}
+                    className={`rounded-full px-3 py-1.5 text-[13px] font-medium ${
+                      expireDays === d ? "bg-ink text-cream" : "bg-cream text-stone"
+                    }`}
+                  >
+                    {d}일
+                  </button>
+                ))}
+              </div>
+            )}
           </>
         ) : (
           <>
@@ -568,7 +786,7 @@ export function AddPostSheet({
           disabled={isPending}
           className="flex h-11 items-center justify-center rounded-2xl bg-ink text-[14px] font-medium text-cream"
         >
-          등록하기
+          {existingNotice ? "저장하기" : "등록하기"}
         </button>
       </div>
     </BottomSheet>

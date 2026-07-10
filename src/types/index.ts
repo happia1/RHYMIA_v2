@@ -237,6 +237,14 @@ export interface Notice {
   expire_at: string | null;
   created_by: string | null;
   created_at: string;
+  /** "하고싶은 말"(sticky) 좋아요 임베드 — 2026-07-11 추가. `notice_like(user_id)` 조회 시에만 채워짐 */
+  notice_like?: { user_id: string }[];
+}
+
+export interface NoticeLike {
+  notice_id: string;
+  user_id: string;
+  created_at: string;
 }
 
 export interface NoticeComment {

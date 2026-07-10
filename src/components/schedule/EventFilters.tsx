@@ -3,27 +3,21 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { IconChevronDown } from "@tabler/icons-react";
-import { TagChip } from "@/components/ui/TagChip";
-import { KEYWORD_GROUPS } from "@/lib/scheduleKeywords";
 
 const SCOPES = [
   { value: "all", label: "전체" },
   { value: "shared", label: "공유" },
-  { value: "private", label: "프라이빗" },
+  { value: "private", label: "개인" },
 ];
 
 export function EventFilters({
   members,
   scope,
   target,
-  keywordMain,
-  keywordSub,
 }: {
   members: { id: string; display_name: string }[];
   scope: string;
   target: string;
-  keywordMain?: string;
-  keywordSub?: string;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -39,34 +33,34 @@ export function EventFilters({
     router.push(`/schedule?${next.toString()}`);
   };
 
-  const activeGroup = KEYWORD_GROUPS.find((g) => g.main === keywordMain);
-
   return (
     <div className="flex flex-col gap-2.5">
-      <div className="flex gap-3">
-        {SCOPES.map((s) => (
-          <button
-            key={s.value}
-            onClick={() => setParam("scope", s.value === "all" ? null : s.value)}
-            className={`text-[12px] font-medium ${
-              scope === s.value ? "text-ink" : "text-[var(--text-muted)]"
-            }`}
-          >
-            {s.label}
-          </button>
-        ))}
-      </div>
+      <div className="flex items-center justify-between">
+        <div className="flex gap-3">
+          {SCOPES.map((s) => (
+            <button
+              key={s.value}
+              onClick={() => setParam("scope", s.value === "all" ? null : s.value)}
+              className={`text-[12px] font-medium ${
+                scope === s.value ? "text-ink" : "text-[var(--text-muted)]"
+              }`}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
 
-      <button
-        onClick={() => setTargetOpen((v) => !v)}
-        className="flex items-center gap-1 self-start text-[12px] font-medium text-[var(--text-muted)]"
-      >
-        대상 필터
-        <IconChevronDown
-          size={14}
-          className={`transition-transform ${targetOpen ? "rotate-180" : ""}`}
-        />
-      </button>
+        <button
+          onClick={() => setTargetOpen((v) => !v)}
+          className="flex items-center gap-1 text-[12px] font-medium text-[var(--text-muted)]"
+        >
+          대상 필터
+          <IconChevronDown
+            size={14}
+            className={`transition-transform ${targetOpen ? "rotate-180" : ""}`}
+          />
+        </button>
+      </div>
 
       {targetOpen && (
         <div className="flex flex-wrap gap-3">
@@ -88,40 +82,6 @@ export function EventFilters({
             >
               {m.display_name}
             </button>
-          ))}
-        </div>
-      )}
-
-      <div className="flex flex-wrap gap-3">
-        {KEYWORD_GROUPS.map((g) => (
-          <TagChip
-            key={g.main}
-            label={g.main}
-            color={g.color}
-            selected={keywordMain === g.main}
-            onClick={() => {
-              if (keywordMain === g.main) {
-                setParam("keywordMain", null);
-                setParam("keywordSub", null);
-              } else {
-                setParam("keywordMain", g.main);
-                setParam("keywordSub", null);
-              }
-            }}
-          />
-        ))}
-      </div>
-
-      {activeGroup && activeGroup.subs.length > 0 && (
-        <div className="flex flex-wrap gap-3 pl-2">
-          {activeGroup.subs.map((sub) => (
-            <TagChip
-              key={sub}
-              label={sub}
-              color={activeGroup.color}
-              selected={keywordSub === sub}
-              onClick={() => setParam("keywordSub", keywordSub === sub ? null : sub)}
-            />
           ))}
         </div>
       )}

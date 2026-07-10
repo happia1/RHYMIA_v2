@@ -1,9 +1,10 @@
 import { IconCalendar } from "@tabler/icons-react";
 import { requireWorkspaceContext } from "@/lib/workspace";
 import { toDateStr, getWeekDates } from "@/lib/date";
-import { getCurrentBlock, STATUS_EMOJI, DEFAULT_STATUS_EMOJI } from "@/lib/routineUtils";
+import { getCurrentBlock } from "@/lib/routineUtils";
 import { getCurrentWeather } from "@/lib/weather";
 import { mapWorkspaceMembers } from "@/lib/members";
+import { RoutineTopWidget } from "@/components/schedule/RoutineTopWidget";
 import { ScheduleTabs } from "@/components/schedule/ScheduleTabs";
 import { EventFilters } from "@/components/schedule/EventFilters";
 import { MonthView } from "@/components/schedule/MonthView";
@@ -12,7 +13,7 @@ import { YearView } from "@/components/schedule/YearView";
 import { AddEventEntry } from "@/components/schedule/AddEventEntry";
 import { AgentLauncher } from "@/components/agent/AgentLauncher";
 import { SectionLabel } from "@/components/home/SectionLabel";
-import type { Schedule } from "@/types";
+import type { Schedule, RoutineBlock } from "@/types";
 
 const VIEW_LABEL: Record<"month" | "week" | "year", string> = {
   month: "월간 일정",
@@ -68,7 +69,7 @@ export default async function SchedulePage({
     supabase
       .from("workspace_member")
       .select(
-        "id, user_id, member_type, display_name, name, avatar_color, avatar_image_url, birth_year, users(avatar_color, avatar_text_color, avatar_image_url)"
+        "id, user_id, member_type, display_name, name, avatar_color, avatar_image_url, birth_year, routine_enabled, users(avatar_color, avatar_text_color, avatar_image_url)"
       )
       .eq("workspace_id", workspaceId),
     supabase
@@ -85,6 +86,7 @@ export default async function SchedulePage({
   const members = mapWorkspaceMembers(memberRows ?? []);
   const myMember = members.find((m) => m.user_id === user.id);
 
+  // 내 루틴 위젯 — 오늘 요일의 전체 블록(도넛 차트용)과 지금 이 순간의 블록(상태 텍스트용)을 함께 쓴다.
   const { data: myRoutineRows } = await supabase
     .from("routine")
     .select("blocks")
@@ -112,24 +114,27 @@ export default async function SchedulePage({
     }
   }
 
-  const myBlocks = (myRoutineRows ?? []).flatMap((r) => (r.blocks as never[]) ?? []);
-  const myBlock = getCurrentBlock(myBlocks as never, today);
-  const myStatusText = myBlock
-    ? `${STATUS_EMOJI[(myBlock as { status: string }).status] ?? DEFAULT_STATUS_EMOJI} ${(myBlock as { label: string }).label}`
-    : `${DEFAULT_STATUS_EMOJI} 쉬는 중`;
+  const myBlocks = (myRoutineRows ?? []).flatMap((r) => (r.blocks as RoutineBlock[]) ?? []);
+  const myCurrentBlock = getCurrentBlock(myBlocks, today);
 
   const membersById = Object.fromEntries(members.map((m) => [m.id, m]));
 
   return (
     <div className="flex flex-col gap-section px-4 pb-24 pt-6">
-      <ScheduleTabs anchorDate={anchorStr} view={view} myStatusText={myStatusText} />
-      <EventFilters
-        members={members}
-        scope={params.scope ?? "all"}
-        target={params.target ?? "all"}
-        keywordMain={params.keywordMain}
-        keywordSub={params.keywordSub}
+      <RoutineTopWidget
+        blocks={myBlocks}
+        currentBlock={myCurrentBlock}
+        routineEnabled={myMember?.routine_enabled ?? true}
       />
+
+      <div className="flex flex-col gap-3">
+        <ScheduleTabs anchorDate={anchorStr} view={view} />
+        <EventFilters
+          members={members}
+          scope={params.scope ?? "all"}
+          target={params.target ?? "all"}
+        />
+      </div>
 
       <div className="h-px w-full bg-border-light" />
 
@@ -142,6 +147,8 @@ export default async function SchedulePage({
               schedules={schedules}
               membersById={membersById}
               workspaceId={workspaceId}
+              keywordMain={params.keywordMain}
+              keywordSub={params.keywordSub}
             />
           )}
           {view === "week" && (

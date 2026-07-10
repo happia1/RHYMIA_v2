@@ -48,6 +48,53 @@ export async function addNotice(
   revalidatePath("/notifications");
 }
 
+export async function updateNotice(
+  noticeId: string,
+  input: {
+    title?: string;
+    content: string;
+    color?: string;
+    isPinned?: boolean;
+    imageUrl?: string | null;
+  }
+) {
+  const content = input.content.trim();
+  if (!content) return;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { data: notice, error: fetchError } = await supabase
+    .from("notice")
+    .select("created_by, type")
+    .eq("id", noticeId)
+    .maybeSingle();
+
+  if (fetchError) throw new Error(fetchError.message);
+  if (!notice || notice.created_by !== user.id) {
+    throw new Error("수정 권한이 없습니다.");
+  }
+
+  const { error } = await supabase
+    .from("notice")
+    .update({
+      title: input.title?.trim() || null,
+      content,
+      color: notice.type === "sticky" ? input.color ?? "#FFF9C4" : undefined,
+      image_url: notice.type === "sticky" ? input.imageUrl ?? null : undefined,
+      is_pinned: notice.type !== "sticky" ? input.isPinned ?? false : undefined,
+    })
+    .eq("id", noticeId);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/board");
+  revalidatePath("/notifications");
+}
+
 export async function deleteNotice(noticeId: string) {
   const supabase = await createClient();
   const {
@@ -71,6 +118,31 @@ export async function deleteNotice(noticeId: string) {
 
   revalidatePath("/board");
   revalidatePath("/notifications");
+}
+
+export async function toggleNoticeLike(noticeId: string, liked: boolean) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  if (liked) {
+    const { error } = await supabase
+      .from("notice_like")
+      .insert({ notice_id: noticeId, user_id: user.id });
+    if (error) throw new Error(error.message);
+  } else {
+    const { error } = await supabase
+      .from("notice_like")
+      .delete()
+      .eq("notice_id", noticeId)
+      .eq("user_id", user.id);
+    if (error) throw new Error(error.message);
+  }
+
+  revalidatePath("/board");
+  revalidatePath("/home");
 }
 
 export async function addNoticeComment(noticeId: string, content: string) {

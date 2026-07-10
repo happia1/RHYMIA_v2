@@ -146,15 +146,13 @@ export default async function HomePage() {
   const mealTodaySection = (
     <div className="grid grid-cols-2 gap-4">
       <HomeMealSection meals={mealsToShow} workspaceId={workspaceId} defaultDate={todayStr} />
-      <div className={`border-l pl-4 ${mirror.hairline}`}>
-        <HomeTodaySection
-          todaySchedules={todaySchedules}
-          membersById={membersById}
-          members={memberOptions}
-          workspaceId={workspaceId}
-          defaultDate={todayStr}
-        />
-      </div>
+      <HomeTodaySection
+        todaySchedules={todaySchedules}
+        membersById={membersById}
+        members={memberOptions}
+        workspaceId={workspaceId}
+        defaultDate={todayStr}
+      />
     </div>
   );
 

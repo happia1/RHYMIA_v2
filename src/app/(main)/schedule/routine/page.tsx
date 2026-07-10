@@ -9,7 +9,7 @@ export default async function RoutinePage() {
   const { data: memberRows } = await supabase
     .from("workspace_member")
     .select(
-      "id, user_id, member_type, display_name, name, avatar_color, avatar_image_url, birth_year, users(avatar_color, avatar_text_color, avatar_image_url)"
+      "id, user_id, member_type, display_name, name, avatar_color, avatar_image_url, birth_year, routine_enabled, users(avatar_color, avatar_text_color, avatar_image_url)"
     )
     .eq("workspace_id", workspaceId);
 

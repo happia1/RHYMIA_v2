@@ -139,6 +139,25 @@ export async function upsertRoutine(
   revalidatePath("/home");
 }
 
+/** 일정 탭 상단 "내 루틴" 위젯 표시 여부 토글 (멤버별). RLS(member_update)가 본인/관리 멤버만 허용. */
+export async function updateRoutineEnabled(memberId: string, enabled: boolean) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { error } = await supabase
+    .from("workspace_member")
+    .update({ routine_enabled: enabled })
+    .eq("id", memberId);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/schedule");
+  revalidatePath("/schedule/routine");
+}
+
 /** 에이전트 루틴 카드가 겹침 확인/병합을 위해 특정 멤버의 요일별 기존 블록을 조회할 때 사용. */
 export async function getRoutineBlocks(
   memberId: string,
