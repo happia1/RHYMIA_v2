@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { IconPlus, IconX, IconCamera, IconLoader2 } from "@tabler/icons-react";
+import { IconPlus, IconX, IconCheck, IconCamera, IconLoader2, IconMicrophone } from "@tabler/icons-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { CheckToggle } from "@/components/ui/CheckToggle";
 import { Input } from "@/components/ui/Input";
@@ -35,6 +35,90 @@ function formatGroupDate(date: string) {
   return `${d.getMonth() + 1}월 ${d.getDate()}일`;
 }
 
+// 타입 정의가 없는 브라우저 전용 API라 최소한의 형태만 any로 다룬다.
+type SpeechRecognitionLike = {
+  lang: string;
+  interimResults: boolean;
+  maxAlternatives: number;
+  onresult: ((event: { results: { [i: number]: { [j: number]: { transcript: string } } } }) => void) | null;
+  onend: (() => void) | null;
+  onerror: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+
+const SWIPE_DELETE_THRESHOLD = -56;
+
+/** 메모장처럼 항목을 탭하면 체크(취소선), 왼쪽으로 스와이프하거나 x를 누르면 삭제. */
+function ShoppingItemRow({
+  item,
+  onToggle,
+  onDelete,
+}: {
+  item: ShoppingItem;
+  onToggle: () => void;
+  onDelete: () => void;
+}) {
+  const [dragX, setDragX] = useState(0);
+  const startX = useRef<number | null>(null);
+  const swiped = useRef(false);
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    startX.current = e.clientX;
+    swiped.current = false;
+  };
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (startX.current === null) return;
+    const delta = e.clientX - startX.current;
+    if (Math.abs(delta) > 6) swiped.current = true;
+    setDragX(Math.min(0, delta));
+  };
+  const handlePointerUp = () => {
+    if (dragX < SWIPE_DELETE_THRESHOLD) onDelete();
+    setDragX(0);
+    startX.current = null;
+  };
+
+  return (
+    <div
+      onClick={() => {
+        if (!swiped.current) onToggle();
+      }}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerLeave={handlePointerUp}
+      style={{ transform: dragX ? `translateX(${dragX}px)` : undefined }}
+      className="flex cursor-pointer items-center gap-2 transition-transform"
+    >
+      <span
+        style={{ width: SHOPPING_DOT_SIZE, height: SHOPPING_DOT_SIZE }}
+        className={`flex shrink-0 items-center justify-center rounded-full ${
+          item.is_purchased ? "bg-sage text-white" : "bg-border-light"
+        }`}
+      >
+        {item.is_purchased && <IconCheck size={SHOPPING_DOT_SIZE * 0.6} stroke={2.5} />}
+      </span>
+      <span
+        className={`min-w-0 flex-1 truncate text-[14px] ${
+          item.is_purchased ? "text-[var(--text-muted)] line-through" : "text-ink"
+        }`}
+      >
+        {item.name}
+      </span>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onDelete();
+        }}
+        aria-label="삭제"
+      >
+        <IconX size={16} className="text-[var(--text-muted)]" />
+      </button>
+    </div>
+  );
+}
+
 export function GlobalShoppingSheet({
   workspaceId,
   open,
@@ -55,6 +139,13 @@ export function GlobalShoppingSheet({
   const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
   const [isUploadingReceipt, setIsUploadingReceipt] = useState(false);
   const receiptFileInputRef = useRef<HTMLInputElement>(null);
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const [speechSupported, setSpeechSupported] = useState(false);
+
+  useEffect(() => {
+    setSpeechSupported(typeof window !== "undefined" && "webkitSpeechRecognition" in window);
+  }, []);
 
   const refresh = () => {
     getShoppingItems(workspaceId)
@@ -67,6 +158,38 @@ export function GlobalShoppingSheet({
     // 열릴 때마다 다시 조회 — 다른 탭에서 바뀐 내용까지 반영하기 위해
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  useEffect(() => {
+    // 시트가 닫히는데 음성 인식이 켜져 있으면 정리
+    if (!open && recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
+  }, [open]);
+
+  const handleMicClick = () => {
+    if (isListening) {
+      recognitionRef.current?.stop();
+      return;
+    }
+    const SpeechRecognitionCtor = (
+      window as unknown as { webkitSpeechRecognition?: new () => SpeechRecognitionLike }
+    ).webkitSpeechRecognition;
+    if (!SpeechRecognitionCtor) return;
+
+    const recognition = new SpeechRecognitionCtor();
+    recognition.lang = "ko-KR";
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    recognition.onresult = (event) => {
+      const transcript = event.results[0]?.[0]?.transcript ?? "";
+      if (transcript) setDraft((prev) => (prev ? `${prev} ${transcript}` : transcript));
+    };
+    recognition.onend = () => setIsListening(false);
+    recognition.onerror = () => setIsListening(false);
+    recognitionRef.current = recognition;
+    recognition.start();
+    setIsListening(true);
+  };
 
   const todayStr = toDateStr(new Date());
   const active = items.filter((i) => !i.is_purchased);
@@ -167,6 +290,18 @@ export function GlobalShoppingSheet({
             placeholder="살 것을 입력하세요"
             className="h-11 flex-1 rounded-xl px-3 text-[14px]"
           />
+          {speechSupported && (
+            <button
+              onClick={handleMicClick}
+              aria-label={isListening ? "음성 인식 중지" : "음성으로 입력"}
+              type="button"
+            >
+              <IconMicrophone
+                size={20}
+                className={isListening ? "text-honey" : "text-[var(--text-muted)]"}
+              />
+            </button>
+          )}
           <button onClick={handleAdd} aria-label="추가" disabled={isPending}>
             <IconPlus size={22} className="text-[var(--text-muted)]" />
           </button>
@@ -177,17 +312,12 @@ export function GlobalShoppingSheet({
             <p className="text-[13px] text-[var(--text-muted)]">장바구니가 비어있어요</p>
           )}
           {active.map((item) => (
-            <div key={item.id} className="flex items-center gap-2">
-              <CheckToggle
-                checked={item.is_purchased}
-                onChange={() => handleToggle(item)}
-                size={SHOPPING_DOT_SIZE}
-              />
-              <span className="min-w-0 flex-1 truncate text-[14px] text-ink">{item.name}</span>
-              <button onClick={() => handleDelete(item.id)} aria-label="삭제">
-                <IconX size={16} className="text-[var(--text-muted)]" />
-              </button>
-            </div>
+            <ShoppingItemRow
+              key={item.id}
+              item={item}
+              onToggle={() => handleToggle(item)}
+              onDelete={() => handleDelete(item.id)}
+            />
           ))}
         </div>
 

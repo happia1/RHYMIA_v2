@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import {
   DndContext,
   closestCenter,
@@ -14,7 +14,7 @@ import {
   SortableContext,
   arrayMove,
   useSortable,
-  verticalListSortingStrategy,
+  rectSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { IconGripVertical } from "@tabler/icons-react";
@@ -151,15 +151,19 @@ export function HomeSections({
           collisionDetection={closestCenter}
           onDragEnd={handleDragEnd}
         >
-          <SortableContext items={order} strategy={verticalListSortingStrategy}>
-            <div className="flex flex-col gap-section">
+          {/* 4개 위젯을 2열 그리드에 자동 배치 — 드래그로 순서를 바꾸면 어떤 2개가
+              나란히(같은 행) 붙을지, 어떤 게 위아래로 쌓일지(다른 행)가 함께 바뀐다. */}
+          <SortableContext items={order} strategy={rectSortingStrategy}>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-section">
               {order.map((id, index) => (
-                <div key={id} className="flex flex-col gap-section">
-                  {index > 0 && <div className={`h-px w-full ${mirror.hairlineBg}`} />}
+                <Fragment key={id}>
+                  {index === 2 && (
+                    <div className={`col-span-2 h-px w-full ${mirror.hairlineBg}`} />
+                  )}
                   <SortableItem id={id} editMode={editMode}>
                     {sections[id]}
                   </SortableItem>
-                </div>
+                </Fragment>
               ))}
             </div>
           </SortableContext>

@@ -11,7 +11,8 @@ import { type MealSummaryItem } from "@/components/home/MealSummaryCard";
 import { type MemberInfo } from "@/components/home/TodayEvents";
 import { HomeMealSection } from "@/components/home/HomeMealSection";
 import { HomeTodaySection } from "@/components/home/HomeTodaySection";
-import { BoardPreview } from "@/components/home/BoardPreview";
+import { HomeStickySection } from "@/components/home/HomeStickySection";
+import { HomeShoppingSection } from "@/components/home/HomeShoppingSection";
 import { HomeSections } from "@/components/home/HomeSections";
 import type { RoutineBlock } from "@/types";
 
@@ -142,52 +143,66 @@ export default async function HomePage() {
     <HomeHeader familyStatus={familyStatus} weather={weather} nowIso={new Date().toISOString()} />
   );
 
-  // 홈 위젯 순서 변경 단위 ①: "오늘 뭐먹지"+"오늘 뭐하지"를 2단으로 묶은 하나의 섹션
+  // 홈 위젯 4개 — 2026-07-11부터 각각 독립 단위(예전엔 끼니+오늘/하고싶은말+장바구니 2개로 묶여있었음)
   const mealTodaySection = (
-    <div className="grid grid-cols-2 gap-4">
-      <HomeMealSection meals={mealsToShow} workspaceId={workspaceId} defaultDate={todayStr} />
-      <HomeTodaySection
-        todaySchedules={todaySchedules}
-        membersById={membersById}
-        members={memberOptions}
-        workspaceId={workspaceId}
-        defaultDate={todayStr}
-      />
-    </div>
+    <HomeMealSection meals={mealsToShow} workspaceId={workspaceId} defaultDate={todayStr} />
   );
-
-  const boardSection = (
-    <BoardPreview
+  const scheduleTodaySection = (
+    <HomeTodaySection
+      todaySchedules={todaySchedules}
+      membersById={membersById}
+      members={memberOptions}
+      workspaceId={workspaceId}
+      defaultDate={todayStr}
+    />
+  );
+  const stickySection = (
+    <HomeStickySection
       workspaceId={workspaceId}
       currentUserId={user.id}
       stickers={stickers ?? []}
-      shoppingItems={shoppingItems ?? []}
       membersById={membersByUserId}
     />
   );
+  const shoppingSection = <HomeShoppingSection shoppingItems={shoppingItems ?? []} />;
 
   return (
-    <div className={`min-h-screen ${mirror.bg} px-4 pb-24 pt-6`}>
-      {/* 모바일: 위젯처럼 길게 눌러 순서를 바꿀 수 있는 2개 섹션(끼니+오늘/게시판) */}
-      <div className="flex flex-col gap-section lg:hidden">
-        {headerNode}
-        <div className={`h-px w-full ${mirror.hairlineBg}`} />
-        <HomeSections
-          initialOrder={homeSectionOrder}
-          sections={{ meal: mealTodaySection, board: boardSection }}
-        />
+    <div className={`flex h-[calc(100dvh-64px)] flex-col overflow-hidden ${mirror.bg} px-4 pt-6 pb-4`}>
+      {/* 모바일: 위젯처럼 길게 눌러 순서를 바꿀 수 있는 4개 독립 섹션(끼니/오늘/하고싶은말/장바구니).
+          한 화면(100dvh - 독바 높이)에 고정 — 헤더/헤어라인은 고정 높이, 위젯 그리드 영역만
+          남은 높이를 차지하고 넘치면 그 영역 안에서만 스크롤(overflow-y-auto), 페이지 자체는 스크롤 없음. */}
+      <div className="flex min-h-0 flex-1 flex-col gap-section lg:hidden">
+        <div className="shrink-0">{headerNode}</div>
+        <div className={`h-px w-full shrink-0 ${mirror.hairlineBg}`} />
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <HomeSections
+            initialOrder={homeSectionOrder}
+            sections={{
+              mealToday: mealTodaySection,
+              scheduleToday: scheduleTodaySection,
+              sticky: stickySection,
+              shopping: shoppingSection,
+            }}
+          />
+        </div>
       </div>
 
       {/* 태블릿 이상: 고정 3단 쇼케이스 레이아웃 (순서 변경 대상 아님) */}
-      <div className="hidden lg:grid lg:grid-cols-mirror lg:items-stretch lg:gap-0">
+      <div className="hidden lg:grid lg:h-full lg:grid-cols-mirror lg:items-stretch lg:gap-0">
         <div className="flex flex-col justify-center lg:pr-8">{headerNode}</div>
 
         <div className={`flex flex-col gap-section lg:border-l lg:px-8 ${mirror.hairline}`}>
-          {mealTodaySection}
+          <div className="grid grid-cols-2 gap-4">
+            {mealTodaySection}
+            {scheduleTodaySection}
+          </div>
         </div>
 
         <div className={`flex flex-col lg:border-l lg:pl-8 ${mirror.hairline}`}>
-          {boardSection}
+          <div className="grid grid-cols-2 gap-4">
+            {stickySection}
+            {shoppingSection}
+          </div>
         </div>
       </div>
     </div>

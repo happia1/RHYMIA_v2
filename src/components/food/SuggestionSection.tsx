@@ -46,7 +46,7 @@ export function SuggestionSection({
   return (
     <section className="flex flex-col gap-label-gap">
       <SectionLabel icon={<IconSparkles size={14} />}>오늘의 제안</SectionLabel>
-      <div className="flex gap-3 overflow-x-auto pb-1 pl-section-indent">
+      <div className="scrollbar-hide flex gap-3 overflow-x-auto pb-1 pl-section-indent">
         {cards.map((card) => (
           <button
             key={card.title}
