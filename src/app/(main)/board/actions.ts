@@ -36,7 +36,7 @@ export async function addNotice(
     title: input.title?.trim() || null,
     content,
     color: input.color ?? "#FFF9C4",
-    image_url: input.type === "sticky" ? input.imageUrl ?? null : null,
+    image_url: input.imageUrl ?? null,
     is_pinned: input.isPinned ?? false,
     expire_at: expireAt,
     created_by: user.id,
@@ -51,6 +51,8 @@ export async function addNotice(
 export async function updateNotice(
   noticeId: string,
   input: {
+    /** 메모⇄공지 전환용 — sticky(하고싶은 말)는 이 값이 와도 무시하고(아래 nextType 참고) 절대 바뀌지 않는다 */
+    type?: "memo" | "notice";
     title?: string;
     content: string;
     color?: string;
@@ -78,14 +80,19 @@ export async function updateNotice(
     return { ok: false as const, message: "수정 권한이 없습니다." };
   }
 
+  // 스티키(하고싶은 말)는 색상/이미지/만료일 등 구조가 달라 전환 대상이 아니다 —
+  // 메모⇄공지 사이에서만 유형 전환을 허용한다.
+  const nextType = notice.type !== "sticky" && input.type ? input.type : notice.type;
+
   const { error } = await supabase
     .from("notice")
     .update({
+      type: nextType,
       title: input.title?.trim() || null,
       content,
-      color: notice.type === "sticky" ? input.color ?? "#FFF9C4" : undefined,
-      image_url: notice.type === "sticky" ? input.imageUrl ?? null : undefined,
-      is_pinned: notice.type !== "sticky" ? input.isPinned ?? false : undefined,
+      color: nextType === "sticky" ? input.color ?? "#FFF9C4" : undefined,
+      image_url: input.imageUrl ?? null,
+      is_pinned: nextType !== "sticky" ? input.isPinned ?? false : undefined,
     })
     .eq("id", noticeId);
 

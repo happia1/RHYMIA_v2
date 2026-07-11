@@ -231,7 +231,8 @@ export interface Notice {
   title: string | null;
   content: string;
   color: string;
-  /** "하고싶은 말"(sticky) 전용 — 2026-07-11 추가. memo/notice 첨부 이미지는 Gemini 텍스트 추출용으로만 쓰고 저장하지 않음 */
+  /** 2026-07-11 추가. sticky/memo/notice 전부 이미지 삽입 가능(별도로 "사진에서 텍스트 채우기"를 쓰면
+   * 이미지 자체는 저장하지 않고 Gemini로 텍스트만 추출해 본문에 채워 넣음) */
   image_url: string | null;
   is_pinned: boolean;
   expire_at: string | null;
@@ -262,6 +263,8 @@ export interface Expense {
   amount: number;
   date: string;
   memo: string | null;
+  /** 2026-07-11 추가 — "장보기 완료"의 구매처. 이전엔 memo에 겸용으로 넣었으나 전용 컬럼으로 분리 */
+  place: string | null;
   linked_schedule_id: string | null;
   /** 2026-07-11 추가 — "장보기 완료" 시 첨부한 영수증 사진. OCR 파싱은 P2 범위 밖, URL 저장만 */
   receipt_image_url: string | null;

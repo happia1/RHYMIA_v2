@@ -3,10 +3,10 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import {
   IconPlus,
-  IconPin,
   IconNote,
   IconMessage2,
   IconCamera,
+  IconPhotoScan,
   IconLoader2,
   IconX,
   IconPencil,
@@ -91,9 +91,15 @@ export function BoardSection({
   const [isPending, startTransition] = useTransition();
 
   const stickers = notices.filter((n) => n.type === "sticky");
+  // 고정(is_pinned)이 최우선, 그다음 공지가 항상 일반 메모보다 위 — 둘 다 같으면
+  // notices 원래 순서(작성일 최신순)를 그대로 유지한다(정렬 안정성에 의존).
   const posts = notices
     .filter((n) => n.type !== "sticky")
-    .sort((a, b) => Number(b.is_pinned) - Number(a.is_pinned));
+    .sort((a, b) => {
+      if (a.is_pinned !== b.is_pinned) return Number(b.is_pinned) - Number(a.is_pinned);
+      if (a.type !== b.type) return a.type === "notice" ? -1 : 1;
+      return 0;
+    });
   const visiblePosts = postsExpanded ? posts : posts.slice(0, POSTS_PREVIEW_COUNT);
 
   const authorOf = (userId: string | null) =>
@@ -261,23 +267,20 @@ export function BoardSection({
                   </span>
                 )}
                 <p className="truncate text-[12px] text-[var(--text-muted)]">{n.content}</p>
-                <div className="flex items-center gap-1.5 text-[11px] text-[var(--text-muted)]">
-                  {n.is_pinned && <IconPin size={12} className="shrink-0 text-terra" />}
-                  <div className="ml-auto flex items-center gap-1.5">
-                    <span className="font-medium">{author?.display_name ?? "가족"}</span>
-                    <span>· {formatPostTimestamp(n.created_at)}</span>
-                    {n.created_by === currentUserId && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingNotice(n);
-                        }}
-                        aria-label="수정"
-                      >
-                        <IconPencil size={13} className="text-[var(--text-muted)]" />
-                      </button>
-                    )}
-                  </div>
+                <div className="flex items-center justify-end gap-1.5 text-[11px] text-[var(--text-muted)]">
+                  <span className="font-medium">{author?.display_name ?? "가족"}</span>
+                  <span>· {formatPostTimestamp(n.created_at)}</span>
+                  {n.created_by === currentUserId && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingNotice(n);
+                      }}
+                      aria-label="수정"
+                    >
+                      <IconPencil size={13} className="text-[var(--text-muted)]" />
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -376,7 +379,7 @@ export function BoardSection({
                     {detail.type === "notice" ? `📌 ${detail.title}` : detail.title}
                   </h2>
                 )}
-                {detail.type === "sticky" && detail.image_url && (
+                {detail.image_url && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={detail.image_url}
@@ -541,7 +544,7 @@ export function AddPostSheet({
   const [attachError, setAttachError] = useState("");
   const [isPending, startTransition] = useTransition();
 
-  const stickyFileInputRef = useRef<HTMLInputElement>(null);
+  const imageFileInputRef = useRef<HTMLInputElement>(null);
   const ocrFileInputRef = useRef<HTMLInputElement>(null);
 
   // 시트가 열릴 때마다(수정 대상이 바뀔 때 포함) 필드를 다시 채운다 — 시트 자체는
@@ -569,7 +572,8 @@ export function AddPostSheet({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, existingNotice, fixedType, initialType]);
 
-  const handleStickyImageSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  /** 이미지 삽입 — 스티키(사진 첨부)와 메모/공지(이미지 삽입) 둘 다에서 공용으로 쓰는 업로드 핸들러. */
+  const handleImageSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
@@ -632,11 +636,12 @@ export function AddPostSheet({
     startTransition(async () => {
       if (existingNotice) {
         const result = await updateNotice(existingNotice.id, {
+          type: type !== "sticky" ? type : undefined,
           title: type === "sticky" ? undefined : title,
           content,
           color: type === "sticky" ? color : undefined,
           isPinned: type !== "sticky" ? isPinned : undefined,
-          imageUrl: type === "sticky" ? imageUrl : undefined,
+          imageUrl,
         });
         if (!result.ok) {
           showToast(result.message);
@@ -650,7 +655,7 @@ export function AddPostSheet({
           color: type === "sticky" ? color : undefined,
           isPinned: type !== "sticky" ? isPinned : undefined,
           expireDays: type === "sticky" ? expireDays : undefined,
-          imageUrl: type === "sticky" ? imageUrl : undefined,
+          imageUrl,
         });
       }
       onClose();
@@ -660,7 +665,7 @@ export function AddPostSheet({
   return (
     <BottomSheet open={open} onClose={onClose}>
       <div className="flex flex-col gap-4">
-        {!fixedType && !existingNotice && (
+        {!fixedType && type !== "sticky" && (
           <div className="flex gap-2">
             {(
               [
@@ -705,7 +710,7 @@ export function AddPostSheet({
             />
             <div className="flex items-center gap-3">
               <button
-                onClick={() => stickyFileInputRef.current?.click()}
+                onClick={() => imageFileInputRef.current?.click()}
                 disabled={isUploadingImage}
                 className="flex items-center gap-1.5 text-[13px] font-medium text-honey disabled:opacity-50"
               >
@@ -729,13 +734,6 @@ export function AddPostSheet({
                   </button>
                 </div>
               )}
-              <input
-                ref={stickyFileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleStickyImageSelected}
-              />
             </div>
             {!existingNotice && (
               <div className="flex gap-2">
@@ -768,6 +766,33 @@ export function AddPostSheet({
               rows={4}
               className="rounded-xl p-3 text-[14px]"
             />
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => imageFileInputRef.current?.click()}
+                disabled={isUploadingImage}
+                className="flex items-center gap-1.5 text-[13px] font-medium text-honey disabled:opacity-50"
+              >
+                {isUploadingImage ? (
+                  <IconLoader2 size={16} className="animate-spin" />
+                ) : (
+                  <IconCamera size={16} />
+                )}
+                {imageUrl ? "이미지 변경" : "이미지 삽입"}
+              </button>
+              {imageUrl && (
+                <div className="relative h-10 w-10">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={imageUrl} alt="" className="h-10 w-10 rounded-lg object-cover" />
+                  <button
+                    onClick={() => setImageUrl(null)}
+                    aria-label="이미지 제거"
+                    className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-ink text-cream"
+                  >
+                    <IconX size={10} />
+                  </button>
+                </div>
+              )}
+            </div>
             <button
               onClick={() => ocrFileInputRef.current?.click()}
               disabled={isExtractingText}
@@ -776,7 +801,7 @@ export function AddPostSheet({
               {isExtractingText ? (
                 <IconLoader2 size={16} className="animate-spin" />
               ) : (
-                <IconCamera size={16} />
+                <IconPhotoScan size={16} />
               )}
               {isExtractingText ? "텍스트를 읽는 중..." : "사진에서 텍스트 채우기"}
             </button>
@@ -797,6 +822,13 @@ export function AddPostSheet({
             </label>
           </>
         )}
+        <input
+          ref={imageFileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleImageSelected}
+        />
 
         {attachError && <p className="text-[12px] text-terra">{attachError}</p>}
 
