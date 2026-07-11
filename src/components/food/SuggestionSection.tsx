@@ -30,7 +30,7 @@ export function SuggestionSection({
     },
     {
       title: "룰렛 돌리기",
-      body: "메뉴를 랜덤으로 골라드려요",
+      body: "메뉴 랜덤 고르기",
       onClick: () => setDecisionOpen(true),
     },
     {
@@ -38,8 +38,8 @@ export function SuggestionSection({
       body: weekendSuggestion,
     },
     {
-      title: "냉장고 재고 추천",
-      body: "준비 중이에요",
+      title: "추천 레시피",
+      body: "서비스 준비중",
     },
   ];
 

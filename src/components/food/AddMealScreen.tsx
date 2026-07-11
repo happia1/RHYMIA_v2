@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { IconArrowLeft, IconFridge } from "@tabler/icons-react";
+import { IconArrowLeft, IconFridge, IconCamera, IconLoader2, IconX } from "@tabler/icons-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Input, Textarea } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
 import { mirror } from "@/lib/homeTheme";
+import { createClient } from "@/lib/supabase/client";
 import { createMeal, updateMeal, addFridgeItem, deleteFridgeItem } from "@/app/(main)/food/actions";
 import { MEAL_TAGS } from "@/lib/mealUtils";
 import type { FridgeCategory, FridgeItem, Meal, MealType } from "@/types";
@@ -66,8 +67,39 @@ export function AddMealScreen({
     existingMeal?.reservation_time ?? ""
   );
   const [memo, setMemo] = useState(existingMeal?.memo ?? "");
+  const [imageUrl, setImageUrl] = useState<string | null>(existingMeal?.image_url ?? null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [fridgeOpen, setFridgeOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const imageFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImageSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !file.type.startsWith("image/")) return;
+
+    setIsUploadingImage(true);
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const extMatch = file.name.match(/\.([a-zA-Z0-9]+)$/);
+      const ext = extMatch ? extMatch[1].toLowerCase() : "jpg";
+      const path = `${user.id}/${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from("meal-images").upload(path, file, { upsert: true });
+      if (error) throw error;
+
+      const { data } = supabase.storage.from("meal-images").getPublicUrl(path);
+      setImageUrl(data.publicUrl);
+    } catch {
+      showToast("이미지 업로드에 실패했어요.");
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
 
   const appendMenu = (item: string) => {
     setMainMenu((prev) => {
@@ -92,6 +124,7 @@ export function AddMealScreen({
       place: type === "외식" ? place || null : null,
       reservation_time: type === "외식" ? reservationTime || null : null,
       memo: memo || null,
+      image_url: imageUrl,
     };
     startTransition(async () => {
       if (existingMeal) {
@@ -159,12 +192,41 @@ export function AddMealScreen({
 
         <section className="flex flex-col gap-2">
           <span className={mirror.label}>메뉴 (쉼표로 여러 개)</span>
-          <Input
-            variant="underline"
-            value={mainMenu}
-            onChange={(e) => setMainMenu(e.target.value)}
-            placeholder="예: 된장찌개, 계란말이"
-            className="h-11 px-0 text-[14px]"
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => imageFileInputRef.current?.click()}
+              disabled={isUploadingImage}
+              aria-label={imageUrl ? "이미지 변경" : "이미지 삽입"}
+              className="flex h-7 w-7 shrink-0 items-center justify-center"
+            >
+              {isUploadingImage ? (
+                <IconLoader2 size={18} className="animate-spin text-honey" />
+              ) : imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={imageUrl} alt="" className="h-7 w-7 rounded-lg object-cover" />
+              ) : (
+                <IconCamera size={18} className="text-[var(--text-muted)]" />
+              )}
+            </button>
+            <Input
+              variant="underline"
+              value={mainMenu}
+              onChange={(e) => setMainMenu(e.target.value)}
+              placeholder="예: 된장찌개, 계란말이"
+              className="h-11 flex-1 px-0 text-[14px]"
+            />
+            {imageUrl && (
+              <button onClick={() => setImageUrl(null)} aria-label="이미지 제거" className="shrink-0">
+                <IconX size={16} className="text-[var(--text-muted)]" />
+              </button>
+            )}
+          </div>
+          <input
+            ref={imageFileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleImageSelected}
           />
           <div className="flex flex-wrap gap-3">
             {SUGGESTIONS[type].map((item) => (
