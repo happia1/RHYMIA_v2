@@ -41,7 +41,8 @@ export type AgentResponse =
     }
   | { status: "need_input"; message: string; thread_id: string };
 
-const AGENT_API_URL = process.env.NEXT_PUBLIC_AGENT_API_URL || "http://localhost:8000";
+// 에이전트 서버(agent/)로 직접 나가지 않고 Next.js route handler(/api/agent/*)를 경유한다 —
+// AGENT_API_KEY는 서버 전용 환경변수라 브라우저에 노출하지 않기 위함 (src/lib/agentServer.ts 참고).
 
 export async function callAgent(body: {
   user_text?: string;
@@ -49,7 +50,7 @@ export async function callAgent(body: {
   thread_id?: string;
   user_reply?: string;
 }): Promise<AgentResponse> {
-  const res = await fetch(`${AGENT_API_URL}/process-schedule`, {
+  const res = await fetch("/api/agent/process-schedule", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -61,7 +62,7 @@ export async function callAgent(body: {
 
 /** 메모/공지 작성 시 첨부한 이미지에서 텍스트만 추출 (저장 없이 내용란 자동 채우기용). */
 export async function extractTextFromImage(imageBase64: string): Promise<string> {
-  const res = await fetch(`${AGENT_API_URL}/extract-text`, {
+  const res = await fetch("/api/agent/extract-text", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ image_base64: imageBase64 }),

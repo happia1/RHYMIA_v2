@@ -12,7 +12,7 @@ import uuid
 from typing import Optional
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -41,6 +41,27 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# AGENT_API_KEY가 설정된 경우에만 X-API-Key 헤더 검증을 강제한다.
+# 미설정(로컬 개발 기본값)이면 인증을 생략 — Next.js 서버(route handler)가 이 서버 앞단에서
+# 프록시 역할을 하며 키를 실어 보내므로, 배포 환경에서는 반드시 설정해야 한다.
+_AGENT_API_KEY = os.getenv("AGENT_API_KEY")
+
+
+def verify_api_key(x_api_key: Optional[str] = Header(None, alias="X-API-Key")) -> None:
+    if not _AGENT_API_KEY:
+        return
+    if x_api_key != _AGENT_API_KEY:
+        raise HTTPException(status_code=401, detail="유효하지 않은 API 키입니다.")
+
+
+# image_base64는 원본 이미지 기준 약 8MB까지만 허용 (base64는 원본의 약 4/3배로 부풀려짐).
+_MAX_IMAGE_BASE64_LENGTH = 8 * 1024 * 1024 * 4 // 3
+
+
+def _check_image_size(raw: str) -> None:
+    if len(raw) > _MAX_IMAGE_BASE64_LENGTH:
+        raise HTTPException(status_code=413, detail="이미지 용량이 너무 큽니다 (최대 8MB).")
+
 
 class ProcessScheduleRequest(BaseModel):
     user_text: Optional[str] = Field(None, description="일정 텍스트")
@@ -58,19 +79,21 @@ class ProcessScheduleRequest(BaseModel):
         "날짜/시간 등 정보가 부족하면 { status: 'need_input', message, thread_id }를 반환합니다. "
         "need_input 응답을 받으면 같은 thread_id와 user_reply로 다시 요청해 재개하세요."
     ),
+    dependencies=[Depends(verify_api_key)],
 )
 def process_schedule(body: ProcessScheduleRequest):
     thread_id = body.thread_id or str(uuid.uuid4())
+
+    image_path = None
+    if body.image_base64 and body.image_base64.strip():
+        raw = body.image_base64.strip()
+        _check_image_size(raw)
+        image_path = raw if raw.startswith("data:") else f"data:image/png;base64,{raw}"
 
     try:
         if body.user_reply and body.thread_id:
             result = run_agent_resume(thread_id=body.thread_id, user_reply=body.user_reply)
         else:
-            image_path = None
-            if body.image_base64 and body.image_base64.strip():
-                raw = body.image_base64.strip()
-                image_path = raw if raw.startswith("data:") else f"data:image/png;base64,{raw}"
-
             result = run_agent(user_text=body.user_text, image_path=image_path, thread_id=thread_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"에이전트 처리 오류: {e}") from e
@@ -104,11 +127,13 @@ class ExtractTextRequest(BaseModel):
         "메모/공지 작성 시 첨부한 이미지에서 읽을 수 있는 텍스트만 추출해 { text } 로 반환합니다. "
         "일정/루틴 파싱과 달리 아무 스키마 변환 없이 텍스트 그대로 돌려주고, 결과는 저장하지 않습니다."
     ),
+    dependencies=[Depends(verify_api_key)],
 )
 def extract_text(body: ExtractTextRequest):
     raw = (body.image_base64 or "").strip()
     if not raw:
         return {"text": ""}
+    _check_image_size(raw)
     image_path = raw if raw.startswith("data:") else f"data:image/png;base64,{raw}"
 
     try:
