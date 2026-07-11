@@ -62,7 +62,7 @@ export async function joinWorkspace(workspaceId: string, displayName: string) {
     .maybeSingle();
 
   if (workspaceError) throw new Error(workspaceError.message);
-  if (!workspace) throw new Error("유효하지 않은 워크스페이스입니다.");
+  if (!workspace) return { ok: false as const, message: "유효하지 않은 워크스페이스입니다." };
 
   const { count, error: countError } = await supabase
     .from("workspace_member")
@@ -71,7 +71,7 @@ export async function joinWorkspace(workspaceId: string, displayName: string) {
 
   if (countError) throw new Error(countError.message);
   if ((count ?? 0) >= workspace.member_limit) {
-    throw new Error("가족 구성원 정원이 가득 찼습니다.");
+    return { ok: false as const, message: "가족 구성원 정원이 가득 찼습니다." };
   }
 
   const { error } = await supabase.from("workspace_member").insert({

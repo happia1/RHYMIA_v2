@@ -5,6 +5,7 @@ import Link from "next/link";
 import { IconArrowLeft, IconFridge } from "@tabler/icons-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Input, Textarea } from "@/components/ui/Input";
+import { useToast } from "@/components/ui/Toast";
 import { mirror } from "@/lib/homeTheme";
 import { createMeal, updateMeal, addFridgeItem, deleteFridgeItem } from "@/app/(main)/food/actions";
 import { MEAL_TAGS } from "@/lib/mealUtils";
@@ -56,6 +57,7 @@ export function AddMealScreen({
   fridgeItems: FridgeItem[];
   existingMeal?: Meal;
 }) {
+  const { showToast } = useToast();
   const [tag, setTag] = useState(existingMeal?.tag ?? MEAL_TAGS[0]);
   const [type, setType] = useState<MealType>(existingMeal?.type ?? "집밥");
   const [mainMenu, setMainMenu] = useState(existingMeal?.main_menu ?? "");
@@ -91,11 +93,14 @@ export function AddMealScreen({
       reservation_time: type === "외식" ? reservationTime || null : null,
       memo: memo || null,
     };
-    startTransition(() => {
+    startTransition(async () => {
       if (existingMeal) {
-        updateMeal(existingMeal.id, input);
+        const result = await updateMeal(existingMeal.id, input);
+        if (result && !result.ok) {
+          showToast(result.message);
+        }
       } else {
-        createMeal(workspaceId, input);
+        await createMeal(workspaceId, input);
       }
     });
   };

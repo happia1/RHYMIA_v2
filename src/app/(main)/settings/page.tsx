@@ -2,6 +2,7 @@ import Link from "next/link";
 import { IconArrowLeft } from "@tabler/icons-react";
 import { requireWorkspaceContext } from "@/lib/workspace";
 import { mapWorkspaceMembers } from "@/lib/members";
+import { mirror } from "@/lib/homeTheme";
 import { CopyLinkButton } from "@/components/ui/CopyLinkButton";
 import { AvatarUploader } from "@/components/settings/AvatarUploader";
 import { ThemeToggle } from "@/components/settings/ThemeToggle";
@@ -76,6 +77,9 @@ export default async function SettingsPage() {
         <span className="text-[12px] font-medium text-stone">외부 공유</span>
         <p className="text-[12px] text-stone">
           읽기 전용 링크예요. 돌봄자·조부모에게 전달해보세요.
+        </p>
+        <p className={mirror.label}>
+          링크가 있는 누구나 오늘 식탁, 공유 일정, 고정 공지를 볼 수 있어요
         </p>
         <ShareLinkSection
           workspaceId={workspaceId}

@@ -45,7 +45,7 @@ export interface ManagedMemberInput {
 
 export async function createManagedMember(workspaceId: string, input: ManagedMemberInput) {
   const name = input.name.trim();
-  if (!name) throw new Error("이름을 입력해주세요.");
+  if (!name) return { ok: false as const, message: "이름을 입력해주세요." };
 
   const supabase = await createClient();
   const {
@@ -60,7 +60,7 @@ export async function createManagedMember(workspaceId: string, input: ManagedMem
     .maybeSingle();
 
   if (workspaceError) throw new Error(workspaceError.message);
-  if (!workspace) throw new Error("유효하지 않은 워크스페이스입니다.");
+  if (!workspace) return { ok: false as const, message: "유효하지 않은 워크스페이스입니다." };
 
   const { count, error: countError } = await supabase
     .from("workspace_member")
@@ -69,7 +69,7 @@ export async function createManagedMember(workspaceId: string, input: ManagedMem
 
   if (countError) throw new Error(countError.message);
   if ((count ?? 0) >= workspace.member_limit) {
-    throw new Error("가족 구성원 정원이 가득 찼습니다.");
+    return { ok: false as const, message: "가족 구성원 정원이 가득 찼습니다." };
   }
 
   const { error } = await supabase.from("workspace_member").insert({
@@ -156,7 +156,7 @@ export async function regenerateShareToken(workspaceId: string) {
 
   if (membershipError) throw new Error(membershipError.message);
   if (!membership || membership.role !== "owner") {
-    throw new Error("공유 링크는 오너만 재발급할 수 있습니다.");
+    return { ok: false as const, message: "공유 링크는 오너만 재발급할 수 있습니다." };
   }
 
   const newToken = crypto.randomUUID();
@@ -168,5 +168,5 @@ export async function regenerateShareToken(workspaceId: string) {
   if (error) throw new Error(error.message);
 
   revalidatePath("/settings");
-  return { shareToken: newToken };
+  return { ok: true as const, shareToken: newToken };
 }

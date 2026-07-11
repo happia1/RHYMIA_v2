@@ -65,7 +65,11 @@ export function ManagedMemberSheet({
           await updateManagedMember(existing.id, input);
           showToast("프로필이 수정되었습니다.");
         } else {
-          await createManagedMember(workspaceId, input);
+          const result = await createManagedMember(workspaceId, input);
+          if (!result.ok) {
+            showToast(result.message);
+            return;
+          }
           showToast("구성원이 추가되었습니다.");
         }
         handleClose();

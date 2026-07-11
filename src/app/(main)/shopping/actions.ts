@@ -28,21 +28,35 @@ export interface CompleteGroceryRunInput {
 }
 
 /** 시트 하단 "장보기 완료" — 오늘 체크된(아직 expense로 묶이지 않은) 항목들을
- * expense 기록 하나(category='grocery')로 묶고, 선택하면 fridge_item 재고에도 추가한다. */
+ * expense 기록 하나(category='grocery')로 묶고, 선택하면 fridge_item 재고에도 추가한다.
+ * 클라이언트가 넘긴 itemIds를 그대로 믿지 않고, 워크스페이스/구매 상태/미그룹핑 여부로
+ * 다시 필터링한 뒤 그 결과만 사용한다(다른 워크스페이스 항목이나 이미 묶인 항목이
+ * 실수로 섞여 들어오는 것을 막기 위함). */
 export async function completeGroceryRun(workspaceId: string, input: CompleteGroceryRunInput) {
-  if (input.itemIds.length === 0) return;
+  if (input.itemIds.length === 0) {
+    return { ok: false as const, message: "묶을 항목이 없어요." };
+  }
 
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return;
+  if (!user) return { ok: false as const, message: "로그인이 필요해요." };
 
   const { data: items, error: itemsError } = await supabase
     .from("shopping_item")
     .select("id, name")
-    .in("id", input.itemIds);
+    .in("id", input.itemIds)
+    .eq("workspace_id", workspaceId)
+    .eq("is_purchased", true)
+    .is("expense_id", null);
   if (itemsError) throw new Error(itemsError.message);
+
+  if (!items || items.length === 0) {
+    return { ok: false as const, message: "묶을 항목이 없어요." };
+  }
+
+  const itemIds = items.map((item) => item.id);
 
   const { data: expense, error: expenseError } = await supabase
     .from("expense")
@@ -62,10 +76,13 @@ export async function completeGroceryRun(workspaceId: string, input: CompleteGro
   const { error: linkError } = await supabase
     .from("shopping_item")
     .update({ expense_id: expense.id })
-    .in("id", input.itemIds);
+    .in("id", itemIds)
+    .eq("workspace_id", workspaceId)
+    .eq("is_purchased", true)
+    .is("expense_id", null);
   if (linkError) throw new Error(linkError.message);
 
-  if (input.addToFridge && items && items.length > 0) {
+  if (input.addToFridge) {
     const { error: fridgeError } = await supabase.from("fridge_item").insert(
       items.map((item) => ({
         workspace_id: workspaceId,
@@ -80,4 +97,5 @@ export async function completeGroceryRun(workspaceId: string, input: CompleteGro
   revalidatePath("/home");
   revalidatePath("/food");
   revalidatePath("/food/add");
+  return { ok: true as const };
 }

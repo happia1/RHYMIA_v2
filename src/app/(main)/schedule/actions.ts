@@ -99,7 +99,7 @@ export async function deleteSchedule(scheduleId: string) {
 
   if (fetchError) throw new Error(fetchError.message);
   if (!schedule || schedule.author_id !== user.id) {
-    throw new Error("삭제 권한이 없습니다.");
+    return { ok: false as const, message: "삭제 권한이 없습니다." };
   }
 
   const { error } = await supabase.from("schedule").delete().eq("id", scheduleId);
@@ -107,6 +107,7 @@ export async function deleteSchedule(scheduleId: string) {
 
   revalidatePath("/schedule");
   revalidatePath("/home");
+  return { ok: true as const };
 }
 
 export async function upsertRoutine(

@@ -59,7 +59,7 @@ export async function updateNotice(
   }
 ) {
   const content = input.content.trim();
-  if (!content) return;
+  if (!content) return { ok: false as const, message: "내용을 입력해주세요." };
 
   const supabase = await createClient();
   const {
@@ -75,7 +75,7 @@ export async function updateNotice(
 
   if (fetchError) throw new Error(fetchError.message);
   if (!notice || notice.created_by !== user.id) {
-    throw new Error("수정 권한이 없습니다.");
+    return { ok: false as const, message: "수정 권한이 없습니다." };
   }
 
   const { error } = await supabase
@@ -93,6 +93,7 @@ export async function updateNotice(
 
   revalidatePath("/board");
   revalidatePath("/notifications");
+  return { ok: true as const };
 }
 
 export async function deleteNotice(noticeId: string) {
@@ -110,7 +111,7 @@ export async function deleteNotice(noticeId: string) {
 
   if (fetchError) throw new Error(fetchError.message);
   if (!notice || notice.created_by !== user.id) {
-    throw new Error("삭제 권한이 없습니다.");
+    return { ok: false as const, message: "삭제 권한이 없습니다." };
   }
 
   const { error } = await supabase.from("notice").delete().eq("id", noticeId);
@@ -118,6 +119,7 @@ export async function deleteNotice(noticeId: string) {
 
   revalidatePath("/board");
   revalidatePath("/notifications");
+  return { ok: true as const };
 }
 
 export async function toggleNoticeLike(noticeId: string, liked: boolean) {

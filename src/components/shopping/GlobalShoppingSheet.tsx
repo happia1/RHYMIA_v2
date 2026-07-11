@@ -5,6 +5,7 @@ import { IconPlus, IconX, IconCamera, IconLoader2 } from "@tabler/icons-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { CheckToggle } from "@/components/ui/CheckToggle";
 import { Input } from "@/components/ui/Input";
+import { useToast } from "@/components/ui/Toast";
 import { mirror } from "@/lib/homeTheme";
 import { toDateStr } from "@/lib/date";
 import { createClient } from "@/lib/supabase/client";
@@ -43,6 +44,7 @@ export function GlobalShoppingSheet({
   open: boolean;
   onClose: () => void;
 }) {
+  const { showToast } = useToast();
   const [items, setItems] = useState<ShoppingItem[]>([]);
   const [draft, setDraft] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -132,13 +134,17 @@ export function GlobalShoppingSheet({
     const itemIds = todayCandidates.map((i) => i.id);
     if (itemIds.length === 0) return;
     startTransition(async () => {
-      await completeGroceryRun(workspaceId, {
+      const result = await completeGroceryRun(workspaceId, {
         itemIds,
         place: place.trim() || null,
         amount: amount ? Number(amount) : null,
         receiptImageUrl: receiptUrl,
         addToFridge,
       });
+      if (!result.ok) {
+        showToast(result.message);
+        return;
+      }
       setGroceryFlowOpen(false);
       setPlace("");
       setAmount("");

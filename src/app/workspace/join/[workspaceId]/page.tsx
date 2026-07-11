@@ -5,10 +5,13 @@ import { joinWorkspace } from "../../actions";
 
 export default async function JoinWorkspacePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ workspaceId: string }>;
+  searchParams: Promise<{ error?: string }>;
 }) {
   const { workspaceId } = await params;
+  const { error } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -31,7 +34,10 @@ export default async function JoinWorkspacePage({
     "use server";
     const displayName = String(formData.get("displayName") ?? "").trim();
     if (!displayName) return;
-    await joinWorkspace(workspaceId, displayName);
+    const result = await joinWorkspace(workspaceId, displayName);
+    if (!result.ok) {
+      redirect(`/workspace/join/${workspaceId}?error=${encodeURIComponent(result.message)}`);
+    }
   }
 
   return (
@@ -51,6 +57,7 @@ export default async function JoinWorkspacePage({
           placeholder="내 호칭 (예: 첫째)"
           className="h-12 w-full rounded-2xl px-4 text-[15px]"
         />
+        {error && <p className="text-[13px] text-terra">{error}</p>}
         <button
           type="submit"
           className="mt-2 flex h-12 w-full items-center justify-center rounded-2xl bg-ink text-[15px] font-medium text-cream"

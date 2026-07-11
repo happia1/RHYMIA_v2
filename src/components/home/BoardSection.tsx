@@ -16,6 +16,7 @@ import {
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Avatar } from "@/components/ui/Avatar";
 import { Input, Textarea } from "@/components/ui/Input";
+import { useToast } from "@/components/ui/Toast";
 import { SectionLabel } from "@/components/home/SectionLabel";
 import {
   addNotice,
@@ -76,6 +77,7 @@ export function BoardSection({
   membersById: Record<string, WorkspaceMemberInfo>;
   commentsByNotice: Record<string, NoticeComment[]>;
 }) {
+  const { showToast } = useToast();
   const [detail, setDetail] = useState<Notice | null>(null);
   const [addingSticky, setAddingSticky] = useState(false);
   const [addingPost, setAddingPost] = useState(false);
@@ -117,11 +119,15 @@ export function BoardSection({
   const handleSaveDetailEdit = () => {
     if (!detail || !editContent.trim()) return;
     startTransition(async () => {
-      await updateNotice(detail.id, {
+      const result = await updateNotice(detail.id, {
         title: editTitle,
         content: editContent,
         isPinned: detail.is_pinned,
       });
+      if (!result.ok) {
+        showToast(result.message);
+        return;
+      }
       setDetail(null);
     });
   };
@@ -129,7 +135,11 @@ export function BoardSection({
   const handleConfirmDelete = () => {
     if (!detail) return;
     startTransition(async () => {
-      await deleteNotice(detail.id);
+      const result = await deleteNotice(detail.id);
+      if (!result.ok) {
+        showToast(result.message);
+        return;
+      }
       setDetail(null);
     });
   };
@@ -418,8 +428,12 @@ export function BoardSection({
                 {detail.type === "sticky" && detail.created_by === currentUserId && (
                   <button
                     onClick={() =>
-                      startTransition(() => {
-                        deleteNotice(detail.id);
+                      startTransition(async () => {
+                        const result = await deleteNotice(detail.id);
+                        if (!result.ok) {
+                          showToast(result.message);
+                          return;
+                        }
                         setDetail(null);
                       })
                     }
@@ -514,6 +528,7 @@ export function AddPostSheet({
   /** 지정하면 수정 모드로 열림 — 기존 내용으로 채우고 저장 시 새로 만들지 않고 updateNotice로 반영 */
   existingNotice?: Notice | null;
 }) {
+  const { showToast } = useToast();
   const [type, setType] = useState<NoticeType>(fixedType ?? initialType ?? "memo");
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -616,13 +631,17 @@ export function AddPostSheet({
     if (!content.trim()) return;
     startTransition(async () => {
       if (existingNotice) {
-        await updateNotice(existingNotice.id, {
+        const result = await updateNotice(existingNotice.id, {
           title: type === "sticky" ? undefined : title,
           content,
           color: type === "sticky" ? color : undefined,
           isPinned: type !== "sticky" ? isPinned : undefined,
           imageUrl: type === "sticky" ? imageUrl : undefined,
         });
+        if (!result.ok) {
+          showToast(result.message);
+          return;
+        }
       } else {
         await addNotice(workspaceId, {
           type,

@@ -64,7 +64,7 @@ export async function updateMeal(mealId: string, input: MealInput) {
 
   if (fetchError) throw new Error(fetchError.message);
   if (!meal || meal.author_id !== user.id) {
-    throw new Error("수정 권한이 없습니다.");
+    return { ok: false as const, message: "수정 권한이 없습니다." };
   }
 
   const { error } = await supabase

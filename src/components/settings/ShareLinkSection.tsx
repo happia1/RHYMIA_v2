@@ -22,6 +22,10 @@ export function ShareLinkSection({
     startTransition(async () => {
       try {
         const result = await regenerateShareToken(workspaceId);
+        if (!result.ok) {
+          setError(result.message);
+          return;
+        }
         setToken(result.shareToken);
       } catch (e) {
         setError(e instanceof Error ? e.message : "재발급에 실패했습니다.");
