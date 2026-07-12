@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { RoutineWheel } from "@/components/schedule/RoutineWheel";
+import { Chip } from "@/components/schedule/Chip";
 import { CheckToggle } from "@/components/ui/CheckToggle";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
@@ -271,20 +272,15 @@ export function ScheduleDayView({
       )}
 
       <div className="flex gap-1.5 overflow-x-auto">
-        {DAYS.map((d) => {
-          const isSelected = d.value === selectedDay;
-          return (
-            <button
-              key={d.value}
-              onClick={() => selectDay(d.value)}
-              className={`h-8 w-8 shrink-0 rounded-full text-[12px] font-medium ${
-                isSelected ? "bg-ink text-cream" : "bg-surface text-stone"
-              }`}
-            >
-              {d.label}
-            </button>
-          );
-        })}
+        {DAYS.map((d) => (
+          <Chip
+            key={d.value}
+            label={d.label}
+            active={d.value === selectedDay}
+            onClick={() => selectDay(d.value)}
+            className="w-8 px-0"
+          />
+        ))}
       </div>
 
       {!routineEnabled ? (

@@ -3,14 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { IconPaperclip, IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
-import { getKeywordColor } from "@/lib/scheduleKeywords";
+import { KEYWORD_GROUPS, getKeywordColor } from "@/lib/scheduleKeywords";
 import { toDateStr, formatYearMonth, addMonths } from "@/lib/date";
 import { getHoliday } from "@/lib/holidays";
 import { solarToLunar } from "@/lib/lunar";
 import { addDaysToDateStr, type ExpandedSchedule } from "@/lib/recurrence";
 import { targetLabel, type MemberInfo } from "@/lib/scheduleTargets";
 import { ActivitySuggestionSection } from "@/components/schedule/ActivitySuggestionSection";
-import { KeywordFilterRow } from "@/components/schedule/KeywordFilterRow";
 import { AddEventSheet } from "@/components/schedule/AddEventSheet";
 import { SectionExpand } from "@/components/ui/SectionExpand";
 import { getLastYearHighlights } from "@/app/(main)/schedule/actions";
@@ -45,16 +44,12 @@ export function MonthView({
   schedules,
   membersById,
   workspaceId,
-  keywordMain,
-  keywordSub,
   highlightId,
 }: {
   anchorDate: string;
   schedules: ExpandedSchedule[];
   membersById: Record<string, MemberInfo>;
   workspaceId: string;
-  keywordMain?: string;
-  keywordSub?: string;
   /** 홈 "오늘 뭐하지"에서 특정 일정을 탭해 들어왔을 때 그 일정을 시각적으로 강조 */
   highlightId?: string;
 }) {
@@ -259,9 +254,14 @@ export function MonthView({
         </div>
       )}
 
-      <div className={`h-px w-full bg-border-light`} />
-
-      <KeywordFilterRow keywordMain={keywordMain} keywordSub={keywordSub} />
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        {KEYWORD_GROUPS.map((g) => (
+          <span key={g.main} className="flex items-center gap-1 text-[10px] text-[var(--text-muted)]">
+            <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: g.color }} />
+            {g.main}
+          </span>
+        ))}
+      </div>
 
       <div className="flex flex-col">
         {getHoliday(selectedDate) && (

@@ -101,9 +101,9 @@ export async function createSchedule(workspaceId: string, input: ScheduleInput) 
 }
 
 /** 월간/주간/연간 뷰가 쓰는 일정 조회 — 실제 저장된 행과 반복 일정(recur_type != 'none')의
- * 가상 인스턴스를 합쳐서 반환한다. 두 조회 모두 기존과 동일한 "공유거나 내가 만든 것만"
- * 가시성 규칙을 적용한다(RLS의 schedule_select는 워크스페이스 멤버 전체에게 열려 있어,
- * 이 앱에서는 비공개 일정 숨김을 여기 애플리케이션 코드가 담당함).
+ * 가상 인스턴스를 합쳐서 반환한다. Fridge에 올라오는 일정은 전부 가족 공유가 전제라
+ * is_shared/author_id 기준 가시성 필터는 적용하지 않고 워크스페이스 안의 일정을 전부
+ * 반환한다(스코프 구분 제거 — 컬럼 자체는 유지, 조회 조건에서만 뺌).
  *
  * "겹침" 기준 조회: 시작일이 범위 안에 있는지만 보면(gte/lte date_start) 전월에 시작해
  * 이번 달로 이어지는 기간 일정(방학 등)이 빠진다. 그래서 date_start <= rangeEnd AND
@@ -113,7 +113,6 @@ export async function createSchedule(workspaceId: string, input: ScheduleInput) 
  * 실제 범위와 겹치는(date_end 포함) 것만 남긴다. */
 export async function getSchedulesForRange(
   workspaceId: string,
-  userId: string,
   rangeStart: string,
   rangeEnd: string
 ): Promise<Schedule[]> {
@@ -126,7 +125,6 @@ export async function getSchedulesForRange(
       .eq("workspace_id", workspaceId)
       .lte("date_start", rangeEnd)
       .or(`date_end.gte.${rangeStart},and(date_end.is.null,date_start.gte.${rangeStart})`)
-      .or(`is_shared.eq.true,author_id.eq.${userId}`)
       .order("date_start", { ascending: true }),
     supabase
       .from("schedule")
@@ -134,8 +132,7 @@ export async function getSchedulesForRange(
       .eq("workspace_id", workspaceId)
       .neq("recur_type", "none")
       .lte("date_start", rangeEnd)
-      .or(`recur_until.is.null,recur_until.gte.${rangeStart}`)
-      .or(`is_shared.eq.true,author_id.eq.${userId}`),
+      .or(`recur_until.is.null,recur_until.gte.${rangeStart}`),
   ]);
 
   if (rangeResult.error) throw new Error(rangeResult.error.message);

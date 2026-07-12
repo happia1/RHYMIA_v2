@@ -31,9 +31,9 @@ export function YearView({
   const year = new Date(anchorDate).getFullYear();
   const [editingSchedule, setEditingSchedule] = useState<ExpandedSchedule | null>(null);
 
-  // MonthView의 KeywordFilterRow와 같은 keywordMain URL 파라미터를 공유한다 —
-  // schedule/page.tsx가 뷰 종류와 무관하게 이 파라미터로 schedules를 걸러서 내려주므로,
-  // 여기서 고른 키워드는 월간 뷰로 전환해도 그대로 유지된다(기존 scope/target 필터와 동일한 방식).
+  // schedule/page.tsx가 뷰 종류와 무관하게 keywordMain URL 파라미터로 schedules를
+  // 걸러서 내려주므로, 여기서 고른 키워드는 월간 뷰로 전환해도 그대로 유지된다
+  // (월간/주간은 키워드 필터 UI 자체가 없어졌지만 URL 파라미터 필터링 로직은 공유).
   const setKeyword = (value: string | null) => {
     const next = new URLSearchParams(searchParams.toString());
     if (value === null) next.delete("keywordMain");

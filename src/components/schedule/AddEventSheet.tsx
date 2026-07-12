@@ -28,6 +28,12 @@ const RECUR_OPTIONS: { value: RecurType; label: string }[] = [
   { value: "yearly", label: "매년" },
 ];
 
+// 공휴일은 이제 키워드가 아니라 src/lib/holidays.ts의 내장 데이터로 달력에 표시되므로
+// 신규 등록 키워드 목록에서는 제외한다. 과거에 "공휴일" 키워드로 등록된 일정은 그대로
+// 남아있고(마이그레이션 없음), scheduleKeywords.ts의 KEYWORD_GROUPS엔 그 일정들의 점/밴드
+// 색상이 계속 정상적으로 나오도록 "공휴일" 항목 자체는 남겨둔다 — 여기서만 걸러낸다.
+const REGISTRABLE_KEYWORD_GROUPS = KEYWORD_GROUPS.filter((g) => g.main !== "공휴일");
+
 /** "이번 회만 수정"(단일 인스턴스 예외 처리)은 P2로 미룸 — recur_until로 원본을 끊고
  * 새 반복을 만드는 우회로만 우선 지원. */
 export function AddEventSheet({
@@ -81,7 +87,7 @@ export function AddEventSheet({
   // 가상 인스턴스를 열면 실제로는 원본(originalId)을 수정/삭제해야 한다.
   const targetId = existingSchedule ? existingSchedule.originalId ?? existingSchedule.id : null;
 
-  const activeGroup = KEYWORD_GROUPS.find((g) => g.main === keywordMain);
+  const activeGroup = REGISTRABLE_KEYWORD_GROUPS.find((g) => g.main === keywordMain);
 
   const toggleTarget = (memberId: string) => {
     setTargets((prev) =>
@@ -364,7 +370,7 @@ export function AddEventSheet({
         <div className="flex flex-col gap-2">
           <span className="text-[12px] font-medium text-stone">키워드 (선택)</span>
           <div className="flex flex-wrap gap-2">
-            {KEYWORD_GROUPS.map((g) => (
+            {REGISTRABLE_KEYWORD_GROUPS.map((g) => (
               <button
                 key={g.main}
                 onClick={() => {

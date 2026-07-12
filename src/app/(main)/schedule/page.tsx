@@ -4,7 +4,7 @@ import { toDateStr, getWeekDates } from "@/lib/date";
 import { getCurrentWeather } from "@/lib/weather";
 import { getWorkspaceMembers } from "@/lib/members";
 import { ScheduleTabs } from "@/components/schedule/ScheduleTabs";
-import { EventFilters } from "@/components/schedule/EventFilters";
+import { MemberFilterRow } from "@/components/schedule/MemberFilterRow";
 import { ScheduleDayView } from "@/components/schedule/ScheduleDayView";
 import { MonthView } from "@/components/schedule/MonthView";
 import { WeekView } from "@/components/schedule/WeekView";
@@ -41,7 +41,6 @@ export default async function SchedulePage({
   searchParams: Promise<{
     view?: string;
     date?: string;
-    scope?: string;
     target?: string;
     keywordMain?: string;
     keywordSub?: string;
@@ -86,12 +85,11 @@ export default async function SchedulePage({
             .eq("workspace_id", workspaceId)
             .gte("date_start", range.start)
             .lte("date_start", range.end)
-            .or(`is_shared.eq.true,author_id.eq.${user.id}`)
             .order("date_start", { ascending: true });
           if (error) throw new Error(error.message);
           return (data ?? []) as Schedule[];
         })()
-      : getSchedulesForRange(workspaceId, user.id, range.start, range.end),
+      : getSchedulesForRange(workspaceId, range.start, range.end),
   ]);
 
   const myMember = members.find((m) => m.user_id === user.id);
@@ -146,12 +144,6 @@ export default async function SchedulePage({
 
   let schedules = scheduleRows;
 
-  if (params.scope === "shared") {
-    schedules = schedules.filter((s) => s.is_shared);
-  } else if (params.scope === "private") {
-    schedules = schedules.filter((s) => !s.is_shared && s.author_id === user.id);
-  }
-
   if (params.target && params.target !== "all") {
     schedules = schedules.filter(
       (s) => s.target_members.length === 0 || s.target_members.includes(params.target!)
@@ -166,17 +158,11 @@ export default async function SchedulePage({
   }
 
   return (
-    <div className="flex h-[calc(100dvh-64px)] flex-col gap-section overflow-hidden px-4 pt-6">
-      <div className="flex shrink-0 flex-col gap-3">
+    <div className="flex h-[calc(100dvh-64px)] flex-col gap-2 overflow-hidden px-4 pt-6">
+      <div className="flex shrink-0 flex-col gap-2">
         <ScheduleTabs anchorDate={anchorStr} view={view} />
-        <EventFilters
-          members={members}
-          scope={params.scope ?? "all"}
-          target={params.target ?? "all"}
-        />
+        <MemberFilterRow members={members} target={params.target ?? "all"} />
       </div>
-
-      <div className="h-px w-full shrink-0 bg-border-light" />
 
       <div className="min-h-0 flex-1 overflow-y-auto pb-24">
         <section className="flex flex-col gap-label-gap">
@@ -188,8 +174,6 @@ export default async function SchedulePage({
                 schedules={schedules}
                 membersById={membersById}
                 workspaceId={workspaceId}
-                keywordMain={params.keywordMain}
-                keywordSub={params.keywordSub}
                 highlightId={params.highlight}
               />
             )}
