@@ -1,8 +1,8 @@
-import { IconCalendar } from "@tabler/icons-react";
 import { requireWorkspaceContext } from "@/lib/workspace";
 import { toDateStr, getWeekDates } from "@/lib/date";
 import { getCurrentWeather } from "@/lib/weather";
 import { getWorkspaceMembers } from "@/lib/members";
+import { mirror } from "@/lib/homeTheme";
 import { ScheduleTabs } from "@/components/schedule/ScheduleTabs";
 import { MemberFilterRow } from "@/components/schedule/MemberFilterRow";
 import { ScheduleDayView } from "@/components/schedule/ScheduleDayView";
@@ -11,7 +11,6 @@ import { WeekView } from "@/components/schedule/WeekView";
 import { YearView } from "@/components/schedule/YearView";
 import { AddEventEntry } from "@/components/schedule/AddEventEntry";
 import { AgentLauncher } from "@/components/agent/AgentLauncher";
-import { SectionLabel } from "@/components/home/SectionLabel";
 import { getSchedulesForRange } from "@/app/(main)/schedule/actions";
 import type { Schedule, Routine } from "@/types";
 
@@ -159,42 +158,42 @@ export default async function SchedulePage({
 
   return (
     <div className="flex h-[calc(100dvh-64px)] flex-col gap-2 overflow-hidden px-4 pt-6">
-      <div className="flex shrink-0 flex-col gap-2">
+      <div className="shrink-0">
         <ScheduleTabs anchorDate={anchorStr} view={view} />
-        <MemberFilterRow members={members} target={params.target ?? "all"} />
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto pb-24">
         <section className="flex flex-col gap-label-gap">
-          <SectionLabel icon={<IconCalendar size={14} />}>{VIEW_LABEL[view]}</SectionLabel>
-          <div className="pl-section-indent">
-            {view === "month" && (
-              <MonthView
-                anchorDate={anchorStr}
-                schedules={schedules}
-                membersById={membersById}
-                workspaceId={workspaceId}
-                highlightId={params.highlight}
-              />
-            )}
-            {view === "week" && (
-              <WeekView
-                weekDates={getWeekDates(anchor)}
-                schedules={schedules}
-                membersById={membersById}
-                workspaceId={workspaceId}
-              />
-            )}
-            {view === "year" && (
-              <YearView
-                anchorDate={anchorStr}
-                schedules={schedules}
-                membersById={membersById}
-                keywordMain={params.keywordMain}
-                workspaceId={workspaceId}
-              />
-            )}
+          <div className="flex items-center justify-between">
+            <span className={mirror.label}>{VIEW_LABEL[view]}</span>
+            <MemberFilterRow members={members} target={params.target ?? "all"} />
           </div>
+          {view === "month" && (
+            <MonthView
+              anchorDate={anchorStr}
+              schedules={schedules}
+              membersById={membersById}
+              workspaceId={workspaceId}
+              highlightId={params.highlight}
+            />
+          )}
+          {view === "week" && (
+            <WeekView
+              weekDates={getWeekDates(anchor)}
+              schedules={schedules}
+              membersById={membersById}
+              workspaceId={workspaceId}
+            />
+          )}
+          {view === "year" && (
+            <YearView
+              anchorDate={anchorStr}
+              schedules={schedules}
+              membersById={membersById}
+              keywordMain={params.keywordMain}
+              workspaceId={workspaceId}
+            />
+          )}
         </section>
       </div>
 

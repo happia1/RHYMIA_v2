@@ -9,8 +9,10 @@ import { getHoliday } from "@/lib/holidays";
 import { solarToLunar } from "@/lib/lunar";
 import { addDaysToDateStr, type ExpandedSchedule } from "@/lib/recurrence";
 import { targetLabel, type MemberInfo } from "@/lib/scheduleTargets";
+import { isPeriodSchedule, shortRange } from "@/lib/scheduleFormat";
 import { ActivitySuggestionSection } from "@/components/schedule/ActivitySuggestionSection";
 import { AddEventSheet } from "@/components/schedule/AddEventSheet";
+import { ScheduleDetailSheet } from "@/components/schedule/ScheduleDetailSheet";
 import { SectionExpand } from "@/components/ui/SectionExpand";
 import { getLastYearHighlights } from "@/app/(main)/schedule/actions";
 import { ACTIVITY_SUGGESTION_POOL, pickActivityCandidates } from "@/lib/activitySuggestions";
@@ -23,20 +25,6 @@ const MAX_BAND_ROWS = 2;
 function scheduleOverlapsDay(s: ExpandedSchedule, date: string) {
   const end = s.date_end ?? s.date_start;
   return s.date_start <= date && date <= end;
-}
-
-function isPeriodSchedule(s: ExpandedSchedule) {
-  return Boolean(s.date_end && s.date_end !== s.date_start);
-}
-
-function shortMD(dateStr: string) {
-  const d = new Date(`${dateStr}T00:00:00.000Z`);
-  return `${d.getUTCMonth() + 1}.${d.getUTCDate()}`;
-}
-
-function shortRange(s: ExpandedSchedule) {
-  if (!isPeriodSchedule(s)) return shortMD(s.date_start);
-  return `${shortMD(s.date_start)}–${shortMD(s.date_end!)}`;
 }
 
 export function MonthView({
@@ -57,6 +45,7 @@ export function MonthView({
   const [highlights, setHighlights] = useState<ExpandedSchedule[]>([]);
   const [prefillEvent, setPrefillEvent] = useState<ExpandedSchedule | null>(null);
   const [editingSchedule, setEditingSchedule] = useState<ExpandedSchedule | null>(null);
+  const [detailSchedule, setDetailSchedule] = useState<ExpandedSchedule | null>(null);
 
   const anchor = new Date(anchorDate);
   const year = anchor.getFullYear();
@@ -93,7 +82,7 @@ export function MonthView({
 
     const rowEnd: (string | null)[] = Array(MAX_BAND_ROWS).fill(null);
     const overflow = new Set<string>();
-    const byDate: Record<string, { color: string; row: number }[]> = {};
+    const byDate: Record<string, { color: string; row: number; isStart: boolean; isEnd: boolean }[]> = {};
     const placed: ExpandedSchedule[] = [];
 
     for (const cand of candidates) {
@@ -111,7 +100,7 @@ export function MonthView({
       rowEnd[row] = cand.end;
       const color = getKeywordColor(cand.schedule.keyword_main);
       for (let d = cand.start; d <= cand.end; d = addDaysToDateStr(d, 1)) {
-        (byDate[d] ??= []).push({ color, row });
+        (byDate[d] ??= []).push({ color, row, isStart: d === cand.start, isEnd: d === cand.end });
       }
       placed.push(cand.schedule);
     }
@@ -153,6 +142,15 @@ export function MonthView({
       cancelled = true;
     };
   }, [workspaceId, year, month]);
+
+  // 홈 "오늘 뭐하지"에서 특정 일정을 탭해 들어온 딥링크의 최종 착지 — 해당 일정의
+  // 상세 팝업이 열린 상태로 보여준다.
+  useEffect(() => {
+    if (!highlightId) return;
+    const match = schedules.find((s) => s.id === highlightId);
+    if (match) setDetailSchedule(match);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [highlightId]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -206,11 +204,11 @@ export function MonthView({
               <span className="text-[8.5px] leading-none text-[var(--text-muted)]" style={{ minHeight: 9 }}>
                 {showLunar && lunar ? `음 ${lunar.month}.${lunar.day}` : ""}
               </span>
-              <div className="flex gap-0.5" style={{ minHeight: 6 }}>
+              <div className="flex gap-0.5" style={{ minHeight: 5 }}>
                 {dotSchedules.slice(0, 3).map((s) => (
                   <span
                     key={s.id}
-                    className="h-1.5 w-1.5 rounded-full"
+                    className="h-[3px] w-[3px] rounded-full"
                     style={{ backgroundColor: getKeywordColor(s.keyword_main) }}
                   />
                 ))}
@@ -220,13 +218,15 @@ export function MonthView({
                   {grocery.amount!.toLocaleString()}
                 </span>
               )}
-              <span className="flex w-[80%] flex-col gap-[1.5px]">
+              <span className="flex w-full flex-col gap-[1.5px]">
                 {Array.from({ length: MAX_BAND_ROWS }, (_, row) => {
                   const band = cellBands.find((b) => b.row === row);
                   return (
                     <span
                       key={row}
-                      className="h-[2px] rounded-full"
+                      className={`h-[2px] ${band?.isStart ? "rounded-l-full" : ""} ${
+                        band?.isEnd ? "rounded-r-full" : ""
+                      }`}
                       style={{
                         backgroundColor: band ? band.color : "transparent",
                         opacity: band ? 0.55 : undefined,
@@ -285,19 +285,19 @@ export function MonthView({
             renderItem={(s, i) => (
               <button
                 key={s.id}
-                onClick={() => setEditingSchedule(s)}
+                onClick={() => setDetailSchedule(s)}
                 className={`flex items-center gap-3 py-2.5 text-left ${
                   i > 0 ? "border-t border-border-light" : ""
                 } ${s.id === highlightId ? "-mx-2 rounded-xl bg-honey/10 px-2" : ""}`}
               >
                 <span
-                  className="w-12 shrink-0 text-[13px] text-honey"
+                  className="w-12 shrink-0 text-[11px] text-honey"
                   style={{ fontVariantNumeric: "tabular-nums" }}
                 >
                   {s.time_start ? s.time_start.slice(0, 5) : "종일"}
                 </span>
                 <span
-                  className={`min-w-0 flex-1 truncate text-[14px] ${
+                  className={`min-w-0 flex-1 truncate text-[11px] ${
                     s.is_important ? "font-medium text-terra" : "text-ink"
                   }`}
                 >
@@ -351,6 +351,16 @@ export function MonthView({
             : null
         }
         existingSchedule={editingSchedule}
+      />
+
+      <ScheduleDetailSheet
+        schedule={detailSchedule}
+        membersById={membersById}
+        onClose={() => setDetailSchedule(null)}
+        onEdit={(s) => {
+          setDetailSchedule(null);
+          setEditingSchedule(s);
+        }}
       />
     </div>
   );

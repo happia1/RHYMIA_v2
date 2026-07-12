@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { KEYWORD_GROUPS } from "@/lib/scheduleKeywords";
 import { targetLabel, type MemberInfo } from "@/lib/scheduleTargets";
 import { AddEventSheet } from "@/components/schedule/AddEventSheet";
+import { ScheduleDetailSheet } from "@/components/schedule/ScheduleDetailSheet";
 import { SectionExpand } from "@/components/ui/SectionExpand";
 import type { ExpandedSchedule } from "@/lib/recurrence";
 
@@ -30,6 +31,7 @@ export function YearView({
   const searchParams = useSearchParams();
   const year = new Date(anchorDate).getFullYear();
   const [editingSchedule, setEditingSchedule] = useState<ExpandedSchedule | null>(null);
+  const [detailSchedule, setDetailSchedule] = useState<ExpandedSchedule | null>(null);
 
   // schedule/page.tsx가 뷰 종류와 무관하게 keywordMain URL 파라미터로 schedules를
   // 걸러서 내려주므로, 여기서 고른 키워드는 월간 뷰로 전환해도 그대로 유지된다
@@ -115,17 +117,17 @@ export function YearView({
             renderItem={(s, i) => (
               <button
                 key={s.id}
-                onClick={() => setEditingSchedule(s)}
+                onClick={() => setDetailSchedule(s)}
                 className={`flex items-center gap-3 py-2.5 text-left ${
                   i > 0 ? "border-t border-border-light" : ""
                 }`}
               >
-                <span className="shrink-0 text-[12px] text-[var(--text-muted)]">{s.date_start}</span>
-                <span className="min-w-0 flex-1 truncate text-[14px] font-medium text-terra">
+                <span className="shrink-0 text-[11px] text-[var(--text-muted)]">{s.date_start}</span>
+                <span className="min-w-0 flex-1 truncate text-[11px] font-medium text-terra">
                   {s.title}
                 </span>
                 {s.amount != null && (
-                  <span className="shrink-0 text-[12px] font-medium text-honey">{won(s.amount)}</span>
+                  <span className="shrink-0 text-[11px] font-medium text-honey">{won(s.amount)}</span>
                 )}
                 <span className="ml-auto shrink-0 text-[11px] text-[var(--text-muted)]">
                   {targetLabel(s.target_members, membersById)}
@@ -143,6 +145,16 @@ export function YearView({
         members={Object.entries(membersById).map(([id, m]) => ({ id, display_name: m.display_name }))}
         defaultDate={editingSchedule?.date_start ?? anchorDate}
         existingSchedule={editingSchedule}
+      />
+
+      <ScheduleDetailSheet
+        schedule={detailSchedule}
+        membersById={membersById}
+        onClose={() => setDetailSchedule(null)}
+        onEdit={(s) => {
+          setDetailSchedule(null);
+          setEditingSchedule(s);
+        }}
       />
     </div>
   );

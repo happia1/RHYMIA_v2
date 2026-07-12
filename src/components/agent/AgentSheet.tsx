@@ -116,12 +116,18 @@ export function AgentSheet({
           routineTargetHint: res.target_hint,
         });
       }
-    } catch {
+    } catch (err) {
+      // agentApi.ts의 callAgent가 서버 메시지를 그대로 Error.message로 던진다 — 에이전트 서버가
+      // 꺼져 있는 경우 등은 "agent_http_" 접두사가 아닌 사람이 읽을 메시지이므로 그대로 보여준다.
+      const message =
+        err instanceof Error && err.message && !err.message.startsWith("agent_http_")
+          ? err.message
+          : "잠시 후 다시 시도해주세요.";
       replaceMessage(loadingId, {
         id: loadingId,
         role: "agent",
         kind: "error",
-        text: "잠시 후 다시 시도해주세요.",
+        text: message,
       });
     } finally {
       setSending(false);

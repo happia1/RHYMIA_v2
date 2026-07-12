@@ -57,7 +57,15 @@ export function SuggestionSection({
             disabled={!card.onClick}
             className="flex flex-1 flex-col items-center gap-0.5 px-2 py-1 text-center disabled:cursor-default"
           >
-            <span className={`text-[11px] font-medium ${mirror.muted}`}>{card.title}</span>
+            <span
+              className={
+                card.onClick
+                  ? "rounded-full bg-honey px-2 py-0.5 text-[11px] font-medium text-white"
+                  : `text-[11px] font-medium ${mirror.muted}`
+              }
+            >
+              {card.title}
+            </span>
             <span className="text-[7px] text-[var(--text-muted)]">{card.body}</span>
           </button>
         ))}

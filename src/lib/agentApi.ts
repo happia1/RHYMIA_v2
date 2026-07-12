@@ -56,8 +56,11 @@ export async function callAgent(body: {
     body: JSON.stringify(body),
   });
 
-  if (!res.ok) throw new Error(`agent_http_${res.status}`);
-  return res.json();
+  const data = await res.json();
+  // 에이전트 서버가 꺼져 있을 때 agentServer.ts의 proxyAgentRequest가 { ok: false, message }를
+  // 내려준다 — 그 message를 그대로 던져서 UI(AgentSheet)가 원인을 보여줄 수 있게 한다.
+  if (!res.ok) throw new Error(typeof data?.message === "string" ? data.message : `agent_http_${res.status}`);
+  return data;
 }
 
 /** 메모/공지 작성 시 첨부한 이미지에서 텍스트만 추출 (저장 없이 내용란 자동 채우기용). */
@@ -68,7 +71,7 @@ export async function extractTextFromImage(imageBase64: string): Promise<string>
     body: JSON.stringify({ image_base64: imageBase64 }),
   });
 
-  if (!res.ok) throw new Error(`agent_http_${res.status}`);
   const data = await res.json();
+  if (!res.ok) throw new Error(typeof data?.message === "string" ? data.message : `agent_http_${res.status}`);
   return data.text ?? "";
 }

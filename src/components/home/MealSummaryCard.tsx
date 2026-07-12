@@ -41,7 +41,7 @@ export function MealSummaryCard({ meals }: { meals: MealSummaryItem[] }) {
             <Link key={meal.id} href="/food" className="flex w-full shrink-0 snap-center flex-col gap-1">
               <div className="flex min-w-0 items-baseline gap-2">
                 <span className={`min-w-0 flex-1 truncate text-[16px] font-medium ${mirror.primary}`}>
-                  {meal.emoji} {meal.main_menu}
+                  {meal.main_menu}
                 </span>
               </div>
               <div className={`text-[12px] ${mirror.secondary}`}>

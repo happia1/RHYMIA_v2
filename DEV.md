@@ -1,6 +1,43 @@
 # 개발 참조 문서
 
-## 마지막 업데이트: 2026-07-12 (일정 탭 필터 구조 단순화 — 스코프 제거, 멤버 칩 하나로, 공휴일 내장화)
+## 마지막 업데이트: 2026-07-12 (스크린샷 피드백 기반 UI 다듬기 9건 — 스마트미러 원칙 유지)
+
+- 2026-07-12: 스크린샷 피드백 기반 UI 다듬기 9건 (스마트미러 원칙 유지)
+  - **게시판 스티커 카드 높이 통일**: `BoardSection.tsx` — 스티커 카드를 `min-h-28`(내용에 따라 늘어남)에서
+    `h-36` 고정으로 바꾸고, 본문을 `line-clamp-4`→`line-clamp-3`으로 줄여 이미지 유무와 관계없이 항상
+    같은 높이 안에 들어가게 함. 이미지 높이도 `h-12`→`h-10`으로 고정. "+" 작성 버튼도 동일하게 `h-36`으로
+    맞춤.
+  - **일정 탭 멤버 필터 → 드롭다운으로 이동**: `MemberFilterRow.tsx`를 칩 한 줄 렌더링에서 "전체 ▾" 토글
+    버튼 + 클릭 시 펼쳐지는 드롭다운 목록으로 전면 재작성(바깥 클릭 시 닫히는 투명 백드롭 포함). 라벨은
+    섹션 라벨과 동일한 10px 톤(`mirror.label`과 같은 클래스)을 직접 사용. `schedule/page.tsx`에서 필터 줄을
+    독립된 행에서 빼서 "월간/주간/연간 일정" 라벨과 같은 줄 오른쪽 끝에 배치.
+  - **일정 탭 뷰 섹션 아이콘/들여쓰기 제거**: `schedule/page.tsx`의 월/주/연 뷰 래퍼에서 `SectionLabel`
+    컴포넌트(아이콘 포함) 사용을 그만두고 텍스트만 있는 `<span className={mirror.label}>`로 교체, 콘텐츠를
+    감싸던 `pl-section-indent`도 제거 — 탭 전체가 하나의 화면이라 달력이 좌측 정렬로 꽉 차게 됨. `IconCalendar`/
+    `SectionLabel` import 제거.
+  - **달력 도트/기간 밴드 정리**: `MonthView.tsx` — 날짜 도트를 `h-1.5 w-1.5`(6px)에서 `h-[3px] w-[3px]`로
+    축소. 기간 일정 밴드는 셀 폭 제한(`w-[80%]`)을 풀어 `w-full`로 렌더하고, `bandsByDate`에 `isStart`/`isEnd`
+    플래그를 추가해 기간의 시작 날짜만 `rounded-l-full`, 끝 날짜만 `rounded-r-full`, 중간은 각 없이 이어지게
+    함(그리드 자체가 원래 열 간격이 없어 셀 경계 없이 연결되어 보임).
+  - **일정 리스트 폰트 통일**: 달력 하단 선택일 일정 행(`MonthView.tsx`)과 연간 뷰 주요 일정 리스트
+    (`YearView.tsx`)에서 시간/제목/날짜/금액 텍스트를 전부 가장 작았던 대상("가족") 텍스트 크기인 11px로
+    통일.
+  - **홈 "오늘 뭐먹지" 아이콘 제거**: `MealSummaryCard.tsx`에서 메뉴명 앞에 붙던 `meal.emoji`(기본값 "🍽")
+    렌더링 제거, 텍스트만 표시.
+  - **일정 상세 보기 팝업 신규 + 클릭 동선 변경**: 새 `ScheduleDetailSheet.tsx` — 일정을 클릭하면 이제
+    수정 시트 대신 읽기 전용 상세 팝업(제목/날짜·기간/시간/대상/키워드/금액/메모/반복 여부)이 먼저 뜨고,
+    우측 상단 연필 아이콘으로 기존 `AddEventSheet` 수정 모드로 전환, 삭제도 팝업 안에서 바로 가능(2단계
+    확인). `MonthView`/`WeekView`/`YearView` 세 곳의 일정 클릭 핸들러를 전부 `setEditingSchedule`에서
+    `setDetailSchedule`로 바꾸고 `onEdit`에서만 수정 시트를 엶. 반복 일정 가상 인스턴스는 클릭한 날짜
+    기준으로 표시하되 삭제/수정은 `originalId`에 적용(기존 `AddEventSheet`의 원본 수정 안내 로직 재사용).
+    홈 "오늘 뭐하지"(`TodayEvents.tsx`) 딥링크(`/schedule?view=month&date=...&highlight=...`)의 최종
+    착지도 `MonthView`에 추가한 `highlightId` 매칭 `useEffect`로 이 상세 팝업이 열린 상태가 되도록 함.
+    날짜 포맷 로직(`isPeriodSchedule`/`shortRange`)은 `MonthView.tsx`에 중복 정의돼 있던 걸
+    `src/lib/scheduleFormat.ts`(신규)로 뽑아 세 뷰 + 상세 팝업이 공유.
+  - 검증: `tsc --noEmit` 클린. Playwright(임시 설치, `--no-save`)로 로그인 페이지 렌더/콘솔 에러 없음
+    확인 + `/board`, `/schedule?view=month|week|year|day`, `/home` 요청이 전부 500이 아닌 307(로그인
+    리다이렉트)로 응답해 서버 컴파일이 깨지지 않았음을 확인 — 실제 로그인 자격증명이 없어 인증 후
+    화면(스티커 높이/드롭다운/도트/밴드/상세 팝업 실물)은 사용자가 직접 확인 필요.
 
 - 2026-07-12: 일정 탭 필터 구조 단순화 — "Fridge에 올라오는 일정은 전부 가족 공유가 전제" 원칙으로 정리
   - **스코프 필터(전체/공유/개인) 완전 제거**: `EventFilters.tsx` 삭제. `schedule/actions.ts`의

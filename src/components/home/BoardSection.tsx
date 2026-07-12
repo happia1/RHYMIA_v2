@@ -176,7 +176,7 @@ export function BoardSection({
                 <div key={s.id} className="flex w-28 shrink-0 flex-col gap-1">
                   <div
                     onClick={() => setDetail(s)}
-                    className="relative flex min-h-28 w-28 cursor-pointer flex-col p-2.5 text-left"
+                    className="relative flex h-36 w-28 cursor-pointer flex-col p-2.5 text-left"
                     style={{ backgroundColor: s.color }}
                   >
                     <div className="flex items-center justify-between gap-1">
@@ -204,11 +204,11 @@ export function BoardSection({
                       <img
                         src={s.image_url}
                         alt=""
-                        className="mt-1 h-12 w-full shrink-0 object-cover"
+                        className="mt-1 h-10 w-full shrink-0 object-cover"
                       />
                     )}
                     <span
-                      className="mt-1 line-clamp-4 flex-1 whitespace-pre-wrap font-handwriting text-[16px] leading-snug"
+                      className="mt-1 line-clamp-3 flex-1 whitespace-pre-wrap font-handwriting text-[16px] leading-snug"
                       style={{ color: STICKER_TEXT_COLOR }}
                     >
                       {s.content}
@@ -241,7 +241,7 @@ export function BoardSection({
             <button
               onClick={() => setAddingSticky(true)}
               aria-label="하고싶은 말 작성"
-              className="flex min-h-28 w-28 shrink-0 items-center justify-center border border-dashed border-border-light text-[var(--text-muted)]"
+              className="flex h-36 w-28 shrink-0 items-center justify-center border border-dashed border-border-light text-[var(--text-muted)]"
             >
               <IconPlus size={20} />
             </button>
@@ -586,8 +586,12 @@ export function AddPostSheet({
       } else {
         setAttachError("이미지에서 텍스트를 찾지 못했어요.");
       }
-    } catch {
-      setAttachError("텍스트 추출에 실패했어요.");
+    } catch (err) {
+      setAttachError(
+        err instanceof Error && err.message && !err.message.startsWith("agent_http_")
+          ? err.message
+          : "텍스트 추출에 실패했어요."
+      );
     } finally {
       setIsExtractingText(false);
     }

@@ -5,6 +5,7 @@ import { IconPaperclip } from "@tabler/icons-react";
 import { getHoliday } from "@/lib/holidays";
 import { targetLabel, type MemberInfo } from "@/lib/scheduleTargets";
 import { AddEventSheet } from "@/components/schedule/AddEventSheet";
+import { ScheduleDetailSheet } from "@/components/schedule/ScheduleDetailSheet";
 import type { ExpandedSchedule } from "@/lib/recurrence";
 
 const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
@@ -21,6 +22,7 @@ export function WeekView({
   workspaceId: string;
 }) {
   const [editingSchedule, setEditingSchedule] = useState<ExpandedSchedule | null>(null);
+  const [detailSchedule, setDetailSchedule] = useState<ExpandedSchedule | null>(null);
 
   const byDate: Record<string, ExpandedSchedule[]> = {};
   for (const date of weekDates) byDate[date] = [];
@@ -54,7 +56,7 @@ export function WeekView({
                 {daySchedules.map((s) => (
                   <button
                     key={s.id}
-                    onClick={() => setEditingSchedule(s)}
+                    onClick={() => setDetailSchedule(s)}
                     className="flex items-center gap-3 text-left"
                   >
                     <span
@@ -91,6 +93,16 @@ export function WeekView({
         members={Object.entries(membersById).map(([id, m]) => ({ id, display_name: m.display_name }))}
         defaultDate={editingSchedule?.date_start ?? weekDates[0]}
         existingSchedule={editingSchedule}
+      />
+
+      <ScheduleDetailSheet
+        schedule={detailSchedule}
+        membersById={membersById}
+        onClose={() => setDetailSchedule(null)}
+        onEdit={(s) => {
+          setDetailSchedule(null);
+          setEditingSchedule(s);
+        }}
       />
     </div>
   );
