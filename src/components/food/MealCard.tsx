@@ -18,8 +18,8 @@ export interface MealCardParticipant {
 }
 
 const MAX_STACKED_AVATARS = 4;
-// 아바타 지름(AVATAR_SIZE.mirror=18px)의 1/5만 보이게 겹치는 음수 마진 — 18 * 4/5 = 14.4px
-const AVATAR_STACK_OVERLAP = "-space-x-[14.4px]";
+// 아바타 지름(AVATAR_SIZE.mealCard=15px)의 1/5만 보이게 겹치는 음수 마진 — 15 * 4/5 = 12px
+const AVATAR_STACK_OVERLAP = "-space-x-[12px]";
 
 export function MealCard({
   meal,
@@ -62,27 +62,27 @@ export function MealCard({
 
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <div className="flex items-center gap-1.5">
-          <span className="text-[10px] font-medium text-honey">{meal.tag}</span>
-          <span className="text-[10px] font-medium text-sage">{meal.type}</span>
+          <span className="text-[9px] font-medium text-honey">{meal.tag}</span>
+          <span className="text-[9px] font-medium text-sage">{meal.type}</span>
         </div>
         <div className="flex items-baseline gap-2">
-          <span className="truncate text-[15px] text-[var(--text-primary)]">
+          <span className="truncate text-[13px] text-[var(--text-primary)]">
             {meal.main_menu}
           </span>
           {meal.sides.length > 0 && (
-            <span className="truncate text-[12px] text-[var(--text-secondary)]">
+            <span className="truncate text-[11px] text-[var(--text-secondary)]">
               {meal.sides.join(", ")}
             </span>
           )}
         </div>
         {meal.type === "외식" && meal.place && (
-          <p className="truncate text-[12px] text-[var(--text-secondary)]">
+          <p className="truncate text-[11px] text-[var(--text-secondary)]">
             {meal.place}
             {meal.reservation_time ? ` · ${meal.reservation_time}` : ""}
           </p>
         )}
         {kcalMedian != null && (
-          <p className="text-[12px] text-[var(--text-secondary)]">약 {kcalMedian}kcal</p>
+          <p className="text-[11px] text-[var(--text-secondary)]">약 {kcalMedian}kcal</p>
         )}
       </div>
 
@@ -96,13 +96,13 @@ export function MealCard({
                 color={p.avatar_color}
                 textColor={p.avatar_text_color}
                 imageUrl={p.avatar_image_url}
-                size={AVATAR_SIZE.mirror}
+                size={AVATAR_SIZE.mealCard}
               />
             ))}
             {overflowCount > 0 && (
               <span
-                className="flex items-center justify-center rounded-full bg-border-light text-[9px] font-medium text-stone"
-                style={{ width: AVATAR_SIZE.mirror, height: AVATAR_SIZE.mirror }}
+                className="flex items-center justify-center rounded-full bg-border-light text-[8px] font-medium text-stone"
+                style={{ width: AVATAR_SIZE.mealCard, height: AVATAR_SIZE.mealCard }}
               >
                 +{overflowCount}
               </span>
@@ -115,7 +115,7 @@ export function MealCard({
             onChange={() =>
               startTransition(() => toggleMealParticipation(meal.id, myParticipation))
             }
-            size={22}
+            size={18}
           />
         </div>
       </div>

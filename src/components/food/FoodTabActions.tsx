@@ -8,7 +8,7 @@ import type { FridgeItem } from "@/types";
 
 /** 식탁 탭 최하단(오늘의 제안 아래) — 현재 재고 확인(끼니 추가 화면과 동일한 FridgeStockSheet
  * 재사용, 중복 구현 금지)과 장볼 것 입력(전역 GlobalShoppingSheet, 항상 "장볼 것" 탭으로 열림)
- * 두 줄을 라인 스타일(구분선만, 박스 없음)로 둔다. */
+ * 을 2단(왼쪽/오른쪽)으로 나란히 두고, 가운데 세로 구분선만으로 나눈다(박스 없음). */
 export function FoodTabActions({
   workspaceId,
   fridgeItems,
@@ -21,17 +21,17 @@ export function FoodTabActions({
 
   return (
     <>
-      <div className="flex flex-col">
+      <div className="grid grid-cols-2">
         <button
           onClick={() => setStockOpen(true)}
-          className="flex items-center gap-2 py-2.5 text-left text-[13px] text-ink"
+          className="flex items-center gap-2 py-2.5 pr-3 text-left text-[13px] text-ink"
         >
           <IconFridge size={16} className="text-honey" />
           냉장고에 뭐있지
         </button>
         <button
           onClick={openShoppingSheet}
-          className="flex items-center gap-2 border-t border-border-light py-2.5 text-left text-[13px] text-ink"
+          className="flex items-center gap-2 border-l border-border-light py-2.5 pl-3 text-left text-[13px] text-ink"
         >
           <IconShoppingCart size={16} className="text-honey" />
           뭐 사야하지
