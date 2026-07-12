@@ -2,13 +2,14 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { IconArrowLeft, IconMapPin } from "@tabler/icons-react";
+import { IconArrowLeft, IconMapPin, IconBrandYoutube } from "@tabler/icons-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { CheckToggle } from "@/components/ui/CheckToggle";
 import { Input } from "@/components/ui/Input";
 import { addMealComment } from "@/app/(main)/food/actions";
 import { toggleMealParticipation } from "@/app/(main)/home/actions";
 import { AVATAR_SIZE } from "@/lib/uiTokens";
+import { youtubeThumbnailUrl, youtubeWatchUrl } from "@/lib/youtube";
 import type { Meal, MealComment } from "@/types";
 
 interface MemberInfo {
@@ -33,6 +34,7 @@ export function MealDetail({
   currentUserId: string;
 }) {
   const [commentDraft, setCommentDraft] = useState("");
+  const [thumbnailError, setThumbnailError] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const author = members.find((m) => m.user_id === meal.author_id);
@@ -110,6 +112,32 @@ export function MealDetail({
         )}
 
         {meal.memo && <p className="text-[14px] text-ink">{meal.memo}</p>}
+
+        {meal.video_id && (
+          <a
+            href={youtubeWatchUrl(meal.video_id)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2"
+          >
+            {thumbnailError ? (
+              <div className="flex h-16 w-28 shrink-0 items-center justify-center rounded-xl bg-cream">
+                <IconBrandYoutube size={22} className="text-[var(--text-muted)]" />
+              </div>
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={youtubeThumbnailUrl(meal.video_id)}
+                alt=""
+                className="h-16 w-28 shrink-0 rounded-xl object-cover"
+                onError={() => setThumbnailError(true)}
+              />
+            )}
+            <span className="min-w-0 flex-1 truncate text-[13px] text-ink">
+              {meal.recipe_title ?? "레시피 영상 보기"}
+            </span>
+          </a>
+        )}
 
         {author && (
           <div className="flex items-center gap-2">

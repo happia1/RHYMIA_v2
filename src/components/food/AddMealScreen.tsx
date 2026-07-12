@@ -1,12 +1,24 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { IconArrowLeft, IconFridge, IconCamera, IconLoader2, IconX } from "@tabler/icons-react";
+import {
+  IconArrowLeft,
+  IconFridge,
+  IconCamera,
+  IconPhoto,
+  IconBrandYoutube,
+  IconLink,
+  IconLoader2,
+  IconX,
+} from "@tabler/icons-react";
+import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Input, Textarea } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
 import { mirror } from "@/lib/homeTheme";
 import { createClient } from "@/lib/supabase/client";
+import { compressImage } from "@/lib/imageCompress";
+import { fetchYoutubeOembed, youtubeThumbnailUrl } from "@/lib/youtube";
 import { createMeal, updateMeal } from "@/app/(main)/food/actions";
 import { MEAL_TAGS } from "@/lib/mealUtils";
 import { FridgeStockSheet } from "@/components/food/FridgeStockSheet";
@@ -63,9 +75,21 @@ export function AddMealScreen({
   const [memo, setMemo] = useState(existingMeal?.memo ?? "");
   const [imageUrl, setImageUrl] = useState<string | null>(existingMeal?.image_url ?? null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [videoId, setVideoId] = useState<string | null>(existingMeal?.video_id ?? null);
+  const [recipeTitle, setRecipeTitle] = useState<string | null>(existingMeal?.recipe_title ?? null);
+  const [thumbnailError, setThumbnailError] = useState(false);
+  const [photoOptionsOpen, setPhotoOptionsOpen] = useState(false);
+  const [recipeLinkOpen, setRecipeLinkOpen] = useState(false);
+  const [recipeLinkDraft, setRecipeLinkDraft] = useState("");
+  const [isFetchingRecipe, setIsFetchingRecipe] = useState(false);
   const [fridgeOpen, setFridgeOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const imageFileInputRef = useRef<HTMLInputElement>(null);
+  const cameraFileInputRef = useRef<HTMLInputElement>(null);
+  const albumFileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setThumbnailError(false);
+  }, [videoId]);
 
   const handleImageSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -80,10 +104,13 @@ export function AddMealScreen({
       } = await supabase.auth.getUser();
       if (!user) return;
 
-      const extMatch = file.name.match(/\.([a-zA-Z0-9]+)$/);
-      const ext = extMatch ? extMatch[1].toLowerCase() : "jpg";
+      const compressedDataUrl = await compressImage(file);
+      const blob = await (await fetch(compressedDataUrl)).blob();
+      const ext = blob.type === "image/png" ? "png" : "jpg";
       const path = `${user.id}/${Date.now()}.${ext}`;
-      const { error } = await supabase.storage.from("meal-images").upload(path, file, { upsert: true });
+      const { error } = await supabase.storage
+        .from("meal-images")
+        .upload(path, blob, { upsert: true, contentType: blob.type });
       if (error) throw error;
 
       const { data } = supabase.storage.from("meal-images").getPublicUrl(path);
@@ -92,6 +119,34 @@ export function AddMealScreen({
       showToast("이미지 업로드에 실패했어요.");
     } finally {
       setIsUploadingImage(false);
+    }
+  };
+
+  const openYoutubeSearch = () => {
+    const query = `${mainMenu.trim() || "레시피"} 레시피`;
+    window.open(
+      `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`,
+      "_blank",
+      "noopener,noreferrer"
+    );
+  };
+
+  const handleFetchRecipeLink = async () => {
+    const url = recipeLinkDraft.trim();
+    if (!url) return;
+    setIsFetchingRecipe(true);
+    try {
+      const result = await fetchYoutubeOembed(url);
+      if ("error" in result) {
+        showToast(result.error);
+        return;
+      }
+      setVideoId(result.videoId);
+      setRecipeTitle(result.title);
+      setRecipeLinkOpen(false);
+      setRecipeLinkDraft("");
+    } finally {
+      setIsFetchingRecipe(false);
     }
   };
 
@@ -119,6 +174,8 @@ export function AddMealScreen({
       reservation_time: type === "외식" ? reservationTime || null : null,
       memo: memo || null,
       image_url: imageUrl,
+      video_id: videoId,
+      recipe_title: recipeTitle,
     };
     startTransition(async () => {
       if (existingMeal) {
@@ -188,9 +245,9 @@ export function AddMealScreen({
           <span className={mirror.label}>메뉴 (쉼표로 여러 개)</span>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => imageFileInputRef.current?.click()}
+              onClick={() => setPhotoOptionsOpen(true)}
               disabled={isUploadingImage}
-              aria-label={imageUrl ? "이미지 변경" : "이미지 삽입"}
+              aria-label="사진/레시피 추가"
               className="flex h-7 w-7 shrink-0 items-center justify-center"
             >
               {isUploadingImage ? (
@@ -216,12 +273,50 @@ export function AddMealScreen({
             )}
           </div>
           <input
-            ref={imageFileInputRef}
+            ref={cameraFileInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={handleImageSelected}
+          />
+          <input
+            ref={albumFileInputRef}
             type="file"
             accept="image/*"
             className="hidden"
             onChange={handleImageSelected}
           />
+          {videoId && (
+            <div className="flex items-center gap-2">
+              {thumbnailError ? (
+                <div className="flex h-10 w-16 shrink-0 items-center justify-center rounded-lg bg-cream">
+                  <IconBrandYoutube size={18} className="text-[var(--text-muted)]" />
+                </div>
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={youtubeThumbnailUrl(videoId)}
+                  alt=""
+                  className="h-10 w-16 shrink-0 rounded-lg object-cover"
+                  onError={() => setThumbnailError(true)}
+                />
+              )}
+              <span className="min-w-0 flex-1 truncate text-[12px] text-[var(--text-muted)]">
+                {recipeTitle ?? "레시피 영상"}
+              </span>
+              <button
+                onClick={() => {
+                  setVideoId(null);
+                  setRecipeTitle(null);
+                }}
+                aria-label="레시피 제거"
+                className="shrink-0"
+              >
+                <IconX size={16} className="text-[var(--text-muted)]" />
+              </button>
+            </div>
+          )}
           <div className="flex flex-wrap gap-3">
             {SUGGESTIONS[type].map((item) => (
               <button
@@ -272,6 +367,72 @@ export function AddMealScreen({
         workspaceId={workspaceId}
         items={fridgeItems}
       />
+
+      <BottomSheet open={photoOptionsOpen} onClose={() => setPhotoOptionsOpen(false)}>
+        <div className="flex flex-col">
+          <button
+            onClick={() => {
+              setPhotoOptionsOpen(false);
+              cameraFileInputRef.current?.click();
+            }}
+            className="flex items-center gap-3 py-3 text-left text-[14px] text-ink"
+          >
+            <IconCamera size={18} className="text-honey" />
+            카메라로 찍기
+          </button>
+          <button
+            onClick={() => {
+              setPhotoOptionsOpen(false);
+              albumFileInputRef.current?.click();
+            }}
+            className="flex items-center gap-3 border-t border-border-light py-3 text-left text-[14px] text-ink"
+          >
+            <IconPhoto size={18} className="text-honey" />
+            앨범에서 선택
+          </button>
+          <button
+            onClick={() => {
+              setPhotoOptionsOpen(false);
+              openYoutubeSearch();
+            }}
+            className="flex items-center gap-3 border-t border-border-light py-3 text-left text-[14px] text-ink"
+          >
+            <IconBrandYoutube size={18} className="text-honey" />
+            유튜브에서 레시피 찾기
+          </button>
+          <button
+            onClick={() => {
+              setPhotoOptionsOpen(false);
+              setRecipeLinkOpen(true);
+            }}
+            className="flex items-center gap-3 border-t border-border-light py-3 text-left text-[14px] text-ink"
+          >
+            <IconLink size={18} className="text-honey" />
+            레시피 링크 붙여넣기
+          </button>
+        </div>
+      </BottomSheet>
+
+      <BottomSheet open={recipeLinkOpen} onClose={() => setRecipeLinkOpen(false)}>
+        <div className="flex flex-col gap-4">
+          <span className="text-[15px] font-medium text-ink">레시피 링크 붙여넣기</span>
+          <Input
+            variant="underline"
+            value={recipeLinkDraft}
+            onChange={(e) => setRecipeLinkDraft(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleFetchRecipeLink()}
+            placeholder="유튜브 영상 URL"
+            className="h-11 px-0 text-[14px]"
+          />
+          <button
+            onClick={handleFetchRecipeLink}
+            disabled={isFetchingRecipe || !recipeLinkDraft.trim()}
+            className="flex h-11 items-center justify-center rounded-2xl bg-ink text-[14px] font-medium text-cream disabled:opacity-50"
+          >
+            {isFetchingRecipe ? "불러오는 중..." : "가져오기"}
+          </button>
+        </div>
+      </BottomSheet>
     </div>
   );
 }

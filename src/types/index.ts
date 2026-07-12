@@ -160,6 +160,9 @@ export interface Meal {
   memo: string | null;
   author_id: string | null;
   image_url: string | null;
+  /** 붙여넣은 유튜브 레시피 링크의 영상 id — 썸네일은 저장하지 않고 youtubeThumbnailUrl()로 참조만 함 */
+  video_id: string | null;
+  recipe_title: string | null;
   emoji: string;
   color: string;
   created_at: string;

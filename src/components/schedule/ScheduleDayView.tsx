@@ -83,10 +83,8 @@ export function ScheduleDayView({
   );
   const routineEnabled = routineEnabledByMember[activeMemberId] ?? true;
 
-  // 요일 칩 다중 선택 — 배열 순서 = 선택한 순서, 마지막 항목이 지금 보고 있는 "기준 요일".
-  // 블록 추가/수정 모두 이 선택된 요일 전체에 적용된다(기존 내 루틴 폼의 다중 선택 로직 그대로).
-  const [selectedDays, setSelectedDays] = useState<number[]>(() => [new Date().getDay()]);
-  const primaryDay = selectedDays[selectedDays.length - 1];
+  // 요일 칩은 하나만 선택된다 — 추가/수정/삭제 모두 지금 선택된 요일 하나에만 적용.
+  const [selectedDay, setSelectedDay] = useState<number>(() => new Date().getDay());
 
   const [pickedIndex, setPickedIndex] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<BlockForm | null>(null);
@@ -103,7 +101,7 @@ export function ScheduleDayView({
   }, []);
 
   const activeMember = members.find((m) => m.id === activeMemberId);
-  const key = `${activeMemberId}-${primaryDay}-${SEMESTER}`;
+  const key = `${activeMemberId}-${selectedDay}-${SEMESTER}`;
   const blocks = useMemo(() => sortBlocks(byKey[key] ?? []), [byKey, key]);
 
   const currentBlock = getCurrentBlock(blocks, now);
@@ -123,27 +121,21 @@ export function ScheduleDayView({
 
   const switchMember = (memberId: string) => {
     setActiveMemberId(memberId);
-    setSelectedDays([new Date().getDay()]);
+    setSelectedDay(new Date().getDay());
     cancelEdit();
     setAddingOpen(false);
   };
 
-  const toggleDay = (value: number) => {
+  const selectDay = (value: number) => {
     cancelEdit();
-    setSelectedDays((prev) => {
-      if (prev.includes(value)) {
-        if (prev.length === 1) return prev; // 최소 1개는 항상 선택 상태 유지
-        return prev.filter((d) => d !== value);
-      }
-      return [...prev, value];
-    });
+    setSelectedDay(value);
   };
 
   const navigateDay = (direction: 1 | -1) => {
     cancelEdit();
-    const currentIndex = DAYS.findIndex((d) => d.value === primaryDay);
+    const currentIndex = DAYS.findIndex((d) => d.value === selectedDay);
     const nextIndex = (currentIndex + direction + DAYS.length) % DAYS.length;
-    setSelectedDays([DAYS[nextIndex].value]);
+    setSelectedDay(DAYS[nextIndex].value);
   };
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -163,25 +155,18 @@ export function ScheduleDayView({
     startTransition(() => updateRoutineEnabled(activeMemberId, next));
   };
 
-  /** days 각각에 updater를 적용해 로컬 상태를 즉시 반영하고, 같은 결과를 그대로 서버에 저장한다
-   * (별도의 "저장하기" 버튼 없이 추가/수정/삭제가 그 자리에서 바로 반영·저장되는 방식). */
-  const applyToDays = (days: number[], updater: (prevBlocksForDay: RoutineBlock[]) => RoutineBlock[]) => {
-    const updates = days.map((day) => {
-      const dayKey = `${activeMemberId}-${day}-${SEMESTER}`;
-      return { day, dayKey, blocks: updater(byKey[dayKey] ?? []) };
-    });
+  /** 지금 선택된 요일 하나에만 updater를 적용해 로컬 상태를 즉시 반영하고, 같은 결과를
+   * 그대로 서버에 저장한다(별도의 "저장하기" 버튼 없이 추가/수정/삭제가 그 자리에서 바로
+   * 반영·저장되는 방식). */
+  const applyToDay = (day: number, updater: (prevBlocksForDay: RoutineBlock[]) => RoutineBlock[]) => {
+    const dayKey = `${activeMemberId}-${day}-${SEMESTER}`;
+    const nextBlocks = updater(byKey[dayKey] ?? []);
 
-    setByKey((prev) => {
-      const next = { ...prev };
-      for (const u of updates) next[u.dayKey] = u.blocks;
-      return next;
-    });
+    setByKey((prev) => ({ ...prev, [dayKey]: nextBlocks }));
 
     startTransition(async () => {
       try {
-        for (const u of updates) {
-          await upsertRoutine(activeMemberId, u.day, SEMESTER, u.blocks);
-        }
+        await upsertRoutine(activeMemberId, day, SEMESTER, nextBlocks);
       } catch {
         showToast("저장에 실패했어요.");
       }
@@ -201,17 +186,13 @@ export function ScheduleDayView({
     if (!label || editForm.start >= editForm.end) return;
     const updated: RoutineBlock = { start: editForm.start, end: editForm.end, status: editForm.status, label };
 
-    const otherDays = selectedDays.filter((d) => d !== primaryDay);
-    applyToDays([primaryDay], (prev) => prev.map((b, i) => (i === pickedIndex ? updated : b)));
-    // 다른 선택 요일들: RoutineBlock에는 고유 id가 없어 "같은 블록"을 특정할 수 없으므로,
-    // 기존 "블록 추가" 다중 요일 로직과 동일하게 새 블록으로 추가한다(교체가 아니라 추가).
-    if (otherDays.length > 0) applyToDays(otherDays, (prev) => [...prev, updated]);
+    applyToDay(selectedDay, (prev) => prev.map((b, i) => (i === pickedIndex ? updated : b)));
     cancelEdit();
   };
 
   const deleteBlock = () => {
     if (pickedIndex === null) return;
-    applyToDays([primaryDay], (prev) => prev.filter((_, i) => i !== pickedIndex));
+    applyToDay(selectedDay, (prev) => prev.filter((_, i) => i !== pickedIndex));
     cancelEdit();
   };
 
@@ -219,7 +200,7 @@ export function ScheduleDayView({
     const label = addForm.label.trim();
     if (!label || addForm.start >= addForm.end) return;
     const newBlock: RoutineBlock = { start: addForm.start, end: addForm.end, status: addForm.status, label };
-    applyToDays(selectedDays, (prev) => [...prev, newBlock]);
+    applyToDay(selectedDay, (prev) => [...prev, newBlock]);
     setAddForm(EMPTY_FORM);
     setAddingOpen(false);
   };
@@ -291,18 +272,13 @@ export function ScheduleDayView({
 
       <div className="flex gap-1.5 overflow-x-auto">
         {DAYS.map((d) => {
-          const isSelected = selectedDays.includes(d.value);
-          const isPrimary = d.value === primaryDay;
+          const isSelected = d.value === selectedDay;
           return (
             <button
               key={d.value}
-              onClick={() => toggleDay(d.value)}
+              onClick={() => selectDay(d.value)}
               className={`h-8 w-8 shrink-0 rounded-full text-[12px] font-medium ${
-                isPrimary
-                  ? "bg-ink text-cream"
-                  : isSelected
-                  ? "bg-honey/15 text-ink"
-                  : "bg-surface text-stone"
+                isSelected ? "bg-ink text-cream" : "bg-surface text-stone"
               }`}
             >
               {d.label}
@@ -310,11 +286,6 @@ export function ScheduleDayView({
           );
         })}
       </div>
-      {selectedDays.length > 1 && (
-        <p className="text-[11px] text-stone">
-          선택한 {selectedDays.length}개 요일에 추가/수정이 함께 적용돼요.
-        </p>
-      )}
 
       {!routineEnabled ? (
         <p className="py-14 text-center text-[13px] text-[var(--text-muted)]">

@@ -16,6 +16,8 @@ export interface MealInput {
   memo?: string | null;
   emoji?: string;
   image_url?: string | null;
+  video_id?: string | null;
+  recipe_title?: string | null;
 }
 
 export async function createMeal(workspaceId: string, input: MealInput) {
@@ -39,6 +41,8 @@ export async function createMeal(workspaceId: string, input: MealInput) {
       memo: input.memo ?? null,
       emoji: input.emoji ?? "🍽",
       image_url: input.image_url ?? null,
+      video_id: input.video_id ?? null,
+      recipe_title: input.recipe_title ?? null,
       author_id: user!.id,
     })
     .select("id")
@@ -81,6 +85,8 @@ export async function updateMeal(mealId: string, input: MealInput) {
       reservation_time: input.reservation_time ?? null,
       memo: input.memo ?? null,
       image_url: input.image_url ?? null,
+      video_id: input.video_id ?? null,
+      recipe_title: input.recipe_title ?? null,
     })
     .eq("id", mealId);
 

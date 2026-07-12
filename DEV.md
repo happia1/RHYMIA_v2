@@ -1,6 +1,40 @@
 # 개발 참조 문서
 
-## 마지막 업데이트: 2026-07-12 (성능 진단 리포트 §5 후속 — requireWorkspaceContext/getWorkspaceMembers에 cache() 적용)
+## 마지막 업데이트: 2026-07-12 (일정 하루 탭 정리 + 끼니 레시피/유튜브 링크 입력 신설)
+
+- 2026-07-12: 일정 하루 탭 정리 2건 + 끼니 이미지/레시피 입력 확장
+  - **하루 탭 상단 정리**: `schedule/page.tsx`의 "하루" 뷰 분기에서 구분선(헤어라인)과 `SectionLabel`("하루 일과"
+    텍스트)을 제거하고, 세그먼트(하루|주|월|연) 바로 아래에 `ScheduleDayView`의 멤버 칩이 오도록 여백을
+    `gap-section`(30px)→`gap-3`로 줄임. `VIEW_LABEL` 맵도 이제 안 쓰는 `day` 키를 제거하고
+    `Record<"month"|"week"|"year", string>`로 좁힘.
+  - **요일 다중 적용 롤백**: `ScheduleDayView.tsx`에서 "이 요일에도 적용" 다중 선택(요일 칩 여러 개를 눌러
+    같은 블록 추가/수정을 여러 요일에 동시 반영하던 기능, 지난 "하루 뷰 신설" 작업에서 내 루틴 폼 로직을
+    그대로 가져온 것)을 완전히 제거 — `selectedDays: number[]`/`primaryDay`/`toggleDay`/`applyToDays`를
+    각각 `selectedDay: number`/`selectDay`/`applyToDay`(단일 요일)로 단순화. 추가·수정·삭제 전부 지금
+    선택된 요일 칩 하나에만 적용됨. 요일 칩 스타일도 "기준 요일/보조 선택" 2단 구분을 없애고 단일
+    선택/비선택 2단으로 단순화. "기본 하루로 시작하기"(전체 7일에 템플릿 일괄 적용) 기능은 다중 선택과
+    무관한 별개 기능이라 그대로 유지.
+  - **끼니 카메라 버튼 → 옵션 시트로 확장**: `AddMealScreen.tsx`의 카메라 아이콘이 이제
+    [카메라로 찍기 / 앨범에서 선택 / 유튜브에서 레시피 찾기 / 레시피 링크 붙여넣기] 4개 선택지를 보여주는
+    바텀시트를 염. 카메라·앨범은 각각 `capture="environment"` 유무만 다른 별도 파일 인풋(같은 업로드
+    핸들러 공유) — 기존엔 압축 없이 원본을 그대로 업로드하던 버그가 있었는데, 이번에 `imageCompress.ts`의
+    `compressImage()`를 실제로 연결해 압축된 데이터 URL을 `fetch().blob()`으로 Blob 변환 후 업로드하도록
+    고침(확장자/`contentType`도 파일명이 아니라 실제 압축 결과 blob의 MIME 타입에서 유도 — 파일명 확장자와
+    실제 재인코딩 포맷이 어긋나던 잠재 버그도 같이 해결됨). "유튜브에서 레시피 찾기"는 메뉴명을 채워 유튜브
+    검색 결과를 새 창으로 열기만 함(링크아웃, 저장 없음). "레시피 링크 붙여넣기"는 유튜브 URL을 입력받아
+    새 서버 라우트 `POST /api/youtube/oembed`(로그인 검증 + 유튜브 도메인 검증 후 공개
+    `https://www.youtube.com/oembed` 프록시, API 키 불필요)로 영상 제목을 가져와 `video_id`/`recipe_title`
+    상태에 저장. 썸네일은 저작권상 스토리지에 복제하지 않고 `https://img.youtube.com/vi/{video_id}/hqdefault.jpg`
+    URL을 그때그때 참조만 하며, 영상 삭제 등으로 로드 실패 시 `<img onError>`로 기본 아이콘(`IconBrandYoutube`)
+    폴백. 관련 유틸은 `src/lib/youtube.ts`(신규, `extractYoutubeVideoId`/`youtubeThumbnailUrl`/
+    `youtubeWatchUrl`/`fetchYoutubeOembed`)로 추출.
+  - `meal` 테이블에 `video_id`/`recipe_title` 컬럼 추가 SQL 신규(`supabase/add_meal_recipe_video.sql`,
+    실행 필요, 재실행 안전). `Meal`/`MealInput` 타입과 `createMeal`/`updateMeal`(`food/actions.ts`)에
+    두 필드 반영.
+  - **끼니 상세**: `MealDetail.tsx`에 레시피 썸네일 표시 추가 — 탭하면 해당 유튜브 영상을 새 창으로 염
+    (`target="_blank" rel="noopener noreferrer"`), 썸네일 로드 실패 시 동일하게 아이콘 폴백.
+  - 검증: `tsc --noEmit`/`next lint` 클린(기존 무관 오류 1건 제외), `/api/youtube/oembed`를 미인증으로
+    호출해 401 확인, 홈/식탁/식탁 추가/게시판/일정(하루·월간) 스모크 테스트 통과.
 
 - 2026-07-12: 성능 진단 리포트(탭 전환 속도) §5 제안 3종에 대한 결정 반영
   - **cache() 2곳 적용**: `src/lib/workspace.ts`의 `requireWorkspaceContext()`와 `src/lib/members.ts`에 신설한

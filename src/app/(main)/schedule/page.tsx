@@ -15,8 +15,7 @@ import { SectionLabel } from "@/components/home/SectionLabel";
 import { getSchedulesForRange } from "@/app/(main)/schedule/actions";
 import type { Schedule, Routine } from "@/types";
 
-const VIEW_LABEL: Record<"day" | "month" | "week" | "year", string> = {
-  day: "하루 일과",
+const VIEW_LABEL: Record<"month" | "week" | "year", string> = {
   month: "월간 일정",
   week: "주간 일정",
   year: "연간 일정",
@@ -120,24 +119,17 @@ export default async function SchedulePage({
         : myMember?.id ?? editableMembers[0]?.id ?? "";
 
     return (
-      <div className="flex h-[calc(100dvh-64px)] flex-col gap-section overflow-hidden px-4 pt-6">
+      <div className="flex h-[calc(100dvh-64px)] flex-col gap-3 overflow-hidden px-4 pt-6">
         <div className="shrink-0">
           <ScheduleTabs anchorDate={anchorStr} view={view} />
         </div>
 
-        <div className="h-px w-full shrink-0 bg-border-light" />
-
         <div className="min-h-0 flex-1 overflow-y-auto pb-24">
-          <section className="flex flex-col gap-label-gap">
-            <SectionLabel icon={<IconCalendar size={14} />}>{VIEW_LABEL[view]}</SectionLabel>
-            <div className="pl-section-indent">
-              <ScheduleDayView
-                members={editableMembers}
-                initialRoutines={(routines as Routine[]) ?? []}
-                defaultMemberId={requestedMemberId}
-              />
-            </div>
-          </section>
+          <ScheduleDayView
+            members={editableMembers}
+            initialRoutines={(routines as Routine[]) ?? []}
+            defaultMemberId={requestedMemberId}
+          />
         </div>
 
         <AddEventEntry
