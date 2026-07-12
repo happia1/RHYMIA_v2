@@ -36,9 +36,7 @@ export default async function BoardPage() {
   }
 
   return (
-    <div className="flex h-[calc(100dvh-64px)] flex-col gap-section overflow-hidden px-4 pt-6">
-      <h1 className="shrink-0 text-[20px] font-medium text-ink">게시판</h1>
-
+    <div className="flex h-[calc(100dvh-64px)] flex-col overflow-hidden px-4 pt-6">
       <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto pb-6">
         <BoardSection
           workspaceId={workspaceId}

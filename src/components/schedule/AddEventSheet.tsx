@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { IconChevronDown } from "@tabler/icons-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { useToast } from "@/components/ui/Toast";
 import { Input, Textarea } from "@/components/ui/Input";
@@ -35,7 +36,11 @@ const RECUR_OPTIONS: { value: RecurType; label: string }[] = [
 const REGISTRABLE_KEYWORD_GROUPS = KEYWORD_GROUPS.filter((g) => g.main !== "공휴일");
 
 /** "이번 회만 수정"(단일 인스턴스 예외 처리)은 P2로 미룸 — recur_until로 원본을 끊고
- * 새 반복을 만드는 우회로만 우선 지원. */
+ * 새 반복을 만드는 우회로만 우선 지원.
+ *
+ * 폼은 기본(제목/날짜/반복/키워드)과 "자세한 설정"(대상/알림/장소/메모/금액/공지 여부/
+ * 외부 공유 링크, 기본 접힘)으로 나뉜다 — 대부분의 등록은 기본만으로 끝나고, 나머지는
+ * 필요할 때만 펼쳐서 채우는 저빈도 필드로 취급한다. */
 export function AddEventSheet({
   open,
   onClose,
@@ -73,13 +78,14 @@ export function AddEventSheet({
   const [memo, setMemo] = useState("");
   const [isImportant, setIsImportant] = useState(false);
   const [place, setPlace] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
+  const [amount, setAmount] = useState("");
   const [notifyOffset, setNotifyOffset] = useState<NotifyOffset | null>(null);
   const [notifyCustomAt, setNotifyCustomAt] = useState("");
   const [recurType, setRecurType] = useState<RecurType>("none");
   const [recurCalendar, setRecurCalendar] = useState<RecurCalendar>("solar");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   // 가상 인스턴스를 열면 실제로는 원본(originalId)을 수정/삭제해야 한다.
   const targetId = existingSchedule ? existingSchedule.originalId ?? existingSchedule.id : null;
@@ -111,11 +117,12 @@ export function AddEventSheet({
     setMemo("");
     setIsImportant(false);
     setPlace("");
-    setImageUrl("");
+    setAmount("");
     setNotifyOffset(null);
     setNotifyCustomAt("");
     setRecurType("none");
     setRecurCalendar("solar");
+    setDetailsOpen(false);
   };
 
   // 시트가 열릴 때마다 필드를 다시 채운다 — existingSchedule이 있으면 수정 모드로 전체
@@ -139,11 +146,13 @@ export function AddEventSheet({
       setMemo(existingSchedule.memo ?? "");
       setIsImportant(existingSchedule.is_important);
       setPlace(existingSchedule.place ?? "");
-      setImageUrl(existingSchedule.image_url ?? "");
+      setAmount(existingSchedule.amount != null ? String(existingSchedule.amount) : "");
       setNotifyOffset(existingSchedule.notify_offset);
       setNotifyCustomAt(existingSchedule.notify_custom_at ?? "");
       setRecurType(existingSchedule.recur_type);
       setRecurCalendar(existingSchedule.recur_calendar);
+      // 수정 모드는 기존에 채워둔 값을 바로 보여주는 게 자연스러우니 자세한 설정도 펼쳐둔다.
+      setDetailsOpen(true);
     } else {
       reset(prefill?.title ?? "", prefill?.keywordMain ?? null, prefill?.keywordSub ?? null);
     }
@@ -166,8 +175,8 @@ export function AddEventSheet({
       is_important: isImportant,
       memo: memo || null,
       place: place || null,
+      amount: amount ? Number(amount) : null,
       is_all_day: isAllDay,
-      image_url: imageUrl || null,
       notify_offset: notifyOffset,
       notify_custom_at: notifyOffset === "custom" ? notifyCustomAt || null : null,
       recur_type: recurType,
@@ -293,7 +302,7 @@ export function AddEventSheet({
               {(
                 [
                   ["solar", "양력"],
-                  ["lunar", "음력"],
+                  ["lunar", "음력으로 반복 (생신·제사)"],
                 ] as [RecurCalendar, string][]
               ).map(([value, label]) => (
                 <button
@@ -311,33 +320,8 @@ export function AddEventSheet({
         </div>
 
         <div className="flex flex-col gap-2">
-          <span className="text-[12px] font-medium text-stone">누구의 일정인가요</span>
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => setTargets([])}
-              className={`rounded-full px-3 py-1.5 text-[12px] font-medium ${
-                targets.length === 0 ? "bg-ink text-cream" : "bg-cream text-stone"
-              }`}
-            >
-              가족 전체
-            </button>
-            {members.map((m) => (
-              <button
-                key={m.id}
-                onClick={() => toggleTarget(m.id)}
-                className={`rounded-full px-3 py-1.5 text-[12px] font-medium ${
-                  targets.includes(m.id) ? "bg-ink text-cream" : "bg-cream text-stone"
-                }`}
-              >
-                {m.display_name}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-2">
           <span className="text-[12px] font-medium text-stone">키워드 (선택)</span>
-          <div className="flex flex-wrap gap-2">
+          <div className="scrollbar-hide flex gap-2 overflow-x-auto">
             {REGISTRABLE_KEYWORD_GROUPS.map((g) => (
               <button
                 key={g.main}
@@ -345,7 +329,7 @@ export function AddEventSheet({
                   setKeywordMain(keywordMain === g.main ? null : g.main);
                   setKeywordSub(null);
                 }}
-                className="rounded-full px-3 py-1.5 text-[12px] font-medium"
+                className="shrink-0 rounded-full px-3 py-1.5 text-[12px] font-medium"
                 style={{
                   color: g.color,
                   backgroundColor: keywordMain === g.main ? `${g.color}33` : `${g.color}14`,
@@ -357,12 +341,12 @@ export function AddEventSheet({
             ))}
           </div>
           {activeGroup && activeGroup.subs.length > 0 && (
-            <div className="flex flex-wrap gap-2 pl-2">
+            <div className="scrollbar-hide flex gap-2 overflow-x-auto pl-2">
               {activeGroup.subs.map((sub) => (
                 <button
                   key={sub}
                   onClick={() => setKeywordSub(keywordSub === sub ? null : sub)}
-                  className={`rounded-full px-3 py-1 text-[11px] font-medium ${
+                  className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-medium ${
                     keywordSub === sub ? "bg-ink text-cream" : "bg-cream text-stone"
                   }`}
                 >
@@ -373,65 +357,103 @@ export function AddEventSheet({
           )}
         </div>
 
-        <PlaceInput value={place} onChange={setPlace} />
+        <button
+          onClick={() => setDetailsOpen((v) => !v)}
+          className="flex items-center gap-1 self-start text-[12px] font-medium text-stone"
+        >
+          자세한 설정
+          <IconChevronDown size={14} className={detailsOpen ? "rotate-180" : ""} />
+        </button>
 
-        <Textarea
-          value={memo}
-          onChange={(e) => setMemo(e.target.value)}
-          placeholder="메모 (준비물 등 자유롭게)"
-          rows={3}
-          className="rounded-xl p-3 text-[13px]"
-        />
+        {detailsOpen && (
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
+              <span className="text-[12px] font-medium text-stone">누구의 일정인가요</span>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => setTargets([])}
+                  className={`rounded-full px-3 py-1.5 text-[12px] font-medium ${
+                    targets.length === 0 ? "bg-ink text-cream" : "bg-cream text-stone"
+                  }`}
+                >
+                  가족 전체
+                </button>
+                {members.map((m) => (
+                  <button
+                    key={m.id}
+                    onClick={() => toggleTarget(m.id)}
+                    className={`rounded-full px-3 py-1.5 text-[12px] font-medium ${
+                      targets.includes(m.id) ? "bg-ink text-cream" : "bg-cream text-stone"
+                    }`}
+                  >
+                    {m.display_name}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-        <Input
-          value={imageUrl}
-          onChange={(e) => setImageUrl(e.target.value)}
-          placeholder="사진 URL (선택)"
-          className="h-11 rounded-xl px-3 text-[13px]"
-        />
+            <div className="flex flex-col gap-2">
+              <span className="text-[12px] font-medium text-stone">알림</span>
+              <div className="scrollbar-hide flex gap-2 overflow-x-auto">
+                {NOTIFY_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setNotifyOffset(notifyOffset === opt.value ? null : opt.value)}
+                    className={`shrink-0 rounded-full px-3.5 py-1.5 text-[13px] font-medium ${
+                      notifyOffset === opt.value ? "bg-ink text-cream" : "bg-cream text-stone"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              {notifyOffset === "custom" && (
+                <Input
+                  type="datetime-local"
+                  value={notifyCustomAt}
+                  onChange={(e) => setNotifyCustomAt(e.target.value)}
+                  className="h-11 rounded-xl px-3 text-[13px]"
+                />
+              )}
+            </div>
 
-        <div className="flex flex-col gap-2">
-          <span className="text-[12px] font-medium text-stone">알림</span>
-          <div className="flex flex-wrap gap-2">
-            {NOTIFY_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => setNotifyOffset(notifyOffset === opt.value ? null : opt.value)}
-                className={`rounded-full px-3.5 py-1.5 text-[13px] font-medium ${
-                  notifyOffset === opt.value ? "bg-ink text-cream" : "bg-cream text-stone"
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-          {notifyOffset === "custom" && (
+            <PlaceInput value={place} onChange={setPlace} />
+
+            <Textarea
+              value={memo}
+              onChange={(e) => setMemo(e.target.value)}
+              placeholder="메모 (준비물 등 자유롭게)"
+              rows={3}
+              className="rounded-xl p-3 text-[13px]"
+            />
+
             <Input
-              type="datetime-local"
-              value={notifyCustomAt}
-              onChange={(e) => setNotifyCustomAt(e.target.value)}
+              type="number"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="금액 (선택)"
               className="h-11 rounded-xl px-3 text-[13px]"
             />
-          )}
-        </div>
 
-        <label className="flex items-center justify-between text-[13px] text-ink">
-          중요한 일정인가요
-          <input
-            type="checkbox"
-            checked={isImportant}
-            onChange={(e) => setIsImportant(e.target.checked)}
-          />
-        </label>
+            <label className="flex items-center justify-between text-[13px] text-ink">
+              중요한 일정인가요
+              <input
+                type="checkbox"
+                checked={isImportant}
+                onChange={(e) => setIsImportant(e.target.checked)}
+              />
+            </label>
 
-        <label className="flex items-center justify-between text-[13px] text-ink">
-          외부 공유 링크에 표시
-          <input
-            type="checkbox"
-            checked={showInShareLink}
-            onChange={(e) => setShowInShareLink(e.target.checked)}
-          />
-        </label>
+            <label className="flex items-center justify-between text-[13px] text-ink">
+              외부 공유 링크에 표시
+              <input
+                type="checkbox"
+                checked={showInShareLink}
+                onChange={(e) => setShowInShareLink(e.target.checked)}
+              />
+            </label>
+          </div>
+        )}
 
         {deleteConfirmOpen ? (
           <div className="flex flex-col gap-2">

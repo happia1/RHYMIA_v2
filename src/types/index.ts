@@ -104,34 +104,6 @@ export interface Schedule {
   recur_until: string | null;
 }
 
-export interface Diary {
-  id: string;
-  workspace_id: string;
-  author_id: string | null;
-  date: string;
-  day_of_week: number | null;
-  weather: string | null;
-  mood: string | null;
-  photo_url: string | null;
-  content: string | null;
-  created_at: string;
-}
-
-export type HabitRepeatType = "daily" | "weekly" | "monthly" | "custom";
-
-export interface Habit {
-  id: string;
-  user_id: string;
-  name: string;
-  start_time: string | null;
-  repeat_type: HabitRepeatType;
-  repeat_days: number[];
-  target_duration: string | null;
-  notify_enabled: boolean;
-  notify_time: string | null;
-  created_at: string;
-}
-
 export interface Todo {
   id: string;
   workspace_id: string;

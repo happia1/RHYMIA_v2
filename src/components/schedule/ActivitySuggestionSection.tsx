@@ -43,7 +43,10 @@ export function ActivitySuggestionSection({
   return (
     <div className="flex flex-col gap-3 border-t border-border-light pt-4">
       <span className={mirror.label}>오늘 뭐하지</span>
-      <p className="text-[14px] text-ink">오늘은 이런 건 어때요: {suggestion}</p>
+      {/* 식탁 탭 "오늘의 제안"(SuggestionSection.tsx)과 동일한 톤 — 존재감을 낮게 유지 */}
+      <p className={`text-[11px] font-medium ${mirror.muted}`}>
+        오늘은 이런 건 어때요: {suggestion}
+      </p>
 
       <button
         onClick={() => setPickerOpen((v) => !v)}

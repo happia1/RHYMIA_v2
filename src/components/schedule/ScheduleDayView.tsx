@@ -7,7 +7,7 @@ import { CheckToggle } from "@/components/ui/CheckToggle";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
 import { upsertRoutine, updateRoutineEnabled } from "@/app/(main)/schedule/actions";
-import { STATUS_OPTIONS, STATUS_EMOJI, getCurrentBlock } from "@/lib/routineUtils";
+import { STATUS_OPTIONS, STATUS_EMOJI, getCurrentBlock, formatBlockTimeRange } from "@/lib/routineUtils";
 import { STATUS_COLOR_VAR, DEFAULT_STATUS_COLOR_VAR } from "@/lib/routineColors";
 import type { Routine, RoutineBlock } from "@/types";
 import type { WorkspaceMemberInfo } from "@/lib/members";
@@ -184,7 +184,9 @@ export function ScheduleDayView({
   const saveEdit = () => {
     if (!editForm || pickedIndex === null) return;
     const label = editForm.label.trim();
-    if (!label || editForm.start >= editForm.end) return;
+    // 종료 ≤ 시작은 자정 넘김(overnight)으로 허용 — 시작=종료(0분짜리)만 막는다.
+    // 24시간 초과는 이 형식(HH:MM 두 개, 다르면 자동으로 다음 날로 감김)에서는 애초에 나올 수 없다.
+    if (!label || editForm.start === editForm.end) return;
     const updated: RoutineBlock = { start: editForm.start, end: editForm.end, status: editForm.status, label };
 
     applyToDay(selectedDay, (prev) => prev.map((b, i) => (i === pickedIndex ? updated : b)));
@@ -199,7 +201,7 @@ export function ScheduleDayView({
 
   const handleAddBlock = () => {
     const label = addForm.label.trim();
-    if (!label || addForm.start >= addForm.end) return;
+    if (!label || addForm.start === addForm.end) return;
     const newBlock: RoutineBlock = { start: addForm.start, end: addForm.end, status: addForm.status, label };
     applyToDay(selectedDay, (prev) => [...prev, newBlock]);
     setAddForm(EMPTY_FORM);
@@ -338,7 +340,7 @@ export function ScheduleDayView({
                     </span>
                     {!isPicked && (
                       <span className="shrink-0 text-[12px] text-stone">
-                        {b.start}~{b.end}
+                        {formatBlockTimeRange(b)}
                       </span>
                     )}
                   </div>
@@ -375,7 +377,7 @@ export function ScheduleDayView({
                         </button>
                         <button
                           onClick={saveEdit}
-                          disabled={!editForm.label.trim() || editForm.start >= editForm.end}
+                          disabled={!editForm.label.trim() || editForm.start === editForm.end}
                           className="flex-1 rounded-xl bg-ink py-2 text-[12px] font-medium text-cream disabled:opacity-50"
                         >
                           저장
@@ -429,7 +431,7 @@ export function ScheduleDayView({
                   </button>
                   <button
                     onClick={handleAddBlock}
-                    disabled={!addForm.label.trim() || addForm.start >= addForm.end}
+                    disabled={!addForm.label.trim() || addForm.start === addForm.end}
                     className="flex-1 rounded-xl bg-ink py-2 text-[12px] font-medium text-cream disabled:opacity-50"
                   >
                     추가

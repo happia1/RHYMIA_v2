@@ -1,18 +1,18 @@
 import { requireWorkspaceContext } from "@/lib/workspace";
 import { toDateStr, getWeekDates } from "@/lib/date";
-import { getCurrentWeather } from "@/lib/weather";
 import { getWorkspaceMembers } from "@/lib/members";
 import { mirror } from "@/lib/homeTheme";
 import { ScheduleTabs } from "@/components/schedule/ScheduleTabs";
 import { MemberFilterRow } from "@/components/schedule/MemberFilterRow";
+import { KeywordLegend } from "@/components/schedule/KeywordLegend";
 import { ScheduleDayView } from "@/components/schedule/ScheduleDayView";
 import { MonthView } from "@/components/schedule/MonthView";
 import { WeekView } from "@/components/schedule/WeekView";
 import { YearView } from "@/components/schedule/YearView";
 import { AddEventEntry } from "@/components/schedule/AddEventEntry";
 import { AgentLauncher } from "@/components/agent/AgentLauncher";
-import { getSchedulesForRange } from "@/app/(main)/schedule/actions";
-import type { Schedule, Routine } from "@/types";
+import { getSchedulesForRange, getTodosForRange, getOverdueTodos } from "@/app/(main)/schedule/actions";
+import type { Schedule, Routine, Todo } from "@/types";
 
 const VIEW_LABEL: Record<"month" | "week" | "year", string> = {
   month: "월간 일정",
@@ -57,13 +57,14 @@ export default async function SchedulePage({
       : "month";
   const anchor = new Date(params.date ?? toDateStr(new Date()));
   const anchorStr = toDateStr(anchor);
+  const todayStr = toDateStr(new Date());
 
   // 월간/연간 뷰는 반복 일정(기념일·생신 등) 가상 인스턴스까지 합쳐서 조회한다
   // (getSchedulesForRange, schedule/actions.ts). 주간 뷰는 범위가 좁아 이번 범위에서는
   // 제외 — 기존과 동일하게 저장된 행만 그대로 조회. "하루" 뷰는 이 조회 자체가 필요 없음.
-  // range/scheduleRows는 memberRows/weather 어느 쪽에도 의존하지 않아(workspaceId·user.id·
-  // anchor만 있으면 계산 가능) 같은 Promise.all에 넣어 왕복을 하나 줄인다 — 이전엔
-  // memberRows/weather를 기다린 뒤에야 순차로 요청했음(불필요한 순차 의존이었음).
+  // range/scheduleRows는 memberRows 어느 쪽에도 의존하지 않아(workspaceId·user.id·anchor만
+  // 있으면 계산 가능) 같은 Promise.all에 넣어 왕복을 하나 줄인다 — 이전엔 memberRows를
+  // 기다린 뒤에야 순차로 요청했음(불필요한 순차 의존이었음).
   const range =
     view === "month"
       ? monthRange(anchor)
@@ -71,9 +72,9 @@ export default async function SchedulePage({
       ? yearRange(anchor)
       : { start: getWeekDates(anchor)[0], end: getWeekDates(anchor)[6] };
 
-  const [members, weather, scheduleRows] = await Promise.all([
+  // 할 일(todo)은 달력 아래 선택일 패널이 있는 월간 뷰에서만 필요 — 다른 뷰는 빈 배열로 스킵.
+  const [members, scheduleRows, monthTodos, overdueTodos] = await Promise.all([
     getWorkspaceMembers(workspaceId),
-    getCurrentWeather(),
     view === "day"
       ? Promise.resolve<Schedule[]>([])
       : view === "week"
@@ -89,6 +90,8 @@ export default async function SchedulePage({
           return (data ?? []) as Schedule[];
         })()
       : getSchedulesForRange(workspaceId, range.start, range.end),
+    view === "month" ? getTodosForRange(workspaceId, range.start, range.end) : Promise.resolve<Todo[]>([]),
+    view === "month" ? getOverdueTodos(workspaceId, todayStr) : Promise.resolve<Todo[]>([]),
   ]);
 
   const myMember = members.find((m) => m.user_id === user.id);
@@ -134,7 +137,6 @@ export default async function SchedulePage({
           members={members}
           defaultDate={anchorStr}
           autoOpen={params.new === "1"}
-          weather={weather}
         />
         <AgentLauncher workspaceId={workspaceId} members={members} currentMemberId={myMember?.id ?? ""} />
       </div>
@@ -164,8 +166,12 @@ export default async function SchedulePage({
 
       <div className="min-h-0 flex-1 overflow-y-auto pb-24">
         <section className="flex flex-col gap-label-gap">
-          <div className="flex items-center justify-between">
-            <span className={mirror.label}>{VIEW_LABEL[view]}</span>
+          <div className="flex items-center justify-between gap-3">
+            {view === "month" ? (
+              <KeywordLegend />
+            ) : (
+              <span className={mirror.label}>{VIEW_LABEL[view]}</span>
+            )}
             <MemberFilterRow members={members} target={params.target ?? "all"} />
           </div>
           {view === "month" && (
@@ -175,6 +181,8 @@ export default async function SchedulePage({
               membersById={membersById}
               workspaceId={workspaceId}
               highlightId={params.highlight}
+              monthTodos={monthTodos}
+              overdueTodos={overdueTodos}
             />
           )}
           {view === "week" && (
@@ -202,7 +210,6 @@ export default async function SchedulePage({
         members={members}
         defaultDate={anchorStr}
         autoOpen={params.new === "1"}
-        weather={weather}
       />
       <AgentLauncher workspaceId={workspaceId} members={members} currentMemberId={myMember?.id ?? ""} />
     </div>

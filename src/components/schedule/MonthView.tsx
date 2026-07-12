@@ -2,8 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { IconPaperclip, IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
-import { KEYWORD_GROUPS, getKeywordColor } from "@/lib/scheduleKeywords";
+import {
+  IconPaperclip,
+  IconChevronLeft,
+  IconChevronRight,
+  IconCheck,
+} from "@tabler/icons-react";
+import { getKeywordColor } from "@/lib/scheduleKeywords";
 import { toDateStr, formatYearMonth, addMonths } from "@/lib/date";
 import { getHoliday } from "@/lib/holidays";
 import { solarToLunar } from "@/lib/lunar";
@@ -14,9 +19,10 @@ import { ActivitySuggestionSection } from "@/components/schedule/ActivitySuggest
 import { AddEventSheet } from "@/components/schedule/AddEventSheet";
 import { ScheduleDetailSheet } from "@/components/schedule/ScheduleDetailSheet";
 import { SectionExpand } from "@/components/ui/SectionExpand";
-import { getLastYearHighlights } from "@/app/(main)/schedule/actions";
+import { getLastYearHighlights, toggleTodoDone } from "@/app/(main)/schedule/actions";
 import { ACTIVITY_SUGGESTION_POOL, pickActivityCandidates } from "@/lib/activitySuggestions";
 import { pickDeterministic } from "@/lib/randomPick";
+import type { Todo } from "@/types";
 
 const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
 // 기간 밴드는 겹쳐도 최대 이 줄 수까지만 쌓는다 — 넘치면 그 일정은 도트로 폴백.
@@ -27,12 +33,40 @@ function scheduleOverlapsDay(s: ExpandedSchedule, date: string) {
   return s.date_start <= date && date <= end;
 }
 
+// 완료 항목은 하단으로 — Array.sort는 안정 정렬이라 같은 is_done끼리는 원래 순서(등록순)를 유지한다.
+function sortTodos(list: Todo[]) {
+  return [...list].sort((a, b) => Number(a.is_done) - Number(b.is_done));
+}
+
+function TodoRow({ todo, onToggle }: { todo: Todo; onToggle: () => void }) {
+  return (
+    <button onClick={onToggle} className="flex items-center gap-2.5 py-2 text-left">
+      <span
+        className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
+          todo.is_done ? "border-sage bg-sage" : "border-border-light"
+        }`}
+      >
+        {todo.is_done && <IconCheck size={11} className="text-white" stroke={3} />}
+      </span>
+      <span
+        className={`min-w-0 flex-1 truncate text-[13px] ${
+          todo.is_done ? "text-[var(--text-muted)] line-through" : "text-ink"
+        }`}
+      >
+        {todo.title}
+      </span>
+    </button>
+  );
+}
+
 export function MonthView({
   anchorDate,
   schedules,
   membersById,
   workspaceId,
   highlightId,
+  monthTodos,
+  overdueTodos,
 }: {
   anchorDate: string;
   schedules: ExpandedSchedule[];
@@ -40,12 +74,18 @@ export function MonthView({
   workspaceId: string;
   /** 홈 "오늘 뭐하지"에서 특정 일정을 탭해 들어왔을 때 그 일정을 시각적으로 강조 */
   highlightId?: string;
+  /** 이 달 범위 안, due_date 기준 할 일 — 선택일 패널에서 due_date === selectedDate로 필터링 */
+  monthTodos: Todo[];
+  /** 마감일이 지났는데 아직 완료 안 한 할 일 — 오늘 날짜를 볼 때만 "지난 할 일"로 함께 표시 */
+  overdueTodos: Todo[];
 }) {
   const [selectedDate, setSelectedDate] = useState(anchorDate);
   const [highlights, setHighlights] = useState<ExpandedSchedule[]>([]);
   const [prefillEvent, setPrefillEvent] = useState<ExpandedSchedule | null>(null);
   const [editingSchedule, setEditingSchedule] = useState<ExpandedSchedule | null>(null);
   const [detailSchedule, setDetailSchedule] = useState<ExpandedSchedule | null>(null);
+  const [todos, setTodos] = useState(monthTodos);
+  const [overdue, setOverdue] = useState(overdueTodos);
 
   const anchor = new Date(anchorDate);
   const year = anchor.getFullYear();
@@ -127,6 +167,22 @@ export function MonthView({
     () => schedules.filter((s) => scheduleOverlapsDay(s, selectedDate)),
     [schedules, selectedDate]
   );
+  const isSelectedToday = selectedDate === todayStr;
+  const selectedTodos = useMemo(
+    () => sortTodos(todos.filter((t) => t.due_date === selectedDate)),
+    [todos, selectedDate]
+  );
+  const overdueSorted = useMemo(() => sortTodos(overdue), [overdue]);
+
+  const handleToggleTodo = (todo: Todo) => {
+    const next = !todo.is_done;
+    setTodos((prev) => prev.map((t) => (t.id === todo.id ? { ...t, is_done: next } : t)));
+    setOverdue((prev) => prev.map((t) => (t.id === todo.id ? { ...t, is_done: next } : t)));
+    toggleTodoDone(todo.id, next).catch(() => {
+      setTodos((prev) => prev.map((t) => (t.id === todo.id ? { ...t, is_done: !next } : t)));
+      setOverdue((prev) => prev.map((t) => (t.id === todo.id ? { ...t, is_done: !next } : t)));
+    });
+  };
   const activitySuggestion = useMemo(
     () => pickDeterministic(ACTIVITY_SUGGESTION_POOL, selectedDate),
     [selectedDate]
@@ -254,15 +310,6 @@ export function MonthView({
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        {KEYWORD_GROUPS.map((g) => (
-          <span key={g.main} className="flex items-center gap-1 text-[10px] text-[var(--text-muted)]">
-            <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: g.color }} />
-            {g.main}
-          </span>
-        ))}
-      </div>
-
       <div className="flex flex-col">
         {getHoliday(selectedDate) && (
           <p className="pb-2 text-[12px] font-medium text-terra">{getHoliday(selectedDate)}</p>
@@ -310,6 +357,27 @@ export function MonthView({
               </button>
             )}
           />
+        )}
+        {(selectedTodos.length > 0 || (isSelectedToday && overdueSorted.length > 0)) && (
+          <div
+            className={`flex flex-col ${
+              selectedSchedules.length > 0 ? "mt-1 border-t border-border-light pt-1" : ""
+            }`}
+          >
+            {selectedTodos.map((t) => (
+              <TodoRow key={t.id} todo={t} onToggle={() => handleToggleTodo(t)} />
+            ))}
+            {isSelectedToday && overdueSorted.length > 0 && (
+              <>
+                <span className="pt-2 text-[11px] font-medium text-terra">
+                  지난 할 일 {overdueSorted.length}개
+                </span>
+                {overdueSorted.map((t) => (
+                  <TodoRow key={t.id} todo={t} onToggle={() => handleToggleTodo(t)} />
+                ))}
+              </>
+            )}
+          </div>
         )}
       </div>
 

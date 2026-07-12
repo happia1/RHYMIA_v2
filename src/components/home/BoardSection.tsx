@@ -3,8 +3,6 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import {
   IconPlus,
-  IconNote,
-  IconMessage2,
   IconCamera,
   IconPhotoScan,
   IconLoader2,
@@ -17,7 +15,6 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Input, Textarea } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
 import { SectionExpand } from "@/components/ui/SectionExpand";
-import { SectionLabel } from "@/components/home/SectionLabel";
 import {
   addNotice,
   updateNotice,
@@ -26,13 +23,14 @@ import {
 } from "@/app/(main)/board/actions";
 import { formatPostTimestamp } from "@/lib/date";
 import { AVATAR_SIZE } from "@/lib/uiTokens";
+import { mirror } from "@/lib/homeTheme";
 import { createClient } from "@/lib/supabase/client";
 import { extractTextFromImage } from "@/lib/agentApi";
 import { compressImage } from "@/lib/imageCompress";
 import type { WorkspaceMemberInfo } from "@/lib/members";
 import type { Notice, NoticeComment, NoticeType } from "@/types";
 
-const POSTS_PREVIEW_COUNT = 3;
+const POSTS_PREVIEW_COUNT = 4;
 
 const STICKER_COLORS = ["#FFF9C4", "#FFE0E0", "#E1F5EE", "#E3E8FF", "#F3E1FF"];
 // 스티커는 배경이 항상 밝은 파스텔이라, 테마와 무관하게 항상 어두운 고정색 텍스트를 쓴다.
@@ -94,26 +92,32 @@ export function BoardSection({
     <div
       key={n.id}
       onClick={() => setDetail(n)}
-      className={`flex cursor-pointer flex-col gap-0.5 py-2 text-left ${
+      className={`flex cursor-pointer items-center gap-2.5 py-1.5 text-left ${
         i > 0 ? "border-t border-border-light" : ""
       }`}
     >
-      {n.title && (
-        <span className={`truncate text-[13px] font-medium ${n.is_pinned ? "text-honey" : "text-ink"}`}>
-          {n.title}
-        </span>
+      {n.image_url && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={n.image_url} alt="" className="h-10 w-10 shrink-0 rounded-sm object-cover" />
       )}
-      <div className="flex items-center justify-between gap-2">
-        <p
-          className={`min-w-0 flex-1 truncate text-[11px] ${
-            n.is_pinned && !n.title ? "text-honey" : "text-[var(--text-muted)]"
-          }`}
-        >
-          {n.content}
-        </p>
-        <div className="flex shrink-0 items-center gap-1.5 text-[11px] text-[var(--text-muted)]">
-          <span className="font-medium">{authorOf(n.created_by)?.display_name ?? "가족"}</span>
-          <span>· {formatPostTimestamp(n.created_at)}</span>
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        {n.title && (
+          <span className={`truncate text-[13px] font-medium ${n.is_pinned ? "text-honey" : "text-ink"}`}>
+            {n.title}
+          </span>
+        )}
+        <div className="flex items-center justify-between gap-2">
+          <p
+            className={`min-w-0 flex-1 truncate text-[11px] ${
+              n.is_pinned && !n.title ? "text-honey" : "text-[var(--text-muted)]"
+            }`}
+          >
+            {n.content}
+          </p>
+          <div className="flex shrink-0 items-center gap-1.5 text-[11px] text-[var(--text-muted)]">
+            <span className="font-medium">{authorOf(n.created_by)?.display_name ?? "가족"}</span>
+            <span>· {formatPostTimestamp(n.created_at)}</span>
+          </div>
         </div>
       </div>
     </div>
@@ -165,101 +169,102 @@ export function BoardSection({
   };
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-2">
       <section className="flex flex-col gap-label-gap">
-        <SectionLabel icon={<IconNote size={14} />}>하고싶은 말</SectionLabel>
-        <div className="pl-section-indent">
-          <div className="scrollbar-hide flex gap-3 overflow-x-auto pb-1">
-            {stickers.map((s) => {
-              const author = authorOf(s.created_by);
-              return (
-                <div key={s.id} className="flex w-28 shrink-0 flex-col gap-1">
-                  <div
-                    onClick={() => setDetail(s)}
-                    className="relative flex h-36 w-28 cursor-pointer flex-col p-2.5 text-left"
-                    style={{ backgroundColor: s.color }}
-                  >
-                    <div className="flex items-center justify-between gap-1">
-                      <span
-                        className="truncate text-[9px] opacity-60"
-                        style={{ color: STICKER_TEXT_COLOR }}
+        <span className={mirror.label}>하고싶은 말</span>
+        <div className="scrollbar-hide flex gap-3 overflow-x-auto pb-1">
+          {stickers.map((s) => {
+            const author = authorOf(s.created_by);
+            return (
+              <div key={s.id} className="flex w-28 shrink-0 flex-col gap-1">
+                <div
+                  onClick={() => setDetail(s)}
+                  className="relative flex h-36 w-28 cursor-pointer flex-col p-2.5 text-left"
+                  style={{ backgroundColor: s.color }}
+                >
+                  <div className="flex items-center justify-between gap-1">
+                    <span
+                      className="truncate text-[9px] opacity-60"
+                      style={{ color: STICKER_TEXT_COLOR }}
+                    >
+                      {formatPostTimestamp(s.created_at)}
+                    </span>
+                    {s.created_by === currentUserId && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingNotice(s);
+                        }}
+                        aria-label="수정"
+                        className="shrink-0 opacity-60"
                       >
-                        {formatPostTimestamp(s.created_at)}
-                      </span>
-                      {s.created_by === currentUserId && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingNotice(s);
-                          }}
-                          aria-label="수정"
-                          className="shrink-0 opacity-60"
-                        >
-                          <IconPencil size={12} style={{ color: STICKER_TEXT_COLOR }} />
-                        </button>
-                      )}
-                    </div>
-                    {s.image_url && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={s.image_url}
-                        alt=""
-                        className="mt-1 h-10 w-full shrink-0 object-cover"
-                      />
+                        <IconPencil size={12} style={{ color: STICKER_TEXT_COLOR }} />
+                      </button>
                     )}
-                    <span
-                      className="mt-1 line-clamp-3 flex-1 whitespace-pre-wrap font-handwriting text-[16px] leading-snug"
-                      style={{ color: STICKER_TEXT_COLOR }}
-                    >
-                      {s.content}
-                    </span>
-                    {/* 쪽지처럼 끝에 남기는 서명 — "- 엄마" 식 */}
-                    <span
-                      className="truncate self-end text-[10px] opacity-70"
-                      style={{ color: STICKER_TEXT_COLOR }}
-                    >
-                      - {author?.display_name ?? "가족"}
-                    </span>
-                    {/* 오른쪽 아래 모서리 접힘 효과 */}
-                    <span
-                      aria-hidden
-                      className="pointer-events-none absolute bottom-0 right-0"
-                      style={{
-                        width: 0,
-                        height: 0,
-                        borderStyle: "solid",
-                        borderWidth: `0 0 ${STICKER_FOLD_SIZE}px ${STICKER_FOLD_SIZE}px`,
-                        borderColor: `transparent transparent ${
-                          STICKER_FOLD_COLORS[s.color] ?? "rgba(0,0,0,0.15)"
-                        } transparent`,
-                      }}
-                    />
                   </div>
+                  {s.image_url && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={s.image_url}
+                      alt=""
+                      className="mt-1 h-10 w-full shrink-0 object-cover"
+                    />
+                  )}
+                  <span
+                    className="mt-1 line-clamp-3 flex-1 whitespace-pre-wrap font-handwriting text-[16px] leading-snug"
+                    style={{ color: STICKER_TEXT_COLOR }}
+                  >
+                    {s.content}
+                  </span>
+                  {/* 쪽지처럼 끝에 남기는 서명 — "- 엄마" 식 */}
+                  <span
+                    className="truncate self-end text-[10px] opacity-70"
+                    style={{ color: STICKER_TEXT_COLOR }}
+                  >
+                    - {author?.display_name ?? "가족"}
+                  </span>
+                  {/* 오른쪽 아래 모서리 접힘 효과 */}
+                  <span
+                    aria-hidden
+                    className="pointer-events-none absolute bottom-0 right-0"
+                    style={{
+                      width: 0,
+                      height: 0,
+                      borderStyle: "solid",
+                      borderWidth: `0 0 ${STICKER_FOLD_SIZE}px ${STICKER_FOLD_SIZE}px`,
+                      borderColor: `transparent transparent ${
+                        STICKER_FOLD_COLORS[s.color] ?? "rgba(0,0,0,0.15)"
+                      } transparent`,
+                    }}
+                  />
                 </div>
-              );
-            })}
-            <button
-              onClick={() => setAddingSticky(true)}
-              aria-label="하고싶은 말 작성"
-              className="flex h-36 w-28 shrink-0 items-center justify-center border border-dashed border-border-light text-[var(--text-muted)]"
-            >
-              <IconPlus size={20} />
-            </button>
-          </div>
+              </div>
+            );
+          })}
+          <button
+            onClick={() => setAddingSticky(true)}
+            aria-label="하고싶은 말 작성"
+            className="flex h-36 w-28 shrink-0 items-center justify-center border border-dashed border-border-light text-[var(--text-muted)]"
+          >
+            <IconPlus size={20} />
+          </button>
         </div>
       </section>
 
       <div className="h-px w-full bg-border-light" />
 
       <section className="flex flex-col gap-label-gap">
-        <SectionLabel
-          icon={<IconMessage2 size={14} />}
-          onAdd={() => setAddingPost(true)}
-          addLabel="메모 작성"
-        >
-          메모
-        </SectionLabel>
-        <div className="flex flex-col pl-section-indent">
+        <div className="flex items-center justify-between">
+          <span className={mirror.label}>메모</span>
+          <button
+            onClick={() => setAddingPost(true)}
+            aria-label="메모 작성"
+            className={`flex h-11 w-11 items-center justify-center ${mirror.muted}`}
+          >
+            <IconPlus size={18} />
+          </button>
+        </div>
+        <div className="flex flex-col">
           {posts.length === 0 && (
             <p className="text-[13px] text-[var(--text-muted)]">등록된 글이 없어요</p>
           )}

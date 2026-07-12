@@ -5,12 +5,12 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { expandRecurring, addDaysToDateStr } from "@/lib/recurrence";
 import type {
-  HabitRepeatType,
   NotifyOffset,
   RoutineBlock,
   RecurType,
   RecurCalendar,
   Schedule,
+  Todo,
 } from "@/types";
 
 export interface ScheduleInput {
@@ -26,8 +26,8 @@ export interface ScheduleInput {
   is_important: boolean;
   memo?: string | null;
   place?: string | null;
+  amount?: number | null;
   is_all_day: boolean;
-  image_url?: string | null;
   notify_offset?: NotifyOffset | null;
   notify_custom_at?: string | null;
   /** 기본 'none' — weekly는 없음(루틴이 전담) */
@@ -64,8 +64,8 @@ export async function createSchedule(workspaceId: string, input: ScheduleInput) 
     is_important: input.is_important,
     memo: input.memo || null,
     place: input.place || null,
+    amount: input.amount ?? null,
     is_all_day: input.is_all_day,
-    image_url: input.image_url || null,
     notify_offset: input.notify_offset || null,
     notify_custom_at: input.notify_custom_at || null,
     recur_type: input.recur_type ?? "none",
@@ -208,8 +208,8 @@ export async function updateSchedule(scheduleId: string, input: ScheduleInput) {
       is_important: input.is_important,
       memo: input.memo || null,
       place: input.place || null,
+      amount: input.amount ?? null,
       is_all_day: input.is_all_day,
-      image_url: input.image_url || null,
       notify_offset: input.notify_offset || null,
       notify_custom_at: input.notify_custom_at || null,
       recur_type: input.recur_type ?? "none",
@@ -331,83 +331,6 @@ export async function getRoutineBlocks(
   return result;
 }
 
-export interface DiaryInput {
-  date: string;
-  day_of_week: number;
-  weather: string | null;
-  mood: string | null;
-  photo_url: string | null;
-  content: string | null;
-}
-
-export async function createDiary(workspaceId: string, input: DiaryInput) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const { error } = await supabase.from("diary").insert({
-    id: crypto.randomUUID(),
-    workspace_id: workspaceId,
-    author_id: user.id,
-    date: input.date,
-    day_of_week: input.day_of_week,
-    weather: input.weather,
-    mood: input.mood,
-    photo_url: input.photo_url,
-    content: input.content,
-  });
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  revalidatePath("/schedule");
-  return { ok: true as const };
-}
-
-export interface HabitInput {
-  name: string;
-  start_time: string | null;
-  repeat_type: HabitRepeatType;
-  repeat_days: number[];
-  target_duration: string | null;
-  notify_enabled: boolean;
-  notify_time: string | null;
-}
-
-export async function createHabit(input: HabitInput) {
-  const name = input.name.trim();
-  if (!name) return { ok: false as const };
-
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const { error } = await supabase.from("habit").insert({
-    id: crypto.randomUUID(),
-    user_id: user.id,
-    name,
-    start_time: input.start_time,
-    repeat_type: input.repeat_type,
-    repeat_days: input.repeat_days,
-    target_duration: input.target_duration,
-    notify_enabled: input.notify_enabled,
-    notify_time: input.notify_time,
-  });
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  revalidatePath("/schedule");
-  revalidatePath("/home");
-  return { ok: true as const };
-}
-
 export interface TodoInput {
   title: string;
   due_date: string | null;
@@ -446,5 +369,61 @@ export async function createTodo(workspaceId: string, input: TodoInput) {
   }
 
   revalidatePath("/schedule");
+  return { ok: true as const };
+}
+
+/** 월간 뷰의 선택일 패널이 그 달 범위 안의 할 일을 "등록된(= due_date가 그 날인)" 날짜에
+ * 표시하기 위한 조회. due_date가 null인 할 일은 애초에 달력에 놓일 날짜가 없어 범위 비교에서
+ * 자연히 빠진다(Postgres에서 NULL 비교는 항상 false). */
+export async function getTodosForRange(
+  workspaceId: string,
+  rangeStart: string,
+  rangeEnd: string
+): Promise<Todo[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("todo")
+    .select("*")
+    .eq("workspace_id", workspaceId)
+    .gte("due_date", rangeStart)
+    .lte("due_date", rangeEnd)
+    .order("created_at", { ascending: true });
+
+  if (error) throw new Error(error.message);
+  return (data ?? []) as Todo[];
+}
+
+/** 오늘 날짜 패널에서만 쓰는 "지난 할 일" 이월 목록 — 마감일이 지났는데 아직 완료 안 한
+ * 할 일. 무한정 쌓이는 걸 막기 위해 50건으로 방어적으로 제한(스펙엔 없지만 안전장치). */
+export async function getOverdueTodos(workspaceId: string, todayStr: string): Promise<Todo[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("todo")
+    .select("*")
+    .eq("workspace_id", workspaceId)
+    .eq("is_done", false)
+    .lt("due_date", todayStr)
+    .order("due_date", { ascending: true })
+    .limit(50);
+
+  if (error) throw new Error(error.message);
+  return (data ?? []) as Todo[];
+}
+
+/** 할 일 완료 토글 — RLS(workspace_access)가 워크스페이스 멤버 전체를 허용해서(장보기 항목
+ * 체크와 동일한 성격) 작성자 제한을 두지 않는다. 호출부(MonthView/TodayEvents)가 먼저
+ * 낙관적으로 UI를 바꾼 뒤 이 액션을 호출한다. */
+export async function toggleTodoDone(todoId: string, done: boolean) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { error } = await supabase.from("todo").update({ is_done: done }).eq("id", todoId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/schedule");
+  revalidatePath("/home");
   return { ok: true as const };
 }

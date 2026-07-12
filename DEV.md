@@ -1,6 +1,173 @@
 # 개발 참조 문서
 
-## 마지막 업데이트: 2026-07-12 (끼니 영양 정보(추정) 기능 신규 — 원칙: 근사치임을 숨기지 않기, 기본은 낮은 존재감)
+## 마지막 업데이트: 2026-07-13 (게시판 레이아웃 정리 — 크롬 최소화로 콘텐츠 공간 확대)
+
+- 2026-07-13: 게시판(`/board`) 레이아웃 정리 4건
+  - **페이지 타이틀 제거**: `board/page.tsx`의 "게시판" `<h1>`을 없애고, h1이 쓰던
+    `gap-section`(30px) 바깥 여백도 함께 제거(이제 `BoardSection` 하나만 남아 별도 섹션 간격이
+    필요 없음).
+  - **섹션 라벨 아이콘·들여쓰기 제거**: `BoardSection.tsx`의 "하고싶은 말"/"메모" 두 라벨을
+    `SectionLabel` 컴포넌트(아이콘 포함) 대신 일정 탭과 같은 규칙으로 `mirror.label` 텍스트만
+    쓰도록 바꾸고(메모 쪽은 "+" 작성 버튼만 `SectionLabel` 내부 마크업을 그대로 인라인
+    재현), 두 섹션을 감싸던 `pl-section-indent` 래퍼도 제거해 콘텐츠가 좌측 정렬로 꽉 차게
+    함. `SectionLabel`/`IconNote`/`IconMessage2` import 제거.
+  - **메모 행 이미지 썸네일**: `renderPost()`를 세로 스택(`flex-col`)에서 가로
+    행(`items-center gap-2.5`)으로 바꾸고, `n.image_url`이 있으면 행 맨 앞에 40px 정사각
+    썸네일(`h-10 w-10 rounded-sm object-cover`, 라운드 최소)을 추가 — 텍스트(제목/내용/작성자·
+    시각)는 오른쪽 `flex-1` 칼럼에 그대로, `truncate` 말줄임 유지.
+  - **메모 기본 노출 3→4개 + 세로 스크롤 방지**: `POSTS_PREVIEW_COUNT` 3→4로 늘리고,
+    확보한 공간만큼 여백을 줄임 — 스티커/구분선/메모 섹션을 감싸는 바깥 `flex flex-col`의
+    간격을 `gap-3`(12px)→`gap-2`(8px)로, 메모 각 행의 상하 패딩을 `py-2`→`py-1.5`로 축소.
+    초과분은 기존 `SectionExpand`(페이지 번호 방식 "더보기", 스와이프 지원) 그대로 재사용 —
+    컴포넌트 자체는 변경 없음.
+  - 검증: `tsc --noEmit`/`next lint` 클린(기존 무관 경고 1건 제외), `/board`·`/home` 라우트
+    컴파일(307) 확인. 로그인된 브라우저가 없어 4개 노출 시 실제로 세로 스크롤바 없이 들어가는지,
+    썸네일 비율/말줄임 실제 렌더는 직접 확인 필요 — 화면이 유난히 좁거나 폰트가 커지면
+    빡빡할 수 있어 확인 후 여백을 한 번 더 조정할 수 있음.
+
+- 2026-07-13: 일정 등록 폼 간소화(AddEventSheet) + 달력 표시 정리 3건
+  - **등록 폼 구조 개편**: `AddEventSheet.tsx`를 "기본"(제목/날짜(종일·시간)/반복/키워드)과
+    기본 접힘 상태의 "자세한 설정"(누구의 일정인가요(기본 가족 전체)/알림/장소/메모/금액/
+    중요한 일정인가요/외부 공유 링크에 표시) 두 구간으로 재구성 — `detailsOpen` state로
+    토글하는 텍스트 버튼(`IconChevronDown` 회전)이 자세한 설정을 여닫는다. 수정 모드로 열릴
+    때는(`existingSchedule` 있음) 이미 채워진 값을 바로 보여주는 게 자연스러워 자세한 설정을
+    기본으로 펼쳐둠. 키워드 칩과 알림 칩은 `flex-wrap`에서 `scrollbar-hide flex gap-2
+    overflow-x-auto`(각 칩 `shrink-0`)로 바꿔 한 줄 가로 슬라이드로 통일 — "누구의 일정인가요"
+    칩은 사람 수가 적어 그대로 `flex-wrap` 유지. 반복의 음력 토글 라벨을 "음력"→"음력으로
+    반복 (생신·제사)"로 변경.
+  - **사진 URL 필드 삭제**: `imageUrl` state/reset/프리필/제출 페이로드를 전부 제거하고,
+    `ScheduleInput`(`schedule/actions.ts`)에서 `image_url` 필드 자체와 insert/update
+    페이로드의 해당 줄을 뺐다 — `Schedule` 타입(읽기 쪽)과 DB 컬럼은 그대로 둬서(과거
+    데이터/컬럼 보존) 레거시 값이 있어도 안 깨짐. 대신 같은 자리에 **"금액" 필드를 범용으로
+    재도입** — 과거 "장보기 일정"에 묶여 있던(이미 제거됨) `amount`와 달리 이번엔 특정 용도
+    제한 없이 순수 숫자 입력(나들이 비용 등)이고, `ScheduleDetailSheet.tsx`가 이미
+    `schedule.amount`를 표시하고 있어서 재도입만으로 바로 연결됨.
+  - **월간 달력 전/익월 빈칸**: `MonthView.tsx`의 `cells` 계산 로직을 확인해보니 이미 요청한
+    대로였음(선행 빈 칸만 `null`로 채우고, 이번 달 마지막 날 이후로는 아무것도 안 채워
+    전월/익월 날짜가 원래도 안 보임) — 코드 변경 없이 확인만 함.
+  - **키워드 범례를 섹션 상단으로 이동**: 새 `KeywordLegend.tsx`(가로 스크롤 한 줄, 항목별
+    3px→변경 없음 6px 색 점 + 10px 라벨)를 만들어 달력 하단에 있던 범례 블록을
+    `MonthView.tsx`에서 제거하고, `schedule/page.tsx`의 헤더 줄("월간/주간/연간 일정" 라벨과
+    멤버 필터 드롭다운이 있는 줄)로 옮김 — `view === "month"`일 때만 라벨 자리를
+    `<KeywordLegend />`로 바꿔치기하고(주간/연간은 기존 텍스트 라벨 그대로), 멤버 필터
+    드롭다운은 오른쪽에 그대로 유지. 좁은 화면에서 라벨+드롭다운이 한 줄에 들어가야 해서
+    범례도 가로 스크롤 처리.
+  - **"오늘 뭐하지" 제안 텍스트 스타일 통일**: `ActivitySuggestionSection.tsx`(일정 탭, 14px
+    `text-ink`)를 `SuggestionSection.tsx`(식탁 탭)의 비활성 카드 제목과 완전히 동일한 클래스
+    조합 `text-[11px] font-medium ${mirror.muted}`로 맞춤 — 둘 다 이미 `@/lib/homeTheme`의
+    `mirror` 토큰을 쓰고 있어서 새 파일을 안 만들고도 기존 공유 토큰으로 "공용 스타일"을
+    달성함. "다른 추천 골라보기" 버튼/룰렛·사다리타기 게임 UI는 대상이 아니라 그대로 둠.
+  - 검증: `tsc --noEmit`/`next lint` 클린(기존 무관 경고 1건 제외), `/schedule` 4개 뷰 +
+    `/home` 라우트 컴파일(307) 확인. 로그인된 브라우저가 없어 자세한 설정 접힘/펼침 애니메이션,
+    가로 슬라이드 스크롤 실제 동작, 범례 위치 이동 후 레이아웃은 직접 확인 필요.
+
+- 2026-07-13: 루틴 블록 자정 넘김(overnight) 지원 — 규칙: 종료 ≤ 시작이면 "다음 날 종료"로
+  해석(예: 21:00~07:30), 블록의 소속 요일은 시작 시각 기준
+  - **저장 검증 완화**(`ScheduleDayView.tsx`): `saveEdit`/`handleAddBlock`과 두 저장 버튼의
+    `disabled` 조건을 `start >= end`(overnight 전부 차단)에서 `start === end`(0분짜리만
+    차단)로 변경 — 24시간 초과는 "종료가 시작보다 이르면 자동으로 다음 날로 감긴다"는 이
+    스키마(HH:MM 두 개) 자체에서 구조적으로 나올 수 없어 별도 체크 불필요. 블록 목록의 시간
+    표시도 `{start}~{end}`에서 신규 `formatBlockTimeRange()`(`routineUtils.ts`)로 바꿔
+    overnight이면 "21:00 – 다음날 07:30"처럼 다음 날임을 보여줌.
+  - **`routineUtils.ts` 정리**: `isOvernightBlock()`/`formatBlockTimeRange()` 신규 추가.
+    `getCurrentBlock()`(하루 뷰 도넛의 "지금 진행 중" 판정, 그리고 원래 이 함수 안에 있던
+    `nowMinutes + 24h` OR 조건)에 있던 버그를 고침 — 그 조건은 "오늘 자정 넘기는 블록"(아직
+    시작 전, 예: 오늘 밤 9시 예정)과 "어제 자정 넘겨 지금 이어지는 블록"을 구분하지 못해서,
+    새벽 시간대에 "오늘 밤에 시작할 예정인" overnight 블록을 이미 진행 중인 것처럼 잘못
+    매칭시켰음. 이제 `getCurrentBlock()`은 "이 블록 리스트 자신의" 진행 여부만 단일 조건으로
+    판단하고, 새벽 시간대의 전날 이월 판정은 신규 `getCarriedOvernightBlock()`이 별도로
+    맡는다(어제 블록 중 overnight인 것만, 자정을 넘겨 지금까지 이어지는지 확인 — 어제의
+    일반 블록은 절대 매칭 안 함).
+  - **하루 뷰 도넛/바늘**(`RoutineWheel.tsx`): 이미 자정 넘김을 올바르게 그리고 있었음(각도
+    계산이 `endMin += 24h` 후 mod 360 좌표 + 실제 각도차로 sweep을 구해서 자정을 가로지르는
+    호가 이미 정확히 렌더됨) — 이번 작업에서 별도 수정 없이 코드 리딩으로 검증만 함.
+  - **홈 가족상태**(`home/page.tsx`): 루틴 조회를 "오늘 요일"만 보던 것에서 "오늘 요일 +
+    어제 요일"(`(today.getDay() + 6) % 7`)을 함께 조회하도록 바꾸고, `day_of_week`로 두
+    맵(`routineByMember`/`yesterdayRoutineByMember`)에 나눠 담음. 상태 판정을
+    `getCurrentBlock(오늘 블록) ?? getCarriedOvernightBlock(어제 블록)`으로 — 오늘 것 중에
+    진행 중인 게 없을 때만(주로 새벽 시간대) 어제의 overnight 블록(예: 어제 21:00~오늘
+    07:30 "잠")이 지금까지 이어지는지 폴백으로 확인. 이 화면은 원래도 일정을 안 섞고 루틴
+    상태만 보여주는 구조라(일정은 "오늘 뭐하지" 섹션 전담) 일정>루틴 우선순위 자체가 바뀔
+    지점이 없음 — 그대로 유지됨.
+  - **겹침 감지**(`ConfirmCards.tsx`, 에이전트 루틴 확인 카드): 기존 `timesOverlap()`은
+    문자열 비교라 `"21:00" < "07:30"`이 항상 false가 되어 overnight 블록의 실제 겹침을 못
+    잡았음. 신규 `toSegments()`가 overnight 블록을 `[시작~24:00)`과 `[00:00~종료)` 두 구간으로
+    쪼개고, `blocksOverlap()`이 양쪽 블록의 모든 구간 쌍을 기존 `timesOverlap()`으로 비교
+    (정규 블록은 구간이 1개뿐이라 기존 동작 그대로).
+  - **에이전트 루틴 파싱**(`agent/agent.py`): `_build_routine_instruction()`에 "잠은 자정을
+    넘겨도 블록 하나 — end가 start보다 이르거나 같아도 됨, '취침 9시/기상 7시반'처럼 따로
+    언급돼도 하나로 합치고 기상을 별도 블록으로 다시 만들지 말 것" 규칙을 추가. 방어적
+    후처리로 신규 `_merge_sleep_wake_blocks()`를 `_normalize_routine_group()`에 연결 —
+    status="취침"이고 10분 안팎인 점 블록과 라벨에 "기상/일어나/깨"가 들어간 다른 점 블록을
+    찾으면 취침 시작~기상 시작으로 하나의 블록으로 합침(LLM이 이미 프롬프트대로 하나로 냈으면
+    조건에 안 걸려 아무것도 안 바뀜 — 안전한 폴백). `.venv` 파이썬으로 병합 함수 자체를
+    격리 테스트(분리 언급/이미 병합/무관 케이스 3가지)해 통과 확인.
+  - **아이 기본 템플릿**: `DEFAULT_TEMPLATE`의 "잠" 블록은 확인해보니 이미 `21:00~07:30`으로
+    overnight 형태였음(과거에 미리 반영돼 있었음) — 추가 수정 불필요, 코드 주석으로만
+    재확인.
+  - 검증: `tsc --noEmit`/`next lint` 클린(기존 무관 경고 1건 제외), `/home`·
+    `/schedule?view=day|month` 라우트 컴파일(307) 확인, 에이전트 취침/기상 병합 로직은
+    `.venv` 파이썬으로 직접 실행해 검증(분리 언급 병합/이미 병합 시 무변화/무관 블록 보존
+    3케이스 통과). 로그인된 브라우저가 없어 실제 도넛 렌더링·새벽 시간대 가족상태 표시는
+    직접 확인 필요.
+
+- 2026-07-13: 습관·다이어리 제거 + 체크리스트(할 일) 표시 3건
+  - **습관·다이어리 제거**: `AddTemplatePicker.tsx`의 `TemplateType`에서 `"diary"`/`"habit"`을
+    빼고 `"todo"`/`"event"` 2개만 남김(4버튼 2×2 그리드 → 2버튼 1행, 별도 레이아웃 손질
+    불필요). `AddEventEntry.tsx`에서 `DiarySheet`/`HabitSheet` 렌더링 제거, 두 컴포넌트 파일
+    자체를 삭제. `schedule/actions.ts`의 `createDiary`/`createHabit`/`DiaryInput`/`HabitInput`,
+    `types/index.ts`의 `Diary`/`Habit`/`HabitRepeatType`도 이제 아무도 참조하지 않는 죽은
+    코드라 함께 제거(둘 다 그동안 쓰던 곳이 이 두 시트뿐이었고, 다른 화면에서 `diary`/`habit`
+    테이블을 읽는 곳은 애초에 없었음 — 순수 write-only 폼이었음). `weather` prop도 덩달아
+    죽은 코드가 돼서 `AddEventEntry`/`schedule/page.tsx`에서 함께 제거(`DiarySheet`가
+    유일한 소비처였음) — `getCurrentWeather()` 호출 자체를 `schedule/page.tsx`에서 뺌(홈
+    화면의 날씨 표시는 별개 호출이라 영향 없음). **DB는 그대로**: `diary`/`habit` 테이블과
+    기존에 저장된 행은 건드리지 않음(삭제/마이그레이션 없음) — 나중에 다시 필요해지면
+    데이터는 남아있음.
+  - **체크리스트(할 일) 표시**: 일정 탭 월간 뷰(`MonthView.tsx`)의 달력 아래 선택일 패널에서
+    일정 리스트 다음으로 "할 일" 섹션을 새로 렌더 — 체크박스(원형, 완료 시 sage 배경+체크
+    아이콘) + 제목(완료 시 취소선 + 흐린 색), 탭하면 즉시 낙관적으로 토글하고
+    `toggleTodoDone`(신규 서버 액션, `schedule/actions.ts`) 호출, 실패하면 롤백. 완료 항목은
+    `sortTodos()`(안정 정렬로 완료만 뒤로, 같은 상태 안에서는 등록순 유지)로 하단 정렬.
+    할 일은 `due_date`가 선택일과 같은 것만 그 날짜에 표시(신규 `getTodosForRange`, 그 달
+    범위로 한 번에 조회). **선택일이 오늘일 때만** `due_date < 오늘 AND is_done = false`인
+    "지난 할 일"을 별도 라벨("지난 할 일 N개", terra 색)로 구분해 이어서 표시(신규
+    `getOverdueTodos`, 무한정 누적 방지로 50건 제한 — 스펙엔 없는 방어적 안전장치). 데이터는
+    `schedule/page.tsx`가 `view === "month"`일 때만 조회해 `MonthView`에 `monthTodos`/
+    `overdueTodos`로 내려줌(다른 뷰는 빈 배열로 스킵).
+  - **홈 "오늘 뭐하지"에도 통합**: `TodayEvents.tsx`가 이제 `todaySchedules` + `todayTodos`
+    (due_date=오늘 AND is_done=false만, `home/page.tsx`가 새로 조회)를 합쳐서 최대 3개까지
+    보여줌 — 일정은 기존처럼 링크(일정 탭으로 이동), 할 일은 그 자리에서 바로 체크 토글
+    (홈 위젯이라 애니메이션 없이 취소선만, 재정렬은 안 함 — 3개짜리 미리보기에서 흔들리는
+    느낌을 피하려고 일부러 뺌). `HomeTodaySection.tsx`가 `todayTodos` prop을 중계.
+  - 검증: `tsc --noEmit`/`next lint` 클린(기존 무관 경고 1건 제외), `/home`·
+    `/schedule?view=month|week|year|day` 라우트 컴파일(307) 확인. 로그인된 브라우저가 없어
+    실제 체크 토글 애니메이션/지난 할 일 라벨 노출 시점(자정 경계)은 직접 확인 필요.
+
+- 2026-07-13: 홈 위젯 UI 다듬기 4건
+  - **"오늘 뭐하지" 도트/바 구분**: `TodayEvents.tsx` — 제목 앞에 장바구니 항목과 같은 스타일의
+    작은 표시를 추가. 당일 하루 일정(`date_end`가 없거나 `date_start`와 같음)은 3px 점
+    (`HomeShoppingSection.tsx`의 장바구니 도트와 동일한 `h-[3px] w-[3px] rounded-full`), 기간
+    일정(`date_end`가 있고 `date_start`와 다름)은 짧은 가로 바(`h-[2px] w-2 rounded-full`)로
+    구분 — 색은 `getKeywordColor(s.keyword_main)`으로 일정 탭 달력의 도트/밴드 색과 동일한
+    체계를 따름.
+  - **"하고싶은 말" 캐러셀화**: `HomeStickySection.tsx` — 기존엔 세로로 쌓인 미리보기 3개 +
+    "외 N개" 텍스트 링크였는데, `MealSummaryCard.tsx`(오늘 뭐먹지)와 동일한 스냅 캐러셀
+    패턴(`snap-x snap-mandatory` + 하단 페이지네이션 점)으로 교체 — 최근 등록순 상위 3개를
+    좌우로 슬라이드해서 봄(정렬은 이미 홈 페이지 쿼리가 `created_at desc`로 내려주므로 추가
+    정렬 불필요). 이미지·작성자 표기 모두 왼쪽 정렬로 변경(예전엔 이미지가 오른쪽 끝에,
+    작성자가 `self-end`로 오른쪽 정렬이었음).
+  - **"오늘 뭐먹지" 카드 재구성**: `MealSummaryCard.tsx` — 태그/타입 줄("아침 · 집밥" 등)을
+    메뉴명 위로 옮기고 10px로 더 축소, 메뉴명은 16px→14px로 축소. 참여자는 텍스트 이름
+    나열(`participantNames.join(", ")`) 대신 겹쳐 쌓은 아바타(`Avatar`, 18px,
+    `MealCard.tsx`와 동일한 겹침 비율 `-space-x-[14.4px]`, 최대 4명 + 나머지는 잘림)로
+    표기 — 이름 텍스트 없이 아바타만. `MealSummaryItem.participantNames: string[]` →
+    `participants: MealSummaryParticipant[]`(user_id/display_name/avatar_color/
+    avatar_text_color/avatar_image_url)로 타입 변경, `home/page.tsx`의 `toParticipantNames`도
+    `toParticipants`로 바꿔 아바타 정보까지 함께 내려주도록 수정.
+  - 검증: `tsc --noEmit`/`next lint` 클린(기존 무관 경고 1건 제외), `/home`·`/board`·`/food`
+    라우트 컴파일(307) 확인. 로그인된 브라우저가 없어 실제 캐러셀 스와이프/도트-바 시각적
+    구분/아바타 겹침 배치는 직접 확인 필요.
 
 - 2026-07-12: 끼니 영양 정보(추정) 기능 신규
   - **DB**: `supabase/add_meal_nutrition.sql`(실행 필요, 재실행 안전) — `meal`에 `kcal_min`/

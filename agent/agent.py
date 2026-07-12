@@ -561,6 +561,7 @@ def _build_routine_instruction(now: datetime) -> str:
 - "7시 기상", "6시 저녁"처럼 **시점 하나만** 언급된 활동은 그 시각을 start로, start의 10분 뒤를 end로 설정하세요 (예: "7시 기상" → start "07:00", end "07:10"). 이런 경우는 시각이 명확하므로 null로 두면 안 됩니다.
 - "오전에 운동"처럼 구체적 시각이 **전혀** 없는 경우에만 start와 end를 둘 다 null로 남기세요. 짐작해서 채우지 마세요.
 - 텍스트에 명시적으로 언급된 활동만 블록으로 만드세요. "~하다가", "~까지 쉬고" 같은 언급되지 않은 빈 시간대는 절대 블록으로 만들지 마세요.
+- **잠(취침~기상)은 자정을 넘겨도 블록 하나**입니다. end가 start보다 이르거나 같아도 되고, 그러면 자정을 넘겨 다음 날 end 시각까지로 해석됩니다. "밤 9시에 자서 아침 7시 반에 일어나"처럼 한 문장에서 같이 언급되든, "취침 9시, 기상 7시 30분"처럼 따로 언급되든 취침 시각~기상 시각을 하나의 블록(start "21:00", end "07:30", status "취침")으로 합치세요. 기상 시각을 별도의 블록으로 다시 만들지 마세요 — 잠 블록의 end가 곧 기상 시각입니다.
 
 같은 텍스트 안에서 요일 그룹이 다르면(예: "평일은 이렇고 주말은 저렇고") routines 배열에 각각 별도 객체로 나누세요.
 JSON 외의 설명은 절대 출력하지 마세요."""
@@ -602,11 +603,62 @@ def _normalize_routine_block(raw: object) -> Optional[dict]:
     return {"start": start, "end": end, "status": status, "label": label, "memo": memo}
 
 
+def _time_diff_minutes(start: str, end: str) -> int:
+    """start~end 사이 분 차이. end가 start보다 이르거나 같으면 자정을 넘긴 것으로 보고
+    24시간을 더한다(overnight 블록 길이 계산 등에 공용으로 씀)."""
+    sh, sm = (int(x) for x in start.split(":"))
+    eh, em = (int(x) for x in end.split(":"))
+    diff = (eh * 60 + em) - (sh * 60 + sm)
+    return diff if diff > 0 else diff + 24 * 60
+
+
+_SLEEP_WAKE_KEYWORDS = ("기상", "일어나", "깨")
+
+
+def _merge_sleep_wake_blocks(blocks: list[dict]) -> list[dict]:
+    """프롬프트에서 "취침~기상을 블록 하나로 합치라"고 명시했지만, LLM이 그래도 "취침 9시"와
+    "기상 7시 반"을 각각 10분짜리 점 블록 2개로 따로 낼 가능성에 대비한 방어적 후처리.
+    status가 "취침"이고 10분 안팎(점 블록)인 항목을 찾아, 라벨에 기상 관련 단어가 들어간
+    다른 점 블록과 짝지어 하나의 취침 블록(취침 시작~기상 시작)으로 합친다. LLM이 이미
+    프롬프트대로 하나로 합쳐서 냈다면(= 별도의 기상 점 블록이 없다면) 아무것도 바뀌지 않는다."""
+    sleep_idx = next(
+        (
+            i
+            for i, b in enumerate(blocks)
+            if b.get("status") == "취침"
+            and b.get("start")
+            and b.get("end")
+            and _time_diff_minutes(b["start"], b["end"]) <= 15
+        ),
+        None,
+    )
+    if sleep_idx is None:
+        return blocks
+
+    wake_idx = next(
+        (
+            i
+            for i, b in enumerate(blocks)
+            if i != sleep_idx
+            and b.get("start")
+            and any(k in (b.get("label") or "") for k in _SLEEP_WAKE_KEYWORDS)
+        ),
+        None,
+    )
+    if wake_idx is None:
+        return blocks
+
+    sleep_block, wake_block = blocks[sleep_idx], blocks[wake_idx]
+    merged = {**sleep_block, "end": wake_block["start"], "label": sleep_block.get("label") or "잠"}
+    return [merged] + [b for i, b in enumerate(blocks) if i not in (sleep_idx, wake_idx)]
+
+
 def _normalize_routine_group(raw: object) -> Optional[dict]:
     if not isinstance(raw, dict):
         return None
     blocks_raw = raw.get("blocks") or []
     blocks = [b for b in (_normalize_routine_block(x) for x in blocks_raw) if b]
+    blocks = _merge_sleep_wake_blocks(blocks)
     if not blocks:
         return None
     return {"days": _normalize_days(raw.get("days")), "blocks": blocks}

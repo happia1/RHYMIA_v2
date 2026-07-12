@@ -82,6 +82,26 @@ function timesOverlap(aStart: string, aEnd: string, bStart: string, bEnd: string
   return aStart < bEnd && bStart < aEnd;
 }
 
+/** 종료 ≤ 시작(자정을 넘기는 overnight 블록, 예: 21:00~07:30)은 [시작~24:00)과 [00:00~종료)
+ * 두 구간으로 쪼갠 뒤 각 구간 쌍을 timesOverlap으로 비교 — 문자열 비교 기반인 timesOverlap은
+ * "21:00" < "07:30" 같은 자정 넘김 케이스를 그대로 넣으면 항상 false가 되어 실제로 겹쳐도
+ * 못 잡아내기 때문에, 겹침 판정 전에 정규화한다. */
+function toSegments(start: string, end: string): { start: string; end: string }[] {
+  if (end <= start) {
+    return [
+      { start, end: "24:00" },
+      { start: "00:00", end },
+    ];
+  }
+  return [{ start, end }];
+}
+
+function blocksOverlap(aStart: string, aEnd: string, bStart: string, bEnd: string) {
+  const segmentsA = toSegments(aStart, aEnd);
+  const segmentsB = toSegments(bStart, bEnd);
+  return segmentsA.some((sa) => segmentsB.some((sb) => timesOverlap(sa.start, sa.end, sb.start, sb.end)));
+}
+
 function findOverlapWarnings(
   days: number[],
   blocks: AgentRoutineBlock[],
@@ -93,7 +113,7 @@ function findOverlapWarnings(
     for (const block of blocks) {
       if (!block.start || !block.end) continue;
       for (const ex of existing) {
-        if (timesOverlap(block.start, block.end, ex.start, ex.end)) {
+        if (blocksOverlap(block.start, block.end, ex.start, ex.end)) {
           warnings.add(`${DAY_LABELS[day]}요일 기존 ${ex.start}~${ex.end} ${ex.label}와 겹침`);
         }
       }

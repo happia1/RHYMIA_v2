@@ -1,18 +1,11 @@
 "use client";
 
-import {
-  IconNotebook,
-  IconRepeat,
-  IconListCheck,
-  IconCalendarEvent,
-} from "@tabler/icons-react";
+import { IconListCheck, IconCalendarEvent } from "@tabler/icons-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 
-export type TemplateType = "diary" | "habit" | "todo" | "event";
+export type TemplateType = "todo" | "event";
 
-const TEMPLATES: { key: TemplateType; label: string; icon: typeof IconNotebook }[] = [
-  { key: "diary", label: "다이어리", icon: IconNotebook },
-  { key: "habit", label: "습관", icon: IconRepeat },
+const TEMPLATES: { key: TemplateType; label: string; icon: typeof IconListCheck }[] = [
   { key: "todo", label: "할 일", icon: IconListCheck },
   { key: "event", label: "일정", icon: IconCalendarEvent },
 ];

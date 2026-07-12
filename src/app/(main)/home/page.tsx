@@ -1,7 +1,12 @@
 import { requireWorkspaceContext } from "@/lib/workspace";
 import { getWeekDates, toDateStr } from "@/lib/date";
 import { tagOrderIndex } from "@/lib/mealUtils";
-import { getCurrentBlock, STATUS_EMOJI, DEFAULT_STATUS_EMOJI } from "@/lib/routineUtils";
+import {
+  getCurrentBlock,
+  getCarriedOvernightBlock,
+  STATUS_EMOJI,
+  DEFAULT_STATUS_EMOJI,
+} from "@/lib/routineUtils";
 import { getCurrentWeather } from "@/lib/weather";
 import { getWorkspaceMembers } from "@/lib/members";
 import { mirror } from "@/lib/homeTheme";
@@ -13,7 +18,7 @@ import { HomeTodaySection } from "@/components/home/HomeTodaySection";
 import { HomeStickySection } from "@/components/home/HomeStickySection";
 import { HomeShoppingSection } from "@/components/home/HomeShoppingSection";
 import { HomeSections } from "@/components/home/HomeSections";
-import type { RoutineBlock } from "@/types";
+import type { RoutineBlock, Todo } from "@/types";
 
 export default async function HomePage() {
   const { supabase, user, workspaceId } = await requireWorkspaceContext();
@@ -24,39 +29,55 @@ export default async function HomePage() {
   const weekStart = weekDates[0];
   const weekEnd = weekDates[6];
 
-  const [members, weather, { data: schedules }, { data: meals }, { data: shoppingItems }, { data: stickers }, { data: myUserRow }] =
-    await Promise.all([
-      getWorkspaceMembers(workspaceId),
-      getCurrentWeather(),
-      supabase
-        .from("schedule")
-        .select("*")
-        .eq("workspace_id", workspaceId)
-        .gte("date_start", weekStart)
-        .lte("date_start", weekEnd)
-        .or(`is_shared.eq.true,author_id.eq.${user.id}`)
-        .order("date_start", { ascending: true }),
-      // 홈은 "오늘 등록된 것만" 보여주는 상태판 — 등록된 게 없으면 다른 날짜로 대체하지 않고 비워둔다
-      supabase
-        .from("meal")
-        .select("*, meal_participation(user_id, status)")
-        .eq("workspace_id", workspaceId)
-        .eq("date", todayStr),
-      supabase
-        .from("shopping_item")
-        .select("*")
-        .eq("workspace_id", workspaceId)
-        .order("added_at", { ascending: false }),
-      supabase
-        .from("notice")
-        .select("*")
-        .eq("workspace_id", workspaceId)
-        .eq("type", "sticky")
-        .or(`expire_at.is.null,expire_at.gt.${new Date().toISOString()}`)
-        .order("created_at", { ascending: false })
-        .limit(5),
-      supabase.from("users").select("home_layout").eq("id", user.id).single(),
-    ]);
+  const [
+    members,
+    weather,
+    { data: schedules },
+    { data: todayTodoRows },
+    { data: meals },
+    { data: shoppingItems },
+    { data: stickers },
+    { data: myUserRow },
+  ] = await Promise.all([
+    getWorkspaceMembers(workspaceId),
+    getCurrentWeather(),
+    supabase
+      .from("schedule")
+      .select("*")
+      .eq("workspace_id", workspaceId)
+      .gte("date_start", weekStart)
+      .lte("date_start", weekEnd)
+      .or(`is_shared.eq.true,author_id.eq.${user.id}`)
+      .order("date_start", { ascending: true }),
+    // "오늘 뭐하지"에 일정과 함께 나오는 오늘 마감 미완료 할 일 — 완료된 건 굳이 홈까지 안 보여줌
+    supabase
+      .from("todo")
+      .select("*")
+      .eq("workspace_id", workspaceId)
+      .eq("due_date", todayStr)
+      .eq("is_done", false)
+      .order("created_at", { ascending: true }),
+    // 홈은 "오늘 등록된 것만" 보여주는 상태판 — 등록된 게 없으면 다른 날짜로 대체하지 않고 비워둔다
+    supabase
+      .from("meal")
+      .select("*, meal_participation(user_id, status)")
+      .eq("workspace_id", workspaceId)
+      .eq("date", todayStr),
+    supabase
+      .from("shopping_item")
+      .select("*")
+      .eq("workspace_id", workspaceId)
+      .order("added_at", { ascending: false }),
+    supabase
+      .from("notice")
+      .select("*")
+      .eq("workspace_id", workspaceId)
+      .eq("type", "sticky")
+      .or(`expire_at.is.null,expire_at.gt.${new Date().toISOString()}`)
+      .order("created_at", { ascending: false })
+      .limit(5),
+    supabase.from("users").select("home_layout").eq("id", user.id).single(),
+  ]);
 
   const homeSectionOrder = resolveHomeLayout(myUserRow?.home_layout);
 
@@ -68,40 +89,57 @@ export default async function HomePage() {
 
   const memberIds = members.map((m) => m.id);
 
+  // 어제 요일도 함께 조회 — 새벽 시간대엔 전날 밤 시작해 자정을 넘겨 이어지는 overnight
+  // 블록(예: 어제 21:00~오늘 07:30 "잠")이 "오늘 요일" 목록에는 없어서 놓치기 때문.
+  const yesterdayDow = (today.getDay() + 6) % 7;
   const { data: routineRows } = await supabase
     .from("routine")
-    .select("member_id, blocks")
+    .select("member_id, day_of_week, blocks")
     .in("member_id", memberIds.length ? memberIds : [""])
-    .eq("day_of_week", today.getDay());
+    .in("day_of_week", [today.getDay(), yesterdayDow]);
 
-  // 오늘 뭐먹지? — 오늘 등록된 끼니만 시간순으로 보여준다 (등록된 게 없으면 빈 상태)
-  const toParticipantNames = (meal: {
+  // 오늘 뭐먹지? — 오늘 등록된 끼니만 시간순으로 보여준다 (등록된 게 없으면 빈 상태).
+  // 참여자는 카드에서 텍스트가 아니라 아바타로 표기하므로 이름뿐 아니라 아바타 색/이미지까지 넘긴다.
+  const toParticipants = (meal: {
     meal_participation?: { user_id: string; status: boolean | null }[];
-  }): string[] =>
+  }) =>
     (meal.meal_participation ?? [])
       .filter((p) => p.status === true)
-      .map((p) => membersByUserId[p.user_id]?.display_name)
-      .filter((name): name is string => Boolean(name));
+      .map((p) => membersByUserId[p.user_id])
+      .filter((m): m is (typeof members)[number] & { user_id: string } => Boolean(m?.user_id))
+      .map((m) => ({
+        user_id: m.user_id,
+        display_name: m.display_name,
+        avatar_color: m.avatar_color,
+        avatar_text_color: m.avatar_text_color,
+        avatar_image_url: m.avatar_image_url,
+      }));
 
   const mealsToShow: MealSummaryItem[] = (meals ?? [])
     .sort((a, b) => tagOrderIndex(a.tag) - tagOrderIndex(b.tag))
-    .map((m) => ({ ...m, participantNames: toParticipantNames(m) }));
+    .map((m) => ({ ...m, participants: toParticipants(m) }));
 
   // 오늘 뭐하지?
   const todaySchedules = (schedules ?? []).filter((s) => s.date_start === todayStr);
 
   // 지금 우리 가족은
   const routineByMember: Record<string, RoutineBlock[]> = {};
+  const yesterdayRoutineByMember: Record<string, RoutineBlock[]> = {};
   for (const r of routineRows ?? []) {
-    routineByMember[r.member_id as string] = (r.blocks as RoutineBlock[]) ?? [];
+    const target = r.day_of_week === today.getDay() ? routineByMember : yesterdayRoutineByMember;
+    target[r.member_id as string] = (r.blocks as RoutineBlock[]) ?? [];
   }
 
   // 지금 우리 가족은 — 루틴 기반 상태만 표시 (일정 병기는 "오늘 뭐하지" 섹션 전담, 중복 제거)
   // managed 멤버(자녀 등)도 동일하게 루틴 기반 상태를 보여준다. 다른 account 멤버의 루틴은
   // RLS(can_read_routine)가 자기 자신 것만 허용하므로 routineByMember에 아예 없을 수 있고,
   // 그 경우 기본 상태("쉬는 중")로 표시된다 — 의도된 프라이버시 동작.
+  // 오늘 요일 블록에서 못 찾으면(새벽 시간대 등) 어제 요일의 overnight 블록이 지금까지
+  // 이어지고 있는지 한 번 더 확인한다.
   const familyStatus: FamilyMemberStatus[] = members.map((m) => {
-    const block = getCurrentBlock(routineByMember[m.id] ?? [], today);
+    const block =
+      getCurrentBlock(routineByMember[m.id] ?? [], today) ??
+      getCarriedOvernightBlock(yesterdayRoutineByMember[m.id] ?? [], today);
 
     let statusText = "쉬는 중";
     let emoji = DEFAULT_STATUS_EMOJI;
@@ -138,6 +176,7 @@ export default async function HomePage() {
   const scheduleTodaySection = (
     <HomeTodaySection
       todaySchedules={todaySchedules}
+      todayTodos={(todayTodoRows ?? []) as Todo[]}
       members={memberOptions}
       workspaceId={workspaceId}
       defaultDate={todayStr}

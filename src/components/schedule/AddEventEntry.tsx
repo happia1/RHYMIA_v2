@@ -4,10 +4,7 @@ import { useEffect, useState } from "react";
 import { IconPlus } from "@tabler/icons-react";
 import { AddTemplatePicker, type TemplateType } from "@/components/schedule/AddTemplatePicker";
 import { AddEventSheet } from "@/components/schedule/AddEventSheet";
-import { DiarySheet } from "@/components/schedule/DiarySheet";
-import { HabitSheet } from "@/components/schedule/HabitSheet";
 import { TodoSheet } from "@/components/schedule/TodoSheet";
-import type { WeatherData } from "@/lib/weather";
 
 interface MemberOption {
   id: string;
@@ -19,13 +16,11 @@ export function AddEventEntry({
   members,
   defaultDate,
   autoOpen,
-  weather,
 }: {
   workspaceId: string;
   members: MemberOption[];
   defaultDate: string;
   autoOpen: boolean;
-  weather: WeatherData | null;
 }) {
   const [pickerOpen, setPickerOpen] = useState(autoOpen);
   const [activeSheet, setActiveSheet] = useState<TemplateType | null>(null);
@@ -55,14 +50,6 @@ export function AddEventEntry({
         onSelect={handleSelect}
       />
 
-      <DiarySheet
-        open={activeSheet === "diary"}
-        onClose={() => setActiveSheet(null)}
-        workspaceId={workspaceId}
-        defaultDate={defaultDate}
-        weather={weather}
-      />
-      <HabitSheet open={activeSheet === "habit"} onClose={() => setActiveSheet(null)} />
       <TodoSheet
         open={activeSheet === "todo"}
         onClose={() => setActiveSheet(null)}
