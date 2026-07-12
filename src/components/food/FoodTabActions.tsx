@@ -24,14 +24,14 @@ export function FoodTabActions({
       <div className="flex gap-3">
         <button
           onClick={() => setStockOpen(true)}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-2xl border border-border-light py-3 text-[13px] font-medium text-ink"
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-2xl border border-border-light py-3 text-[12px] font-medium text-[var(--text-muted)]"
         >
           <IconFridge size={16} className="text-honey" />
           현재 재고 확인
         </button>
         <button
           onClick={openShoppingSheet}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-2xl border border-border-light py-3 text-[13px] font-medium text-ink"
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-2xl border border-border-light py-3 text-[12px] font-medium text-[var(--text-muted)]"
         >
           <IconShoppingCart size={16} className="text-honey" />
           장볼 것 입력하기

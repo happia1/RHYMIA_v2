@@ -33,7 +33,7 @@ export function SuggestionSection({
       title: "늘 먹던 메뉴",
       body: frequentMenuUnlocked
         ? frequentMenus[0] ?? "아직 기록이 없어요"
-        : `식탁 기록이 7일 쌓이면 열려요 (지금 ${trackingDays}일째)`,
+        : `데이터 쌓는 중 (${trackingDays}/7일)`,
     },
     {
       title: "룰렛 돌리기",
@@ -49,16 +49,16 @@ export function SuggestionSection({
   return (
     <section className="flex flex-col gap-label-gap">
       <SectionLabel icon={<IconSparkles size={14} />}>오늘의 제안</SectionLabel>
-      <div className="scrollbar-hide flex gap-3 overflow-x-auto pb-1 pl-section-indent">
+      <div className="flex divide-x divide-border-light pl-section-indent">
         {cards.map((card) => (
           <button
             key={card.title}
             onClick={card.onClick}
             disabled={!card.onClick}
-            className="flex w-36 shrink-0 flex-col gap-1 rounded-2xl border border-border-light p-3 text-left disabled:cursor-default"
+            className="flex flex-1 flex-col items-center gap-0.5 px-2 py-1 text-center disabled:cursor-default"
           >
             <span className={`text-[11px] font-medium ${mirror.muted}`}>{card.title}</span>
-            <span className={`text-[14px] ${mirror.primary}`}>{card.body}</span>
+            <span className="text-[7px] text-[var(--text-muted)]">{card.body}</span>
           </button>
         ))}
       </div>

@@ -48,11 +48,6 @@ export function MealListSection({
   };
 
   return (
-    <SectionExpand
-      items={meals}
-      previewCount={MEAL_LIST_PREVIEW_COUNT}
-      title="오늘 식탁"
-      renderItem={renderMeal}
-    />
+    <SectionExpand items={meals} pageSize={MEAL_LIST_PREVIEW_COUNT} renderItem={renderMeal} />
   );
 }

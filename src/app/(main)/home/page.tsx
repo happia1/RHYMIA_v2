@@ -171,9 +171,9 @@ export default async function HomePage() {
       {/* 모바일: 위젯처럼 길게 눌러 순서를 바꿀 수 있는 4개 독립 섹션(끼니/오늘/하고싶은말/장바구니).
           한 화면(100dvh - 독바 높이)에 고정 — 헤더/헤어라인은 고정 높이, 위젯 그리드 영역만
           남은 높이를 차지하고 넘치면 그 영역 안에서만 스크롤(overflow-y-auto), 페이지 자체는 스크롤 없음. */}
-      <div className="flex min-h-0 flex-1 flex-col gap-section lg:hidden">
+      <div className="flex min-h-0 flex-1 flex-col lg:hidden">
         <div className="shrink-0">{headerNode}</div>
-        <div className={`h-px w-full shrink-0 ${mirror.hairlineBg}`} />
+        <div className={`my-3 h-px w-full shrink-0 ${mirror.hairlineBg}`} />
         <div className="min-h-0 flex-1 overflow-y-auto">
           <HomeSections
             initialOrder={homeSectionOrder}

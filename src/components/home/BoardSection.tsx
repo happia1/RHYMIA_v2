@@ -94,32 +94,27 @@ export function BoardSection({
     <div
       key={n.id}
       onClick={() => setDetail(n)}
-      className={`flex cursor-pointer flex-col gap-1 py-3 text-left ${
+      className={`flex cursor-pointer flex-col gap-0.5 py-2 text-left ${
         i > 0 ? "border-t border-border-light" : ""
       }`}
     >
-      {n.is_pinned && (
-        <div className="flex items-center gap-1 text-[10px] font-medium text-honey">
-          <IconPin size={11} />
-          고정
-        </div>
+      {n.title && (
+        <span className={`truncate text-[13px] font-medium ${n.is_pinned ? "text-honey" : "text-ink"}`}>
+          {n.title}
+        </span>
       )}
-      {n.title && <span className="truncate text-[13px] font-medium text-ink">{n.title}</span>}
-      <p className="truncate text-[12px] text-[var(--text-muted)]">{n.content}</p>
-      <div className="flex items-center justify-end gap-1.5 text-[11px] text-[var(--text-muted)]">
-        <span className="font-medium">{authorOf(n.created_by)?.display_name ?? "가족"}</span>
-        <span>· {formatPostTimestamp(n.created_at)}</span>
-        {n.created_by === currentUserId && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setEditingNotice(n);
-            }}
-            aria-label="수정"
-          >
-            <IconPencil size={13} className="text-[var(--text-muted)]" />
-          </button>
-        )}
+      <div className="flex items-center justify-between gap-2">
+        <p
+          className={`min-w-0 flex-1 truncate text-[11px] ${
+            n.is_pinned && !n.title ? "text-honey" : "text-[var(--text-muted)]"
+          }`}
+        >
+          {n.content}
+        </p>
+        <div className="flex shrink-0 items-center gap-1.5 text-[11px] text-[var(--text-muted)]">
+          <span className="font-medium">{authorOf(n.created_by)?.display_name ?? "가족"}</span>
+          <span>· {formatPostTimestamp(n.created_at)}</span>
+        </div>
       </div>
     </div>
   );
@@ -189,7 +184,7 @@ export function BoardSection({
                         className="truncate text-[9px] opacity-60"
                         style={{ color: STICKER_TEXT_COLOR }}
                       >
-                        {author?.display_name ?? "가족"}
+                        {formatPostTimestamp(s.created_at)}
                       </span>
                       {s.created_by === currentUserId && (
                         <button
@@ -213,10 +208,17 @@ export function BoardSection({
                       />
                     )}
                     <span
-                      className="mt-1 line-clamp-5 whitespace-pre-wrap font-handwriting text-[16px] leading-snug"
+                      className="mt-1 line-clamp-4 flex-1 whitespace-pre-wrap font-handwriting text-[16px] leading-snug"
                       style={{ color: STICKER_TEXT_COLOR }}
                     >
                       {s.content}
+                    </span>
+                    {/* 쪽지처럼 끝에 남기는 서명 — "- 엄마" 식 */}
+                    <span
+                      className="truncate self-end text-[10px] opacity-70"
+                      style={{ color: STICKER_TEXT_COLOR }}
+                    >
+                      - {author?.display_name ?? "가족"}
                     </span>
                     {/* 오른쪽 아래 모서리 접힘 효과 */}
                     <span
@@ -261,7 +263,7 @@ export function BoardSection({
           {posts.length === 0 && (
             <p className="text-[13px] text-[var(--text-muted)]">등록된 글이 없어요</p>
           )}
-          <SectionExpand items={posts} previewCount={POSTS_PREVIEW_COUNT} title="메모" renderItem={renderPost} />
+          <SectionExpand items={posts} pageSize={POSTS_PREVIEW_COUNT} renderItem={renderPost} />
         </div>
       </section>
 

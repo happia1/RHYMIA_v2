@@ -29,7 +29,7 @@ export function TodayEvents({
               className="flex items-center gap-2"
             >
               <span
-                className={`min-w-0 flex-1 truncate text-[14px] ${
+                className={`min-w-0 flex-1 truncate text-[13px] ${
                   s.is_important ? "font-medium" : ""
                 } ${mirror.primary}`}
               >

@@ -22,7 +22,7 @@ export function HomeStickySection({
 }) {
   const [addingSticker, setAddingSticker] = useState(false);
 
-  const previewStickers = stickers.slice(0, 4);
+  const previewStickers = stickers.slice(0, 3);
   const restCount = stickers.length - previewStickers.length;
 
   return (
@@ -43,10 +43,10 @@ export function HomeStickySection({
                 <img src={s.image_url} alt="" className="h-6 w-6 shrink-0 rounded object-cover" />
               )}
               <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <span className={`truncate text-[13px] ${mirror.secondary}`}>{s.content}</span>
                 <span className={`text-[10px] ${mirror.muted}`}>
                   {author?.display_name ?? "가족"}
                 </span>
-                <span className={`truncate text-[13px] ${mirror.secondary}`}>{s.content}</span>
               </div>
             </div>
           );

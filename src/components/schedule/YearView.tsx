@@ -111,8 +111,7 @@ export function YearView({
         {importantSchedules.length > 0 && (
           <SectionExpand
             items={importantSchedules}
-            previewCount={6}
-            title="연간 주요 일정"
+            pageSize={6}
             renderItem={(s, i) => (
               <button
                 key={s.id}

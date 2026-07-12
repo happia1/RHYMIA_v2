@@ -281,8 +281,7 @@ export function MonthView({
         {selectedSchedules.length > 0 && (
           <SectionExpand
             items={selectedSchedules}
-            previewCount={5}
-            title={`${selectedDate} 일정`}
+            pageSize={5}
             renderItem={(s, i) => (
               <button
                 key={s.id}

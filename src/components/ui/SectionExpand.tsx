@@ -1,54 +1,68 @@
 "use client";
 
-import { useState } from "react";
-import { IconX } from "@tabler/icons-react";
+import { useRef, useState } from "react";
 
-/** 데이터가 계속 쌓이는 리스트형 섹션의 공용 패턴 — 기본은 앞의 N개만 보여주고,
- * "더보기"를 누르면 섹션 내부에서 펼치는 대신 전용 풀스크린 뷰로 전환한다(내부 스크롤은
- * 허용하되 스크롤바는 숨김, `scrollbar-hide` 유틸 재사용). 홈 외 탭(식탁/일정/게시판)의
- * "페이지 세로 스크롤 없음" 원칙을 지키면서도 목록 전체를 볼 수 있게 하기 위한 것. */
+const SWIPE_THRESHOLD = 40;
+
+/** 데이터가 계속 쌓이는 리스트형 섹션의 공용 패턴 — 전체 항목을 pageSize개씩 페이지로 나누고,
+ * 하단에 페이지 번호(1,2,3...)를 두어 탭하거나 좌우로 스와이프해서 넘긴다. 페이지가 1개뿐이면
+ * 번호는 표시하지 않는다. */
 export function SectionExpand<T>({
   items,
-  previewCount,
-  title,
+  pageSize,
   renderItem,
 }: {
   items: T[];
-  previewCount: number;
-  title: string;
+  pageSize: number;
   renderItem: (item: T, index: number) => React.ReactNode;
 }) {
-  const [expanded, setExpanded] = useState(false);
-  const preview = items.slice(0, previewCount);
-  const overflowCount = items.length - preview.length;
+  const [page, setPage] = useState(0);
+  const touchStartX = useRef<number | null>(null);
+
+  const pageCount = Math.max(1, Math.ceil(items.length / pageSize));
+  const currentPage = Math.min(page, pageCount - 1);
+  const start = currentPage * pageSize;
+  const pageItems = items.slice(start, start + pageSize);
+
+  const goTo = (next: number) => setPage(Math.max(0, Math.min(pageCount - 1, next)));
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0]?.clientX ?? null;
+  };
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const delta = (e.changedTouches[0]?.clientX ?? touchStartX.current) - touchStartX.current;
+    touchStartX.current = null;
+    if (delta <= -SWIPE_THRESHOLD) goTo(currentPage + 1);
+    else if (delta >= SWIPE_THRESHOLD) goTo(currentPage - 1);
+  };
 
   return (
-    <>
-      <div className="flex flex-col">
-        {preview.map((item, i) => renderItem(item, i))}
-        {overflowCount > 0 && (
-          <button
-            onClick={() => setExpanded(true)}
-            className="self-end pt-1.5 text-[11px] text-[var(--text-muted)]"
-          >
-            더보기 · 외 {overflowCount}개
-          </button>
-        )}
+    <div>
+      <div
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        className="flex flex-col"
+      >
+        {pageItems.map((item, i) => renderItem(item, i))}
       </div>
 
-      {expanded && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-cream">
-          <header className="flex h-14 shrink-0 items-center justify-between border-b border-border-light px-4">
-            <span className="text-[15px] font-medium text-ink">{title}</span>
-            <button onClick={() => setExpanded(false)} aria-label="닫기">
-              <IconX size={22} className="text-ink" />
+      {pageCount > 1 && (
+        <div className="flex items-center justify-center gap-1.5 pt-2">
+          {Array.from({ length: pageCount }, (_, i) => (
+            <button
+              key={i}
+              onClick={() => goTo(i)}
+              aria-label={`${i + 1}페이지`}
+              className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-medium ${
+                i === currentPage ? "bg-honey text-white" : "text-[var(--text-muted)]"
+              }`}
+            >
+              {i + 1}
             </button>
-          </header>
-          <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto px-4 pb-6 pt-2">
-            <div className="flex flex-col">{items.map((item, i) => renderItem(item, i))}</div>
-          </div>
+          ))}
         </div>
       )}
-    </>
+    </div>
   );
 }
