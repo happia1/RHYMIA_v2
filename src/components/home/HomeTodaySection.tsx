@@ -10,12 +10,14 @@ import type { Schedule, Todo } from "@/types";
 export function HomeTodaySection({
   todaySchedules,
   todayTodos,
+  overdueTodos,
   members,
   workspaceId,
   defaultDate,
 }: {
   todaySchedules: Schedule[];
   todayTodos: Todo[];
+  overdueTodos: Todo[];
   members: { id: string; display_name: string }[];
   workspaceId: string;
   defaultDate: string;
@@ -23,12 +25,16 @@ export function HomeTodaySection({
   const [adding, setAdding] = useState(false);
 
   return (
-    <section className="flex flex-col gap-label-gap">
+    <section className="flex flex-col gap-1.5">
       <SectionLabel icon={<IconCalendar size={14} />} onAdd={() => setAdding(true)} addLabel="일정 등록">
         오늘 뭐하지
       </SectionLabel>
       <div className="pl-section-indent">
-        <TodayEvents todaySchedules={todaySchedules} todayTodos={todayTodos} />
+        <TodayEvents
+          todaySchedules={todaySchedules}
+          todayTodos={todayTodos}
+          overdueTodos={overdueTodos}
+        />
       </div>
       <AddEventSheet
         open={adding}

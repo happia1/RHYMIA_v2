@@ -2,12 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import {
-  IconPaperclip,
-  IconChevronLeft,
-  IconChevronRight,
-  IconCheck,
-} from "@tabler/icons-react";
+import { IconChevronLeft, IconChevronRight, IconCheck } from "@tabler/icons-react";
 import { getKeywordColor } from "@/lib/scheduleKeywords";
 import { toDateStr, formatYearMonth, addMonths } from "@/lib/date";
 import { getHoliday } from "@/lib/holidays";
@@ -18,6 +13,8 @@ import { isPeriodSchedule, shortRange } from "@/lib/scheduleFormat";
 import { ActivitySuggestionSection } from "@/components/schedule/ActivitySuggestionSection";
 import { AddEventSheet } from "@/components/schedule/AddEventSheet";
 import { ScheduleDetailSheet } from "@/components/schedule/ScheduleDetailSheet";
+import { KeywordLegend } from "@/components/schedule/KeywordLegend";
+import { MemberFilterRow } from "@/components/schedule/MemberFilterRow";
 import { SectionExpand } from "@/components/ui/SectionExpand";
 import { getLastYearHighlights, toggleTodoDone } from "@/app/(main)/schedule/actions";
 import { ACTIVITY_SUGGESTION_POOL, pickActivityCandidates } from "@/lib/activitySuggestions";
@@ -40,16 +37,16 @@ function sortTodos(list: Todo[]) {
 
 function TodoRow({ todo, onToggle }: { todo: Todo; onToggle: () => void }) {
   return (
-    <button onClick={onToggle} className="flex items-center gap-2.5 py-2 text-left">
+    <button onClick={onToggle} className="flex items-center gap-2 py-1.5 text-left">
       <span
-        className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
+        className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border ${
           todo.is_done ? "border-sage bg-sage" : "border-border-light"
         }`}
       >
-        {todo.is_done && <IconCheck size={11} className="text-white" stroke={3} />}
+        {todo.is_done && <IconCheck size={9} className="text-white" stroke={3} />}
       </span>
       <span
-        className={`min-w-0 flex-1 truncate text-[13px] ${
+        className={`min-w-0 flex-1 truncate text-[12px] ${
           todo.is_done ? "text-[var(--text-muted)] line-through" : "text-ink"
         }`}
       >
@@ -67,6 +64,8 @@ export function MonthView({
   highlightId,
   monthTodos,
   overdueTodos,
+  members,
+  target,
 }: {
   anchorDate: string;
   schedules: ExpandedSchedule[];
@@ -78,6 +77,9 @@ export function MonthView({
   monthTodos: Todo[];
   /** 마감일이 지났는데 아직 완료 안 한 할 일 — 오늘 날짜를 볼 때만 "지난 할 일"로 함께 표시 */
   overdueTodos: Todo[];
+  /** 월 이동 줄 오른쪽의 멤버 필터 드롭다운용 */
+  members: { id: string; display_name: string; avatar_color: string }[];
+  target: string;
 }) {
   const [selectedDate, setSelectedDate] = useState(anchorDate);
   const [highlights, setHighlights] = useState<ExpandedSchedule[]>([]);
@@ -210,14 +212,18 @@ export function MonthView({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-center gap-4">
-        <Link href={`/schedule?view=month&date=${addMonths(anchorDate, -1)}`} aria-label="이전 달">
-          <IconChevronLeft size={20} className="text-stone" />
-        </Link>
-        <span className="text-[15px] font-medium text-ink">{formatYearMonth(anchorDate)}</span>
-        <Link href={`/schedule?view=month&date=${addMonths(anchorDate, 1)}`} aria-label="다음 달">
-          <IconChevronRight size={20} className="text-stone" />
-        </Link>
+      <div className="flex items-center justify-between">
+        <KeywordLegend />
+        <div className="flex items-center gap-4">
+          <Link href={`/schedule?view=month&date=${addMonths(anchorDate, -1)}`} aria-label="이전 달">
+            <IconChevronLeft size={20} className="text-stone" />
+          </Link>
+          <span className="text-[15px] font-medium text-ink">{formatYearMonth(anchorDate)}</span>
+          <Link href={`/schedule?view=month&date=${addMonths(anchorDate, 1)}`} aria-label="다음 달">
+            <IconChevronRight size={20} className="text-stone" />
+          </Link>
+        </div>
+        <MemberFilterRow members={members} target={target} />
       </div>
 
       <div className="grid grid-cols-7 gap-y-1 text-center">
@@ -260,11 +266,11 @@ export function MonthView({
               <span className="text-[8.5px] leading-none text-[var(--text-muted)]" style={{ minHeight: 9 }}>
                 {showLunar && lunar ? `음 ${lunar.month}.${lunar.day}` : ""}
               </span>
-              <div className="flex gap-0.5" style={{ minHeight: 5 }}>
+              <div className="flex gap-1" style={{ minHeight: 6 }}>
                 {dotSchedules.slice(0, 3).map((s) => (
                   <span
                     key={s.id}
-                    className="h-[3px] w-[3px] rounded-full"
+                    className="h-[4px] w-[4px] rounded-full"
                     style={{ backgroundColor: getKeywordColor(s.keyword_main) }}
                   />
                 ))}
@@ -310,74 +316,74 @@ export function MonthView({
         </div>
       )}
 
-      <div className="flex flex-col">
+      <div className="flex flex-col gap-3">
         {getHoliday(selectedDate) && (
-          <p className="pb-2 text-[12px] font-medium text-terra">{getHoliday(selectedDate)}</p>
+          <p className="text-[12px] font-medium text-terra">{getHoliday(selectedDate)}</p>
         )}
-        {selectedSchedules.length === 0 && (
-          <>
-            <p className="py-4 text-center text-[13px] text-[var(--text-muted)]">일정이 없어요</p>
-            <ActivitySuggestionSection
-              workspaceId={workspaceId}
-              selectedDate={selectedDate}
-              suggestion={activitySuggestion}
-              candidatePool={activityCandidates}
-            />
-          </>
-        )}
-        {selectedSchedules.length > 0 && (
-          <SectionExpand
-            items={selectedSchedules}
-            pageSize={5}
-            renderItem={(s, i) => (
-              <button
-                key={s.id}
-                onClick={() => setDetailSchedule(s)}
-                className={`flex items-center gap-3 py-2.5 text-left ${
-                  i > 0 ? "border-t border-border-light" : ""
-                } ${s.id === highlightId ? "-mx-2 rounded-xl bg-honey/10 px-2" : ""}`}
-              >
-                <span
-                  className="w-12 shrink-0 text-[11px] text-honey"
-                  style={{ fontVariantNumeric: "tabular-nums" }}
-                >
-                  {s.time_start ? s.time_start.slice(0, 5) : "종일"}
-                </span>
-                <span
-                  className={`min-w-0 flex-1 truncate text-[11px] ${
-                    s.is_important ? "font-medium text-terra" : "text-ink"
-                  }`}
-                >
-                  {s.title}
-                </span>
-                {s.memo && <IconPaperclip size={12} className="shrink-0 text-[var(--text-muted)]" />}
-                <span className="ml-auto shrink-0 text-[11px] text-[var(--text-muted)]">
-                  {targetLabel(s.target_members, membersById)}
-                </span>
-              </button>
-            )}
-          />
-        )}
-        {(selectedTodos.length > 0 || (isSelectedToday && overdueSorted.length > 0)) && (
-          <div
-            className={`flex flex-col ${
-              selectedSchedules.length > 0 ? "mt-1 border-t border-border-light pt-1" : ""
-            }`}
-          >
-            {selectedTodos.map((t) => (
-              <TodoRow key={t.id} todo={t} onToggle={() => handleToggleTodo(t)} />
-            ))}
-            {isSelectedToday && overdueSorted.length > 0 && (
+
+        <div className="grid grid-cols-5 gap-3">
+          <div className="col-span-2 flex flex-col">
+            {selectedTodos.length === 0 && !(isSelectedToday && overdueSorted.length > 0) ? (
+              <p className="py-2 text-[12px] text-[var(--text-muted)]">없음</p>
+            ) : (
               <>
-                <span className="pt-2 text-[11px] font-medium text-terra">
-                  지난 할 일 {overdueSorted.length}개
-                </span>
-                {overdueSorted.map((t) => (
+                {selectedTodos.map((t) => (
                   <TodoRow key={t.id} todo={t} onToggle={() => handleToggleTodo(t)} />
                 ))}
+                {isSelectedToday && overdueSorted.length > 0 && (
+                  <>
+                    <span className="pt-2 text-[10px] font-medium text-terra">
+                      지난 할 일 {overdueSorted.length}개
+                    </span>
+                    {overdueSorted.map((t) => (
+                      <TodoRow key={t.id} todo={t} onToggle={() => handleToggleTodo(t)} />
+                    ))}
+                  </>
+                )}
               </>
             )}
           </div>
+
+          <div className="col-span-3 flex flex-col border-l border-border-light pl-3">
+            {selectedSchedules.length === 0 ? (
+              <p className="py-2 text-[12px] text-[var(--text-muted)]">없음</p>
+            ) : (
+              <SectionExpand
+                items={selectedSchedules}
+                pageSize={4}
+                renderItem={(s, i) => (
+                  <button
+                    key={s.id}
+                    onClick={() => setDetailSchedule(s)}
+                    className={`flex flex-col gap-0.5 py-2 text-left ${
+                      i > 0 ? "border-t border-border-light" : ""
+                    } ${s.id === highlightId ? "-mx-2 rounded-xl bg-honey/10 px-2" : ""}`}
+                  >
+                    <span
+                      className={`truncate text-[13px] ${
+                        s.is_important ? "font-medium text-terra" : "text-ink"
+                      }`}
+                    >
+                      {s.title}
+                    </span>
+                    <span className="truncate text-[10px] text-stone">
+                      {s.time_start ? s.time_start.slice(0, 5) : "종일"} ·{" "}
+                      {targetLabel(s.target_members, membersById)}
+                    </span>
+                  </button>
+                )}
+              />
+            )}
+          </div>
+        </div>
+
+        {selectedSchedules.length === 0 && (
+          <ActivitySuggestionSection
+            workspaceId={workspaceId}
+            selectedDate={selectedDate}
+            suggestion={activitySuggestion}
+            candidatePool={activityCandidates}
+          />
         )}
       </div>
 

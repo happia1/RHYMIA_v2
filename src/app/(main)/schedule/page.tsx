@@ -4,7 +4,6 @@ import { getWorkspaceMembers } from "@/lib/members";
 import { mirror } from "@/lib/homeTheme";
 import { ScheduleTabs } from "@/components/schedule/ScheduleTabs";
 import { MemberFilterRow } from "@/components/schedule/MemberFilterRow";
-import { KeywordLegend } from "@/components/schedule/KeywordLegend";
 import { ScheduleDayView } from "@/components/schedule/ScheduleDayView";
 import { MonthView } from "@/components/schedule/MonthView";
 import { WeekView } from "@/components/schedule/WeekView";
@@ -166,14 +165,12 @@ export default async function SchedulePage({
 
       <div className="min-h-0 flex-1 overflow-y-auto pb-24">
         <section className="flex flex-col gap-label-gap">
-          <div className="flex items-center justify-between gap-3">
-            {view === "month" ? (
-              <KeywordLegend />
-            ) : (
+          {view !== "month" && (
+            <div className="flex items-center justify-between gap-3">
               <span className={mirror.label}>{VIEW_LABEL[view]}</span>
-            )}
-            <MemberFilterRow members={members} target={params.target ?? "all"} />
-          </div>
+              <MemberFilterRow members={members} target={params.target ?? "all"} />
+            </div>
+          )}
           {view === "month" && (
             <MonthView
               anchorDate={anchorStr}
@@ -183,6 +180,8 @@ export default async function SchedulePage({
               highlightId={params.highlight}
               monthTodos={monthTodos}
               overdueTodos={overdueTodos}
+              members={members}
+              target={params.target ?? "all"}
             />
           )}
           {view === "week" && (

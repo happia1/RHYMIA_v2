@@ -38,7 +38,7 @@ export function HomeStickySection({
   };
 
   return (
-    <div className="flex flex-col gap-row">
+    <div className="flex flex-col gap-1.5">
       <SectionLabel icon={<IconNote size={14} />} onAdd={() => setAddingSticker(true)} addLabel="하고싶은 말 작성">
         하고싶은 말
       </SectionLabel>

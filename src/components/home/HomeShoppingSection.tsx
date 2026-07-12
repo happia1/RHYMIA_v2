@@ -14,7 +14,7 @@ export function HomeShoppingSection({ shoppingItems }: { shoppingItems: Shopping
   const restCount = activeShopping.length - previewShopping.length;
 
   return (
-    <div className="flex flex-col gap-row">
+    <div className="flex flex-col gap-1.5">
       {/* + 버튼과 리스트 클릭 모두 같은 GlobalShoppingSheet를 연다 — 예전엔 서로 다른 시트였음 */}
       <SectionLabel icon={<IconShoppingCart size={14} />} onAdd={openShoppingSheet} addLabel="장바구니 추가">
         장바구니

@@ -30,7 +30,7 @@ import { compressImage } from "@/lib/imageCompress";
 import type { WorkspaceMemberInfo } from "@/lib/members";
 import type { Notice, NoticeComment, NoticeType } from "@/types";
 
-const POSTS_PREVIEW_COUNT = 4;
+const POSTS_PREVIEW_COUNT = 5;
 
 const STICKER_COLORS = ["#FFF9C4", "#FFE0E0", "#E1F5EE", "#E3E8FF", "#F3E1FF"];
 // 스티커는 배경이 항상 밝은 파스텔이라, 테마와 무관하게 항상 어두운 고정색 텍스트를 쓴다.
@@ -92,7 +92,7 @@ export function BoardSection({
     <div
       key={n.id}
       onClick={() => setDetail(n)}
-      className={`flex cursor-pointer items-center gap-2.5 py-1.5 text-left ${
+      className={`flex cursor-pointer items-center gap-2.5 py-1 text-left ${
         i > 0 ? "border-t border-border-light" : ""
       }`}
     >
@@ -169,7 +169,7 @@ export function BoardSection({
   };
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-1.5">
       <section className="flex flex-col gap-label-gap">
         <span className={mirror.label}>하고싶은 말</span>
         <div className="scrollbar-hide flex gap-3 overflow-x-auto pb-1">

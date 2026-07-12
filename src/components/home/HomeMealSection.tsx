@@ -18,7 +18,7 @@ export function HomeMealSection({
   const [adding, setAdding] = useState(false);
 
   return (
-    <section className="flex flex-col gap-label-gap">
+    <section className="flex flex-col gap-1.5">
       <SectionLabel icon={<IconToolsKitchen2 size={14} />} onAdd={() => setAdding(true)} addLabel="끼니 추가">
         오늘 뭐먹지
       </SectionLabel>

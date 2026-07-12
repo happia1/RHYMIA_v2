@@ -9,6 +9,7 @@ import {
 } from "@/lib/routineUtils";
 import { getCurrentWeather } from "@/lib/weather";
 import { getWorkspaceMembers } from "@/lib/members";
+import { getOverdueTodos } from "@/app/(main)/schedule/actions";
 import { mirror } from "@/lib/homeTheme";
 import { resolveHomeLayout } from "@/lib/homeLayout";
 import { HomeHeader, type FamilyMemberStatus } from "@/components/home/HomeHeader";
@@ -34,6 +35,7 @@ export default async function HomePage() {
     weather,
     { data: schedules },
     { data: todayTodoRows },
+    overdueTodos,
     { data: meals },
     { data: shoppingItems },
     { data: stickers },
@@ -57,6 +59,9 @@ export default async function HomePage() {
       .eq("due_date", todayStr)
       .eq("is_done", false)
       .order("created_at", { ascending: true }),
+    // 마감이 지났는데 아직 완료 안 한 할 일("지난 할 일") — 일정 탭 선택일 패널과 같은 순서로
+    // 일정 → 오늘 할 일 다음에 이어서 보여준다.
+    getOverdueTodos(workspaceId, todayStr),
     // 홈은 "오늘 등록된 것만" 보여주는 상태판 — 등록된 게 없으면 다른 날짜로 대체하지 않고 비워둔다
     supabase
       .from("meal")
@@ -177,6 +182,7 @@ export default async function HomePage() {
     <HomeTodaySection
       todaySchedules={todaySchedules}
       todayTodos={(todayTodoRows ?? []) as Todo[]}
+      overdueTodos={overdueTodos}
       members={memberOptions}
       workspaceId={workspaceId}
       defaultDate={todayStr}
