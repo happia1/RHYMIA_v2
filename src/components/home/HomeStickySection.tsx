@@ -32,26 +32,28 @@ export function HomeStickySection({
       </SectionLabel>
       <Link href="/board" className="flex flex-col gap-row pl-section-indent">
         {previewStickers.length === 0 && (
-          <p className={`text-[12px] ${mirror.muted}`}>등록된 하고싶은 말이 없어요</p>
+          <p className={`text-[11px] ${mirror.muted}`}>등록된 하고싶은 말이 없어요</p>
         )}
         {previewStickers.map((s) => {
           const author = membersById[s.created_by ?? ""];
           return (
             <div key={s.id} className="flex items-center gap-2">
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <span className={`truncate text-[12px] ${mirror.secondary}`}>{s.content}</span>
+                <span className={`self-end text-[9px] ${mirror.muted}`}>
+                  {author?.display_name ?? "가족"}
+                </span>
+              </div>
               {s.image_url && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={s.image_url} alt="" className="h-6 w-6 shrink-0 rounded object-cover" />
               )}
-              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <span className={`truncate text-[13px] ${mirror.secondary}`}>{s.content}</span>
-                <span className={`text-[10px] ${mirror.muted}`}>
-                  {author?.display_name ?? "가족"}
-                </span>
-              </div>
             </div>
           );
         })}
-        {restCount > 0 && <span className={`text-[12px] ${mirror.muted}`}>외 {restCount}개</span>}
+        {restCount > 0 && (
+          <span className={`self-end text-[11px] ${mirror.muted}`}>외 {restCount}개</span>
+        )}
       </Link>
 
       <AddPostSheet

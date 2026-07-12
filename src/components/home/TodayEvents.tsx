@@ -3,19 +3,12 @@
 import Link from "next/link";
 import { IconPaperclip } from "@tabler/icons-react";
 import { mirror } from "@/lib/homeTheme";
-import { targetLabel, type MemberInfo } from "@/lib/scheduleTargets";
 import type { Schedule } from "@/types";
 
-export type { MemberInfo };
-
-/** "오늘 뭐하지" — 오늘 일정만 표시(이번 주 보기는 일정 탭 전담), 최대 3개 + 더보기 */
-export function TodayEvents({
-  todaySchedules,
-  membersById,
-}: {
-  todaySchedules: Schedule[];
-  membersById: Record<string, MemberInfo>;
-}) {
+/** "오늘 뭐하지" — 오늘 일정만 표시(이번 주 보기는 일정 탭 전담), 최대 3개 + 더보기.
+ * 시간("종일")/대상("가족") 텍스트는 홈에서는 노출하지 않고 제목만 보여준다
+ * (자세한 내용은 일정 탭에서 확인 — 홈은 한눈에 훑는 용도). */
+export function TodayEvents({ todaySchedules }: { todaySchedules: Schedule[] }) {
   const visible = todaySchedules.slice(0, 3);
 
   return (
@@ -29,22 +22,13 @@ export function TodayEvents({
               className="flex items-center gap-2"
             >
               <span
-                className={`min-w-0 flex-1 truncate text-[13px] ${
+                className={`min-w-0 flex-1 truncate text-[11px] ${
                   s.is_important ? "font-medium" : ""
                 } ${mirror.primary}`}
               >
                 {s.title}
               </span>
-              <span
-                className="shrink-0 rounded-full bg-honey/10 px-1.5 py-0.5 text-[11px] text-honey"
-                style={{ fontVariantNumeric: "tabular-nums" }}
-              >
-                {s.time_start ? s.time_start.slice(0, 5) : "종일"}
-              </span>
-              {s.memo && <IconPaperclip size={12} className={`shrink-0 ${mirror.muted}`} />}
-              <span className={`shrink-0 text-[11px] ${mirror.muted}`}>
-                {targetLabel(s.target_members, membersById)}
-              </span>
+              {s.memo && <IconPaperclip size={11} className={`shrink-0 ${mirror.muted}`} />}
             </Link>
           ))}
         </div>

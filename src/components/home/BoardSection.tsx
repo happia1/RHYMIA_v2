@@ -165,7 +165,7 @@ export function BoardSection({
   };
 
   return (
-    <div className="flex flex-col gap-section">
+    <div className="flex flex-col gap-3">
       <section className="flex flex-col gap-label-gap">
         <SectionLabel icon={<IconNote size={14} />}>하고싶은 말</SectionLabel>
         <div className="pl-section-indent">

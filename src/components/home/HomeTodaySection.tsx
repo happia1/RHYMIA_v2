@@ -3,19 +3,17 @@
 import { useState } from "react";
 import { IconCalendar } from "@tabler/icons-react";
 import { SectionLabel } from "@/components/home/SectionLabel";
-import { TodayEvents, type MemberInfo } from "@/components/home/TodayEvents";
+import { TodayEvents } from "@/components/home/TodayEvents";
 import { AddEventSheet } from "@/components/schedule/AddEventSheet";
 import type { Schedule } from "@/types";
 
 export function HomeTodaySection({
   todaySchedules,
-  membersById,
   members,
   workspaceId,
   defaultDate,
 }: {
   todaySchedules: Schedule[];
-  membersById: Record<string, MemberInfo>;
   members: { id: string; display_name: string }[];
   workspaceId: string;
   defaultDate: string;
@@ -28,7 +26,7 @@ export function HomeTodaySection({
         오늘 뭐하지
       </SectionLabel>
       <div className="pl-section-indent">
-        <TodayEvents todaySchedules={todaySchedules} membersById={membersById} />
+        <TodayEvents todaySchedules={todaySchedules} />
       </div>
       <AddEventSheet
         open={adding}

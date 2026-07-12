@@ -8,7 +8,6 @@ import { mirror } from "@/lib/homeTheme";
 import { resolveHomeLayout } from "@/lib/homeLayout";
 import { HomeHeader, type FamilyMemberStatus } from "@/components/home/HomeHeader";
 import { type MealSummaryItem } from "@/components/home/MealSummaryCard";
-import { type MemberInfo } from "@/components/home/TodayEvents";
 import { HomeMealSection } from "@/components/home/HomeMealSection";
 import { HomeTodaySection } from "@/components/home/HomeTodaySection";
 import { HomeStickySection } from "@/components/home/HomeStickySection";
@@ -61,10 +60,6 @@ export default async function HomePage() {
 
   const homeSectionOrder = resolveHomeLayout(myUserRow?.home_layout);
 
-  // 대상 선택/표시용(target_members, routine.member_id 등): workspace_member.id로 키
-  const membersById: Record<string, MemberInfo> = Object.fromEntries(
-    members.map((m) => [m.id, { display_name: m.display_name, avatar_color: m.avatar_color }])
-  );
   // 작성자/참여자 표시용(meal_participation.user_id, notice.created_by 등 실제 로그인 user 기준):
   // user_id로 키 — managed 멤버는 user_id가 없어 이 맵엔 절대 등장하지 않음(의도된 동작)
   const membersByUserId: Record<string, (typeof members)[number]> = Object.fromEntries(
@@ -143,7 +138,6 @@ export default async function HomePage() {
   const scheduleTodaySection = (
     <HomeTodaySection
       todaySchedules={todaySchedules}
-      membersById={membersById}
       members={memberOptions}
       workspaceId={workspaceId}
       defaultDate={todayStr}

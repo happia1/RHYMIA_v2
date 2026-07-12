@@ -40,18 +40,18 @@ export function MealSummaryCard({ meals }: { meals: MealSummaryItem[] }) {
           return (
             <Link key={meal.id} href="/food" className="flex w-full shrink-0 snap-center flex-col gap-1">
               <div className="flex min-w-0 items-baseline gap-2">
-                <span className={`min-w-0 flex-1 truncate text-[17px] font-medium ${mirror.primary}`}>
+                <span className={`min-w-0 flex-1 truncate text-[16px] font-medium ${mirror.primary}`}>
                   {meal.emoji} {meal.main_menu}
                 </span>
               </div>
-              <div className={`text-[13px] ${mirror.secondary}`}>
+              <div className={`text-[12px] ${mirror.secondary}`}>
                 {meal.tag} · {meal.type}
                 {meal.type === "외식" && meal.reservation_time
                   ? ` · ${meal.reservation_time}`
                   : ""}
               </div>
               {subline && (
-                <div className={`text-[12px] ${mirror.muted}`}>+ {subline}</div>
+                <div className={`text-[11px] ${mirror.muted}`}>+ {subline}</div>
               )}
             </Link>
           );
