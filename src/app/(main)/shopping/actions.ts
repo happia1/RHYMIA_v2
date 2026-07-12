@@ -23,39 +23,38 @@ export interface CompleteGroceryRunInput {
   itemIds: string[];
   place?: string | null;
   amount?: number | null;
+  /** YYYY-MM-DD, 생략 시 오늘 — "장보기 기록" 탭 "기록 직접 추가"에서 과거 날짜 지정용 */
+  date?: string;
   addToFridge: boolean;
 }
 
-/** 시트 하단 "장보기 완료" — 체크된(아직 expense로 묶이지 않은) 항목들을
- * expense 기록 하나(category='grocery')로 묶고, 선택하면 fridge_item 재고에도 추가한다.
- * 클라이언트가 넘긴 itemIds를 그대로 믿지 않고, 워크스페이스/구매 상태/미그룹핑 여부로
- * 다시 필터링한 뒤 그 결과만 사용한다(다른 워크스페이스 항목이나 이미 묶인 항목이
- * 실수로 섞여 들어오는 것을 막기 위함). */
+/** 장보기 완료(체크된 항목을 expense로 묶음)와 "기록 직접 추가"(품목 연결 없이 구매처/금액만
+ * expense로 남김) 둘 다 이 함수를 공유한다 — itemIds가 비어 있으면 품목 조회/연결/재고 추가를
+ * 전부 건너뛰고 expense(category='grocery') 행만 만든다. itemIds가 있는데 실제로 묶을 수 있는
+ * 항목이 하나도 없으면(다른 워크스페이스/이미 묶임/미구매 등) 에러로 처리 — 클라이언트가 넘긴
+ * itemIds를 그대로 믿지 않고 워크스페이스/구매 상태/미그룹핑 여부로 다시 필터링한다. */
 export async function completeGroceryRun(workspaceId: string, input: CompleteGroceryRunInput) {
-  if (input.itemIds.length === 0) {
-    return { ok: false as const, message: "묶을 항목이 없어요." };
-  }
-
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { ok: false as const, message: "로그인이 필요해요." };
 
-  const { data: items, error: itemsError } = await supabase
-    .from("shopping_item")
-    .select("id, name")
-    .in("id", input.itemIds)
-    .eq("workspace_id", workspaceId)
-    .eq("is_purchased", true)
-    .is("expense_id", null);
-  if (itemsError) throw new Error(itemsError.message);
-
-  if (!items || items.length === 0) {
-    return { ok: false as const, message: "묶을 항목이 없어요." };
+  let items: { id: string; name: string }[] = [];
+  if (input.itemIds.length > 0) {
+    const { data, error: itemsError } = await supabase
+      .from("shopping_item")
+      .select("id, name")
+      .in("id", input.itemIds)
+      .eq("workspace_id", workspaceId)
+      .eq("is_purchased", true)
+      .is("expense_id", null);
+    if (itemsError) throw new Error(itemsError.message);
+    if (!data || data.length === 0) {
+      return { ok: false as const, message: "묶을 항목이 없어요." };
+    }
+    items = data;
   }
-
-  const itemIds = items.map((item) => item.id);
 
   const { data: expense, error: expenseError } = await supabase
     .from("expense")
@@ -63,7 +62,7 @@ export async function completeGroceryRun(workspaceId: string, input: CompleteGro
       workspace_id: workspaceId,
       category: "grocery",
       amount: input.amount ?? 0,
-      date: new Date().toISOString().slice(0, 10),
+      date: input.date || new Date().toISOString().slice(0, 10),
       place: input.place?.trim() || null,
       created_by: user.id,
     })
@@ -71,25 +70,29 @@ export async function completeGroceryRun(workspaceId: string, input: CompleteGro
     .single();
   if (expenseError) throw new Error(expenseError.message);
 
-  const { error: linkError } = await supabase
-    .from("shopping_item")
-    .update({ expense_id: expense.id })
-    .in("id", itemIds)
-    .eq("workspace_id", workspaceId)
-    .eq("is_purchased", true)
-    .is("expense_id", null);
-  if (linkError) throw new Error(linkError.message);
+  if (items.length > 0) {
+    const itemIds = items.map((item) => item.id);
 
-  if (input.addToFridge) {
-    const { error: fridgeError } = await supabase.from("fridge_item").insert(
-      items.map((item) => ({
-        workspace_id: workspaceId,
-        name: item.name,
-        category: "cold" as const,
-        added_by: user.id,
-      }))
-    );
-    if (fridgeError) throw new Error(fridgeError.message);
+    const { error: linkError } = await supabase
+      .from("shopping_item")
+      .update({ expense_id: expense.id })
+      .in("id", itemIds)
+      .eq("workspace_id", workspaceId)
+      .eq("is_purchased", true)
+      .is("expense_id", null);
+    if (linkError) throw new Error(linkError.message);
+
+    if (input.addToFridge) {
+      const { error: fridgeError } = await supabase.from("fridge_item").insert(
+        items.map((item) => ({
+          workspace_id: workspaceId,
+          name: item.name,
+          category: "cold" as const,
+          added_by: user.id,
+        }))
+      );
+      if (fridgeError) throw new Error(fridgeError.message);
+    }
   }
 
   revalidatePath("/home");

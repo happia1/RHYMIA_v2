@@ -67,16 +67,13 @@ export function AddEventSheet({
   const [timeStart, setTimeStart] = useState("");
   const [timeEnd, setTimeEnd] = useState("");
   const [targets, setTargets] = useState<string[]>([]);
-  const [isShared, setIsShared] = useState(true);
+  const [showInShareLink, setShowInShareLink] = useState(false);
   const [keywordMain, setKeywordMain] = useState<string | null>(null);
   const [keywordSub, setKeywordSub] = useState<string | null>(null);
   const [memo, setMemo] = useState("");
   const [isImportant, setIsImportant] = useState(false);
   const [place, setPlace] = useState("");
   const [imageUrl, setImageUrl] = useState("");
-  const [isGrocery, setIsGrocery] = useState(false);
-  const [amount, setAmount] = useState("");
-  const [receiptUrl, setReceiptUrl] = useState("");
   const [notifyOffset, setNotifyOffset] = useState<NotifyOffset | null>(null);
   const [notifyCustomAt, setNotifyCustomAt] = useState("");
   const [recurType, setRecurType] = useState<RecurType>("none");
@@ -108,16 +105,13 @@ export function AddEventSheet({
     setTimeStart("");
     setTimeEnd("");
     setTargets([]);
-    setIsShared(true);
+    setShowInShareLink(false);
     setKeywordMain(initialKeywordMain);
     setKeywordSub(initialKeywordSub);
     setMemo("");
     setIsImportant(false);
     setPlace("");
     setImageUrl("");
-    setIsGrocery(false);
-    setAmount("");
-    setReceiptUrl("");
     setNotifyOffset(null);
     setNotifyCustomAt("");
     setRecurType("none");
@@ -139,16 +133,13 @@ export function AddEventSheet({
       setTimeStart(existingSchedule.time_start ?? "");
       setTimeEnd(existingSchedule.time_end ?? "");
       setTargets(existingSchedule.target_members);
-      setIsShared(existingSchedule.is_shared);
+      setShowInShareLink(existingSchedule.is_shared);
       setKeywordMain(existingSchedule.keyword_main);
       setKeywordSub(existingSchedule.keyword_sub);
       setMemo(existingSchedule.memo ?? "");
       setIsImportant(existingSchedule.is_important);
       setPlace(existingSchedule.place ?? "");
       setImageUrl(existingSchedule.image_url ?? "");
-      setIsGrocery(existingSchedule.is_grocery);
-      setAmount(existingSchedule.amount != null ? String(existingSchedule.amount) : "");
-      setReceiptUrl(existingSchedule.receipt_image_url ?? "");
       setNotifyOffset(existingSchedule.notify_offset);
       setNotifyCustomAt(existingSchedule.notify_custom_at ?? "");
       setRecurType(existingSchedule.recur_type);
@@ -169,15 +160,12 @@ export function AddEventSheet({
       time_start: !isAllDay ? timeStart || null : null,
       time_end: !isAllDay ? timeEnd || null : null,
       target_members: targets,
-      is_shared: isShared,
+      is_shared: showInShareLink,
       keyword_main: keywordMain,
       keyword_sub: keywordSub,
       is_important: isImportant,
       memo: memo || null,
-      is_grocery: isGrocery,
       place: place || null,
-      amount: isGrocery && amount ? Number(amount) : null,
-      receipt_image_url: isGrocery ? receiptUrl || null : null,
       is_all_day: isAllDay,
       image_url: imageUrl || null,
       notify_offset: notifyOffset,
@@ -323,7 +311,7 @@ export function AddEventSheet({
         </div>
 
         <div className="flex flex-col gap-2">
-          <span className="text-[12px] font-medium text-stone">대상</span>
+          <span className="text-[12px] font-medium text-stone">누구의 일정인가요</span>
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setTargets([])}
@@ -342,26 +330,6 @@ export function AddEventSheet({
                 }`}
               >
                 {m.display_name}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <span className="text-[12px] font-medium text-stone">공유 대상</span>
-          <div className="flex gap-2">
-            {[
-              { value: true, label: "가족 전체" },
-              { value: false, label: "개인" },
-            ].map((opt) => (
-              <button
-                key={String(opt.value)}
-                onClick={() => setIsShared(opt.value)}
-                className={`rounded-full px-3.5 py-1.5 text-[13px] font-medium ${
-                  isShared === opt.value ? "bg-ink text-cream" : "bg-cream text-stone"
-                }`}
-              >
-                {opt.label}
               </button>
             ))}
           </div>
@@ -448,7 +416,7 @@ export function AddEventSheet({
         </div>
 
         <label className="flex items-center justify-between text-[13px] text-ink">
-          공지(중요)
+          중요한 일정인가요
           <input
             type="checkbox"
             checked={isImportant}
@@ -457,31 +425,13 @@ export function AddEventSheet({
         </label>
 
         <label className="flex items-center justify-between text-[13px] text-ink">
-          장보기 일정
+          외부 공유 링크에 표시
           <input
             type="checkbox"
-            checked={isGrocery}
-            onChange={(e) => setIsGrocery(e.target.checked)}
+            checked={showInShareLink}
+            onChange={(e) => setShowInShareLink(e.target.checked)}
           />
         </label>
-
-        {isGrocery && (
-          <div className="flex flex-col gap-2">
-            <Input
-              type="number"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="지출 금액"
-              className="h-11 rounded-xl px-3 text-[13px]"
-            />
-            <Input
-              value={receiptUrl}
-              onChange={(e) => setReceiptUrl(e.target.value)}
-              placeholder="영수증 이미지 URL (선택)"
-              className="h-11 rounded-xl px-3 text-[13px]"
-            />
-          </div>
-        )}
 
         {deleteConfirmOpen ? (
           <div className="flex flex-col gap-2">

@@ -225,7 +225,6 @@ export function ConfirmCards({
       keyword_sub: s.keyword_sub,
       is_important: s.is_important,
       memo: composedMemo,
-      is_grocery: false,
       is_all_day: !s.time_start,
     });
 

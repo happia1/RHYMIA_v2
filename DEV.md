@@ -1,6 +1,54 @@
 # 개발 참조 문서
 
-## 마지막 업데이트: 2026-07-12 (에이전트 개발 편의 — dev:all 통합 실행 + 에이전트 다운 시 친절한 실패)
+## 마지막 업데이트: 2026-07-12 (문구 변경 + 일정 등록 폼 간소화 — 장보기 입력을 장보기 기록 탭으로 이동)
+
+- 2026-07-12: 문구 변경 2건 + 일정 등록 폼 간소화(AddEventSheet)
+  - **문구 변경**: 식탁 탭 하단 라인 액션(`FoodTabActions.tsx`) "현재 재고 확인"→"냉장고에 뭐있지",
+    "장볼 것 입력하기"→"뭐 사야하지"로 변경. 장볼 것 시트(`GlobalShoppingSheet.tsx`) 입력란
+    placeholder는 `speechSupported`(webkitSpeechRecognition 지원 여부, 기존에 마이크 아이콘
+    노출 여부로도 쓰던 값)일 때만 "살 것을 입력하거나 음성으로 등록하세요"로 바꾸고, 음성
+    미지원 브라우저에서는 기존 "살 것을 입력하세요" 그대로 유지.
+  - **"공유 대상"(가족 전체/개인) 필드 제거 → "외부 공유 링크에 표시" 토글로 대체**:
+    `AddEventSheet.tsx`의 `isShared` 상태를 `showInShareLink`로 이름까지 바꾸고 기본값을
+    `true`→`false`로, UI를 "가족 전체/개인" 2버튼에서 폼 최하단(공지 체크박스 다음, 삭제/저장
+    버튼 바로 위)의 단일 토글로 교체. **DB 컬럼(`schedule.is_shared`)과 그 컬럼을 읽는
+    소비처는 그대로**(`src/app/share/[token]/page.tsx`가 오늘 날짜 기준 `is_shared=true`인
+    일정만 읽기 전용 외부 페이지에 노출) — 사실 이 컬럼은 원래도 "가족 전체/개인" 구분이
+    아니라 "외부 공유 링크 노출 여부"였고, 기존 UI 라벨이 그 실제 의미를 잘못 표현하고
+    있었을 뿐이라 컬럼 재활용이 아니라 라벨을 실제 동작에 맞게 고친 것에 가깝다.
+  - **라벨 문구 변경**: "대상"→"누구의 일정인가요", "공지(중요)"→"중요한 일정인가요" (칩
+    구성/체크박스 동작은 그대로, 텍스트만).
+  - **장보기 관련 입력을 일정 폼에서 완전히 제거**: `AddEventSheet.tsx`에서 "장보기 일정"
+    체크박스 + 조건부 지출 금액/영수증 URL 입력을 삭제. `ScheduleInput`(`schedule/actions.ts`)
+    타입에서 `is_grocery`/`amount`/`receipt_image_url`을 아예 제거하고, `createSchedule`/
+    `updateSchedule`의 insert/update 페이로드에서도 뺐다 — 그 결과 `updateSchedule`은 이제
+    이 세 컬럼을 SET 절에 아예 포함하지 않으므로, **과거에 일정으로 등록된 장보기 데이터를
+    이 폼으로 다른 필드만 고쳐 저장해도 그 컬럼 값이 보존된다**(예전엔 편집할 때마다
+    `is_grocery: false`를 암묵적으로 다시 써넣는 구조는 아니었지만 필드 자체가 사라지며
+    이 보존 특성이 더 명확해짐). `createSchedule`에 있던 "그로서리 템플릿 일정이면 자동으로
+    `expense(category='grocery')` 행도 만든다"는 분기도 함께 제거(신규 경로에서는 아예
+    `is_grocery=true`로 저장될 일이 없어져 죽은 코드였음). `ConfirmCards.tsx`(에이전트 확인
+    카드)·`ActivitySuggestionSection.tsx`("오늘 뭐하지" 등록)도 `createSchedule` 호출에서
+    이제 없는 `is_grocery: false`를 함께 정리. **레거시 표시는 그대로**: `MonthView.tsx`의
+    달력 셀 그로서리 금액 배지(`dotSchedules.find((s) => s.is_grocery && s.amount)`)는 그대로
+    남겨 과거에 이미 등록된 장보기 일정은 계속 정상 표시됨(신규 등록 경로만 막힘).
+  - 검증: `tsc --noEmit` 클린, `/food`·`/schedule?view=month|week|year`·`/home`·`/board`
+    요청이 전부 500이 아닌 307로 응답해 컴파일 확인.
+
+- 2026-07-12: 장보기 기록 탭에 "기록 직접 추가" 진입점 신규
+  - **`completeGroceryRun`(`shopping/actions.ts`) 확장**: 기존엔 `itemIds`가 비어 있으면 무조건
+    "묶을 항목이 없어요" 에러였는데, 이제 `itemIds.length === 0`이면 품목 조회/연결/재고 추가를
+    전부 건너뛰고 `expense(category='grocery')` 행 하나만 만드는 경로로 분기(품목이 있는 기존
+    "장보기 완료" 경로는 동작 100% 동일). `date`(YYYY-MM-DD, 생략 시 오늘) 파라미터를
+    `CompleteGroceryRunInput`에 추가해 과거 날짜로도 기록할 수 있게 함 — 기존 "장보기 완료"
+    호출부는 이 필드를 안 넘기므로 오늘 날짜로 동작하는 기존 동작 그대로.
+  - **UI**: `GlobalShoppingSheet.tsx`의 "기록" 탭(`GroceryHistoryTab`)에 "+ 기록 직접 추가" 진입점
+    추가 — 클릭하면 날짜(기본 오늘)/구매처/금액 인라인 폼이 열리고, 저장 시 `completeGroceryRun`을
+    `itemIds: []`, `addToFridge: false`로 호출한 뒤 이번 달 목록을 다시 불러온다(추가한 날짜가
+    현재 보고 있는 달과 다르면 그 달로 이동해야 보임 — 달력 뷰와 동일한 동작). 품목 연결 없는
+    회차를 상세로 열면 "산 것들" 아래에 빈 목록 대신 "연결된 품목이 없어요" 안내를 보여주도록
+    `openRun` 상세 화면에도 폴백 문구 추가.
+  - 검증: `tsc --noEmit` 클린.
 
 - 2026-07-12: 에이전트 개발 편의 2건
   - **`npm run dev:all`로 통합 실행**: `concurrently`를 devDependency로 추가하고 `dev:agent`

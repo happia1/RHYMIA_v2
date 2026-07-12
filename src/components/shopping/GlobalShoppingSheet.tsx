@@ -270,7 +270,7 @@ export function GlobalShoppingSheet({
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-                placeholder="살 것을 입력하세요"
+                placeholder={speechSupported ? "살 것을 입력하거나 음성으로 등록하세요" : "살 것을 입력하세요"}
                 className="h-11 flex-1 px-0 text-[15px]"
               />
               {speechSupported && (
@@ -366,6 +366,7 @@ export function GlobalShoppingSheet({
 }
 
 function GroceryHistoryTab({ workspaceId }: { workspaceId: string }) {
+  const { showToast } = useToast();
   const [anchor, setAnchor] = useState(() => {
     const d = new Date();
     return { year: d.getFullYear(), month: d.getMonth() };
@@ -376,8 +377,13 @@ function GroceryHistoryTab({ workspaceId }: { workspaceId: string }) {
   const [searchResults, setSearchResults] = useState<GroceryRun[] | null>(null);
   const [loadError, setLoadError] = useState("");
   const [openRun, setOpenRun] = useState<GroceryRun | null>(null);
+  const [addFlowOpen, setAddFlowOpen] = useState(false);
+  const [addDate, setAddDate] = useState(() => toDateStr(new Date()));
+  const [addPlace, setAddPlace] = useState("");
+  const [addAmount, setAddAmount] = useState("");
+  const [isAddPending, startAddTransition] = useTransition();
 
-  useEffect(() => {
+  const loadRuns = () => {
     getGroceryRuns(workspaceId, anchor.year, anchor.month).then((result) => {
       if (!result.ok) {
         setLoadError(result.message);
@@ -387,7 +393,33 @@ function GroceryHistoryTab({ workspaceId }: { workspaceId: string }) {
       setLoadError("");
       setMonthRuns(result.runs);
     });
+  };
+
+  useEffect(() => {
+    loadRuns();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceId, anchor]);
+
+  const handleAddRecord = () => {
+    startAddTransition(async () => {
+      const result = await completeGroceryRun(workspaceId, {
+        itemIds: [],
+        place: addPlace.trim() || null,
+        amount: addAmount ? Number(addAmount) : null,
+        date: addDate,
+        addToFridge: false,
+      });
+      if (!result.ok) {
+        showToast(result.message);
+        return;
+      }
+      setAddFlowOpen(false);
+      setAddPlace("");
+      setAddAmount("");
+      setAddDate(toDateStr(new Date()));
+      loadRuns();
+    });
+  };
 
   useEffect(() => {
     const trimmed = query.trim();
@@ -445,6 +477,9 @@ function GroceryHistoryTab({ workspaceId }: { workspaceId: string }) {
         </div>
         <span className={LABEL_CLASS}>산 것들</span>
         <div className="flex flex-col">
+          {openRun.itemNames.length === 0 && (
+            <p className="py-2.5 text-[13px] text-[var(--text-muted)]">연결된 품목이 없어요</p>
+          )}
           {openRun.itemNames.map((name, i) => (
             <div
               key={i}
@@ -527,6 +562,61 @@ function GroceryHistoryTab({ workspaceId }: { workspaceId: string }) {
         <span className={LABEL_CLASS}>이번 달 장보기 {monthRuns.length}회</span>
         <span className="text-[16px] font-medium text-honey">{won(monthTotal)}</span>
       </div>
+
+      {!addFlowOpen ? (
+        <button
+          onClick={() => setAddFlowOpen(true)}
+          className="self-start text-[12px] font-medium text-honey"
+        >
+          + 기록 직접 추가
+        </button>
+      ) : (
+        <div className="flex flex-col gap-3 border-b border-border-light pb-3">
+          <span className={LABEL_CLASS}>언제, 어디서, 얼마 냈나요</span>
+          <div className="flex gap-3">
+            <Input
+              variant="underline"
+              type="date"
+              value={addDate}
+              onChange={(e) => setAddDate(e.target.value)}
+              className="h-10 flex-1 px-0 text-[13px]"
+            />
+          </div>
+          <div className="flex gap-3">
+            <Input
+              variant="underline"
+              value={addPlace}
+              onChange={(e) => setAddPlace(e.target.value)}
+              placeholder="구매처 (예: 트레이더스)"
+              className="h-10 flex-1 px-0 text-[13px]"
+            />
+            <Input
+              variant="underline"
+              type="number"
+              inputMode="numeric"
+              value={addAmount}
+              onChange={(e) => setAddAmount(e.target.value)}
+              placeholder="금액"
+              className="h-10 w-24 px-0 text-[13px]"
+            />
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={handleAddRecord}
+              disabled={isAddPending}
+              className="flex-1 rounded-xl bg-honey py-2.5 text-[13px] font-medium text-white disabled:opacity-50"
+            >
+              저장하기
+            </button>
+            <button
+              onClick={() => setAddFlowOpen(false)}
+              className="flex-1 rounded-xl bg-cream py-2.5 text-[13px] font-medium text-stone"
+            >
+              취소
+            </button>
+          </div>
+        </div>
+      )}
 
       <Input
         variant="underline"

@@ -27,14 +27,14 @@ export function FoodTabActions({
           className="flex items-center gap-2 py-2.5 text-left text-[13px] text-ink"
         >
           <IconFridge size={16} className="text-honey" />
-          현재 재고 확인
+          냉장고에 뭐있지
         </button>
         <button
           onClick={openShoppingSheet}
           className="flex items-center gap-2 border-t border-border-light py-2.5 text-left text-[13px] text-ink"
         >
           <IconShoppingCart size={16} className="text-honey" />
-          장볼 것 입력하기
+          뭐 사야하지
         </button>
       </div>
 

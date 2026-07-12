@@ -25,10 +25,7 @@ export interface ScheduleInput {
   keyword_sub?: string | null;
   is_important: boolean;
   memo?: string | null;
-  is_grocery: boolean;
   place?: string | null;
-  amount?: number | null;
-  receipt_image_url?: string | null;
   is_all_day: boolean;
   image_url?: string | null;
   notify_offset?: NotifyOffset | null;
@@ -66,10 +63,7 @@ export async function createSchedule(workspaceId: string, input: ScheduleInput) 
     keyword_sub: input.keyword_sub || null,
     is_important: input.is_important,
     memo: input.memo || null,
-    is_grocery: input.is_grocery,
     place: input.place || null,
-    amount: input.amount ?? null,
-    receipt_image_url: input.receipt_image_url || null,
     is_all_day: input.is_all_day,
     image_url: input.image_url || null,
     notify_offset: input.notify_offset || null,
@@ -81,18 +75,6 @@ export async function createSchedule(workspaceId: string, input: ScheduleInput) 
 
   if (error) {
     throw new Error(error.message);
-  }
-
-  if (input.is_grocery && input.amount) {
-    const { error: expenseError } = await supabase.from("expense").insert({
-      workspace_id: workspaceId,
-      category: "grocery",
-      amount: input.amount,
-      date: input.date_start,
-      linked_schedule_id: scheduleId,
-      created_by: user.id,
-    });
-    if (expenseError) throw new Error(expenseError.message);
   }
 
   revalidatePath("/schedule");
@@ -225,10 +207,7 @@ export async function updateSchedule(scheduleId: string, input: ScheduleInput) {
       keyword_sub: input.keyword_sub || null,
       is_important: input.is_important,
       memo: input.memo || null,
-      is_grocery: input.is_grocery,
       place: input.place || null,
-      amount: input.amount ?? null,
-      receipt_image_url: input.receipt_image_url || null,
       is_all_day: input.is_all_day,
       image_url: input.image_url || null,
       notify_offset: input.notify_offset || null,

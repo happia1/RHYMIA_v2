@@ -35,7 +35,6 @@ export function ActivitySuggestionSection({
         target_members: [],
         is_shared: true,
         is_important: false,
-        is_grocery: false,
         is_all_day: true,
       });
     });
