@@ -26,12 +26,14 @@ export function MealDetail({
   participation,
   comments,
   currentUserId,
+  nutritionEnabled = true,
 }: {
   meal: Meal;
   members: MemberInfo[];
   participation: { user_id: string; status: boolean | null }[];
   comments: MealComment[];
   currentUserId: string;
+  nutritionEnabled?: boolean;
 }) {
   const [commentDraft, setCommentDraft] = useState("");
   const [thumbnailError, setThumbnailError] = useState(false);
@@ -138,6 +140,40 @@ export function MealDetail({
             </span>
           </a>
         )}
+
+        {nutritionEnabled &&
+          meal.kcal_min != null &&
+          meal.kcal_max != null &&
+          meal.macro_carb != null &&
+          meal.macro_protein != null &&
+          meal.macro_fat != null && (
+            <div className="flex flex-col gap-2">
+              <span className="text-[12px] font-medium text-stone">영양 정보 (추정)</span>
+              <p className="text-[15px] text-ink">
+                약 {meal.kcal_min}~{meal.kcal_max}kcal
+              </p>
+              <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-border-light">
+                <span className="h-full bg-honey" style={{ width: `${meal.macro_carb}%` }} />
+                <span className="h-full bg-sage" style={{ width: `${meal.macro_protein}%` }} />
+                <span className="h-full bg-terra" style={{ width: `${meal.macro_fat}%` }} />
+              </div>
+              <div className="flex items-center gap-3 text-[10px] text-stone">
+                <span className="flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-honey" />
+                  탄수화물 {meal.macro_carb}%
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-sage" />
+                  단백질 {meal.macro_protein}%
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-terra" />
+                  지방 {meal.macro_fat}%
+                </span>
+              </div>
+              <p className="text-[11px] text-[var(--text-muted)]">메뉴 기준 추정치예요</p>
+            </div>
+          )}
 
         {author && (
           <div className="flex items-center gap-2">

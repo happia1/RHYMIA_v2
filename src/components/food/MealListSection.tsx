@@ -18,10 +18,12 @@ export function MealListSection({
   meals,
   members,
   currentUserId,
+  nutritionEnabled = true,
 }: {
   meals: MealRow[];
   members: WorkspaceMemberInfo[];
   currentUserId: string;
+  nutritionEnabled?: boolean;
 }) {
   const renderMeal = (meal: MealRow, i: number) => {
     const participation = meal.meal_participation ?? [];
@@ -42,7 +44,12 @@ export function MealListSection({
 
     return (
       <div key={meal.id} className={i > 0 ? "border-t border-border-light" : ""}>
-        <MealCard meal={meal} participants={participants} myParticipation={myParticipation} />
+        <MealCard
+          meal={meal}
+          participants={participants}
+          myParticipation={myParticipation}
+          nutritionEnabled={nutritionEnabled}
+        />
       </div>
     );
   };

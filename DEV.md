@@ -1,6 +1,64 @@
 # 개발 참조 문서
 
-## 마지막 업데이트: 2026-07-12 (문구 변경 + 일정 등록 폼 간소화 — 장보기 입력을 장보기 기록 탭으로 이동)
+## 마지막 업데이트: 2026-07-12 (끼니 영양 정보(추정) 기능 신규 — 원칙: 근사치임을 숨기지 않기, 기본은 낮은 존재감)
+
+- 2026-07-12: 끼니 영양 정보(추정) 기능 신규
+  - **DB**: `supabase/add_meal_nutrition.sql`(실행 필요, 재실행 안전) — `meal`에 `kcal_min`/
+    `kcal_max`(INT, 추정 칼로리 범위) · `macro_carb`/`macro_protein`/`macro_fat`(INT, 비율 %,
+    합 100) · `nutrition_source`(TEXT DEFAULT 'estimate') 추가. `supabase/
+    add_nutrition_display_setting.sql`(실행 필요, 재실행 안전) — `family_workspace`에
+    `nutrition_display_enabled`(BOOLEAN DEFAULT true) 추가.
+  - **에이전트**: `agent/agent.py`에 `estimate_nutrition(menu_name, image_path=None)` 신규 —
+    메뉴명(+선택적으로 사진)을 Gemini에 보내 "일반적인 성인 1인분 기준, 확신 없으면 범위를
+    넓게" 프롬프트로 kcal 범위 + 탄단지 비율을 추정. `_normalize_macros()`가 LLM이 반환한
+    비율의 합을 반올림 오차까지 포함해 정확히 100으로 맞춤(가장 큰 값에 오차 몰아줌). 파싱
+    실패 시 전부 `None`인 dict 반환(에러 아님). `agent/main.py`에 `POST /estimate-nutrition`
+    엔드포인트 신규 — 기존 `/process-schedule`·`/extract-text`와 동일하게 `X-API-Key` 인증
+    (`AGENT_API_KEY` 설정 시) + 이미지 8MB 크기 제한(`_check_image_size`) 그대로 적용.
+  - **호출 경로**: 브라우저를 거치지 않는 서버 내부 호출이라 `/api/agent/*` 프록시 라우트를
+    새로 만들지 않고, `src/lib/agentServer.ts`에 `callAgentServer<T>(path, body)`를 새로 추가해
+    `food/actions.ts`가 에이전트 서버를 직접 호출한다(기존 `proxyAgentRequest`는 브라우저용
+    `/api/agent/*` route handler 전용으로 그대로 둠).
+  - **저장 시점**: `food/actions.ts`의 `createMeal`/`updateMeal`이 끼니 insert/update 성공
+    **직후, `redirect()` 호출 전에** `estimateAndSaveMealNutrition()`을 `void`로(= await 없이)
+    호출 — 메뉴 등록/수정 응답(리다이렉트)이 영양 추정 완료를 기다리지 않는다. 이 함수 내부는
+    통째로 try/catch로 감싸 어떤 실패(에이전트 서버 다운, 파싱 실패, DB 업데이트 실패)도
+    조용히 삼킨다 — "실패해도 끼니 저장은 성공해야 함" 원칙. `main_menu` + `sides`를 합친
+    문자열을 메뉴명으로 보낸다(사진은 보내지 않음 — Storage에서 재다운로드/재인코딩하는
+    비용 대비 이득이 적어 범위에서 제외, 필요해지면 나중에 추가 가능). **알려진 한계**: 이
+    호출은 진짜 백그라운드 작업 큐가 아니라 Node 프로세스 안에서 await 안 된 Promise가
+    계속 도는 방식이라, Vercel 같은 서버리스 환경에 배포하면 응답이 끝난 뒤 함수 인스턴스가
+    종료되면서 완료 전에 잘릴 수 있음(현재는 로컬 `next dev`/전통적 상시 Node 프로세스
+    가정 — 서버리스 배포 시 `after()`/큐 방식으로 교체 필요).
+  - **표시 3단계** (전부 `family_workspace.nutrition_display_enabled`가 꺼지면 숨김):
+    - a) 끼니 카드(`MealCard.tsx`, 식탁 탭 목록) — 장소·예약시간 라인과 같은 톤(12px,
+      `text-[var(--text-secondary)]` = `text-stone`)으로 "약 {중앙값}kcal". 중앙값은
+      `mealUtils.ts`의 `mealKcalMedian()`이 `(kcal_min+kcal_max)/2`를 50 단위로 반올림.
+      추정 없으면(`kcal_min`/`kcal_max` 둘 중 하나라도 null) 아무것도 렌더 안 함.
+    - b) 식탁 탭 선택일 목록 하단, 기존 헤어라인(`h-px bg-border-light`) 바로 위 —
+      새 `MealNutritionSummary.tsx`(순수 표시 컴포넌트, 상호작용 없어 서버 컴포넌트로 둠)가
+      "{날짜} 약 {합계}kcal[+] · 아침 {} · 점심 {} · 저녁 {}" 형식으로 렌더. 합계는 추정된
+      끼니들의 중앙값 합산이고, 추정 안 된 끼니가 하나라도 섞여 있으면 합계 뒤에 "+"를
+      붙임. 태그는 아침/점심/저녁을 먼저, 그 외 태그(간식 등)는 그날 등장한 것만 뒤에
+      나열 — 그 태그에 추정치가 하나도 없으면 통째로 생략. 추정치가 하나도 없으면 컴포넌트
+      자체가 `null` 반환(빈 줄 안 만듦). 날짜 라벨은 선택일이 오늘이면 "오늘", 아니면
+      "M.D" 형식(`food/page.tsx`에서 계산해 prop으로 전달) — 스펙 예시가 "오늘"만 보여줬지만
+      식탁 탭에서 다른 날짜를 봐도 이 줄 자체는 그 날짜 기준으로 계속 의미 있게 동작하도록
+      한 판단.
+    - c) 끼니 상세(`MealDetail.tsx`) — "영양 정보 (추정)" 라벨(12px stone) + "약
+      {kcal_min}~{kcal_max}kcal"(15px) + 탄단지 3색 비율 바(높이 6px, `rounded-full`,
+      `bg-border-light` 트랙 위에 `bg-honey`/`bg-sage`/`bg-terra` 세 구간을 `macro_*` 비율만큼
+      `width: %`로 나눔 — 헤어라인처럼 얇고 채도 낮은 느낌 유지) + 10px 라벨(색 점 + "탄수화물
+      N%" 등) + "메뉴 기준 추정치예요" 캡션(11px, `text-[var(--text-muted)]`). 5개 컬럼이
+      전부 non-null일 때만 렌더.
+  - **설정**: `settings/actions.ts`에 `updateNutritionDisplayEnabled(workspaceId, enabled)`
+    신규(오너 제한 없음 — 표시만 켜고 끄는 낮은 위험도 설정이라 다른 멤버도 변경 가능,
+    `family_workspace` RLS의 `workspace_update`가 이미 멤버 전체 허용). `src/lib/workspace.ts`에
+    `getNutritionDisplayEnabled(workspaceId)`(cache() 래핑, 기본값 true) 신규 — `food/page.tsx`·
+    `food/[mealId]/page.tsx`가 이걸로 조회해 a/b/c 렌더 여부를 결정. 새
+    `NutritionDisplayToggle.tsx`(설정 탭 "끼니" 섹션)는 `CheckToggle` 재사용 + 낙관적 업데이트,
+    실패 시 되돌림. **끈다고 저장된 추정치가 지워지지 않음** — 표시만 숨기는 설정.
+  - 검증: `tsc --noEmit` 클린.
 
 - 2026-07-12: 문구 변경 2건 + 일정 등록 폼 간소화(AddEventSheet)
   - **문구 변경**: 식탁 탭 하단 라인 액션(`FoodTabActions.tsx`) "현재 재고 확인"→"냉장고에 뭐있지",
@@ -616,10 +674,12 @@ supabase/
   add_expense_place.sql                                      2026-07-11 신규: expense.place 컬럼 추가 + grocery 행 memo→place 백필 + shopping_item.expense_id 인덱스 (실행 필요)
   add_meal_image.sql                                         2026-07-11 신규: meal-images Storage 버킷 + RLS(퍼블릭 읽기, 본인 폴더만 쓰기/삭제) — 끼니 이미지 삽입용 (실행 필요)
   add_schedule_recurrence.sql                                2026-07-12 신규: schedule.recur_type/recur_calendar/recur_until 컬럼 추가 (반복 일정용, 실행 필요)
+  add_meal_nutrition.sql                                     2026-07-12 신규: meal.kcal_min/kcal_max/macro_carb/macro_protein/macro_fat/nutrition_source 컬럼 추가 (끼니 영양 정보(추정)용, 실행 필요 — 사용자가 직접 실행 예정)
+  add_nutrition_display_setting.sql                          2026-07-12 신규: family_workspace.nutrition_display_enabled BOOLEAN DEFAULT true 컬럼 추가 (실행 필요 — 사용자가 직접 실행 예정)
 middleware.ts                                              프로젝트 루트, 모든 요청에 대해 세션 갱신 (updateSession 위임)
 agent/                                                     2026-07-08 신규: Next.js와 분리된 Python 에이전트 서버 (별도 실행/배포 대상, 아래 "일정 파싱 에이전트 로컬 실행" 참고)
-  main.py                                                  FastAPI 진입점 — POST /process-schedule, /extract-text(둘 다 AGENT_API_KEY 설정 시 X-API-Key 헤더 검증 + image_base64 약 8MB 초과 시 413), GET /health(인증 제외)
-  agent.py                                                 LangGraph 그래프 (plan/execute/refine/return_single/prepare_multi 노드), Gemini 2.5 Flash 호출, 날짜/시간 정규화 헬퍼
+  main.py                                                  FastAPI 진입점 — POST /process-schedule, /extract-text, /estimate-nutrition(2026-07-12 신규 — 끼니 영양 정보 추정)(전부 AGENT_API_KEY 설정 시 X-API-Key 헤더 검증 + image_base64 약 8MB 초과 시 413), GET /health(인증 제외)
+  agent.py                                                 LangGraph 그래프(plan/execute/refine/return_single/prepare_multi 노드) + Gemini 2.5 Flash 호출, 날짜/시간 정규화 헬퍼. estimate_nutrition()(2026-07-12 신규, 그래프 밖의 단발 LLM 호출 — 메뉴명 기준 kcal 범위/탄단지 비율 추정)
   requirements.txt                                          langgraph, langchain-google-genai, fastapi, uvicorn 등
   .env.example                                              GEMINI_API_KEY, ALLOWED_ORIGINS, AGENT_API_KEY(2026-07-11 신규, 미설정 시 인증 생략)
 ```
@@ -680,6 +740,9 @@ agent/                                                     2026-07-08 신규: Ne
 - [ ] `supabase/add_expense_place.sql`(`expense.place` 컬럼 + 인덱스) 아직 라이브 DB에 미실행 — 실행 전까지는 "장보기 완료"가 실패함(`place` 컬럼이 없어 insert 에러)
 - [ ] `supabase/add_meal_image.sql`(`meal-images` 버킷) 아직 라이브 DB에 미실행 — 실행 전까지는 끼니 이미지 삽입 시 업로드가 실패함(버킷이 없어 Storage 에러)
 - [ ] `supabase/add_schedule_recurrence.sql`(`recur_type`/`recur_calendar`/`recur_until`) 아직 라이브 DB에 미실행 — 실행 전까지는 `createSchedule`의 insert 자체가 실패함(컬럼 없음 에러), "반복 없음"으로만 등록해도 마찬가지이니 화면 작업 전에 먼저 실행 필요
+- [ ] `supabase/add_meal_nutrition.sql`/`supabase/add_nutrition_display_setting.sql` 아직 라이브 DB에 미실행(사용자가 직접 실행 예정) — 실행 전까지는 `createMeal`/`updateMeal`의 백그라운드 영양 추정 저장이 매번 "컬럼 없음" 에러로 조용히 실패하고(끼니 저장 자체엔 영향 없음, try/catch로 삼켜짐), 영양 정보는 계속 아무것도 표시되지 않음. `add_nutrition_display_setting.sql` 미실행 상태에서는 `getNutritionDisplayEnabled()`가 컬럼을 못 찾아 매번 기본값 `true`로 폴백(에러 아님, 표시는 그냥 항상 켜진 것처럼 동작)
+- [ ] 끼니 영양 정보 백그라운드 추정(`estimateAndSaveMealNutrition`)은 await 없이 던지는 방식이라, 지금처럼 `next dev`/전통적 Node 프로세스에선 응답 이후에도 계속 실행되지만 Vercel 같은 서버리스 배포 환경에서는 응답이 끝나며 함수 인스턴스가 정리돼 완료 전에 잘릴 수 있음 — 배포 시 Next.js `after()`(또는 별도 큐/워커)로 교체 검토 필요
+- [ ] 이 환경엔 로그인된 브라우저가 없어 끼니 영양 정보 기능(카드 kcal 라인/식탁 탭 하루 합계/상세 영양 섹션/설정 토글)은 `tsc --noEmit` 클린까지만 확인했고 실제 화면과 에이전트 응답 품질(추정치가 그럴듯한 범위로 나오는지, 탄단지 비율 바가 정확히 100%로 채워지는지)은 마이그레이션 실행 + 에이전트 서버(`npm run dev:all`) 기동 후 직접 확인 필요
 - [ ] 반복 일정 수정 화면 — `AddEventSheet`는 아직 신규 등록 전용이라 `updateSchedule` 액션이 없음. 가상 인스턴스를 열었을 때 "원본을 수정합니다" 안내 + `originalId` 라우팅, "이번 회만 수정"(P2) 전부 다음 작업에서 구현 예정 (`AddEventSheet.tsx` 상단 주석 참고)
 - [ ] 반복 일정 데이터 레이어(`lunar.ts`/`recurrence.ts`/`getSchedulesForRange`)는 이 환경에서 Node로 직접 실행해 핵심 시나리오(월간 클램프, 윤년, 음력 왕복, `recur_until`, 기간유지, 원본중복없음)를 검증했지만, 로그인된 브라우저가 없어 실제 화면에서 월간/연간 뷰에 가상 인스턴스가 올바르게 섞여 보이는지는 확인 못 함 — 마이그레이션 실행 후 브라우저에서 직접 확인 필요
 - [ ] 2026-07-12 일정 탭 개편(하루 뷰, 월간 뷰 음력/기간밴드/작년이맘때, 연간 뷰 예산 필터, 범위 겹침 수정): `tsc --noEmit`/`next lint`/dev 서버 컴파일+라우트 상태코드(`day`/`month`/`week`/`year` 전부 정상)까지 확인했고, 밴드 2줄 스택/겹침 폴백/자정 넘김 `getCurrentBlock`/범위 겹침 보정은 Node로 핵심 시나리오를 직접 재현해 검증함. 그래도 로그인된 브라우저가 없어 아래는 실제 화면에서 직접 확인 필요:

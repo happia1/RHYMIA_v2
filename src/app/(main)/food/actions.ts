@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import type { FridgeCategory, MealType } from "@/types";
+import { callAgentServer } from "@/lib/agentServer";
+import type { FridgeCategory, MealNutritionEstimate, MealType } from "@/types";
 
 export interface MealInput {
   date: string;
@@ -18,6 +19,40 @@ export interface MealInput {
   image_url?: string | null;
   video_id?: string | null;
   recipe_title?: string | null;
+}
+
+/** 끼니 저장 직후 호출부가 await 없이(fire-and-forget) 부르는 백그라운드 영양 추정 — 절대
+ * 실패나 지연이 끼니 등록/수정 자체에 영향을 주면 안 된다는 원칙이라, 이 함수 내부에서 일어나는
+ * 어떤 에러도 바깥으로 던지지 않고 조용히 삼킨다(에이전트 서버가 꺼져 있어도 그냥 영양 정보만
+ * 비어있게 되는 정도). main_menu + sides를 합쳐 하나의 메뉴 문자열로 추정 요청을 보낸다. */
+async function estimateAndSaveMealNutrition(mealId: string, mainMenu: string, sides: string[]) {
+  try {
+    const menuName = [mainMenu, ...sides].filter(Boolean).join(", ");
+    const estimate = await callAgentServer<MealNutritionEstimate>("/estimate-nutrition", {
+      menu_name: menuName,
+    });
+    if (estimate.kcal_min == null || estimate.kcal_max == null) return;
+
+    const supabase = await createClient();
+    const { error } = await supabase
+      .from("meal")
+      .update({
+        kcal_min: estimate.kcal_min,
+        kcal_max: estimate.kcal_max,
+        macro_carb: estimate.macro_carb,
+        macro_protein: estimate.macro_protein,
+        macro_fat: estimate.macro_fat,
+        nutrition_source: "estimate",
+      })
+      .eq("id", mealId);
+    if (error) return;
+
+    revalidatePath("/food");
+    revalidatePath(`/food/${mealId}`);
+    revalidatePath("/home");
+  } catch {
+    // 영양 정보는 부가 정보 — 실패를 사용자에게 알릴 필요 없음
+  }
 }
 
 export async function createMeal(workspaceId: string, input: MealInput) {
@@ -49,6 +84,9 @@ export async function createMeal(workspaceId: string, input: MealInput) {
     .single();
 
   if (error || !data) throw new Error(error?.message ?? "끼니 등록에 실패했습니다.");
+
+  // await하지 않는다 — 영양 추정이 느리거나 실패해도 끼니 등록 자체는 이미 끝난 뒤라 영향 없음.
+  void estimateAndSaveMealNutrition(data.id, input.main_menu, input.sides);
 
   revalidatePath("/food");
   revalidatePath("/home");
@@ -91,6 +129,9 @@ export async function updateMeal(mealId: string, input: MealInput) {
     .eq("id", mealId);
 
   if (error) throw new Error(error.message);
+
+  // 등록과 동일하게 await하지 않음 — 메뉴가 바뀌었을 수 있으니 수정 시에도 다시 추정한다.
+  void estimateAndSaveMealNutrition(mealId, input.main_menu, input.sides);
 
   revalidatePath("/food");
   revalidatePath(`/food/${mealId}`);

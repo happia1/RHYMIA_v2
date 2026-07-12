@@ -6,6 +6,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { CheckToggle } from "@/components/ui/CheckToggle";
 import { toggleMealParticipation } from "@/app/(main)/home/actions";
 import { AVATAR_SIZE } from "@/lib/uiTokens";
+import { mealKcalMedian } from "@/lib/mealUtils";
 import type { Meal } from "@/types";
 
 export interface MealCardParticipant {
@@ -24,15 +25,19 @@ export function MealCard({
   meal,
   participants,
   myParticipation,
+  nutritionEnabled = true,
 }: {
   meal: Meal;
   participants: MealCardParticipant[];
   myParticipation: boolean | null;
+  /** 설정 "영양 정보 표시" 토글 — 꺼져 있으면 kcal 라인을 아예 렌더하지 않는다 */
+  nutritionEnabled?: boolean;
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const visibleParticipants = participants.slice(0, MAX_STACKED_AVATARS);
   const overflowCount = participants.length - visibleParticipants.length;
+  const kcalMedian = nutritionEnabled ? mealKcalMedian(meal) : null;
 
   return (
     <div
@@ -75,6 +80,9 @@ export function MealCard({
             {meal.place}
             {meal.reservation_time ? ` · ${meal.reservation_time}` : ""}
           </p>
+        )}
+        {kcalMedian != null && (
+          <p className="text-[12px] text-[var(--text-secondary)]">약 {kcalMedian}kcal</p>
         )}
       </div>
 

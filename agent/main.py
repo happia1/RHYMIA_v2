@@ -16,7 +16,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from agent import run_agent, run_agent_resume, extract_text_from_image
+from agent import run_agent, run_agent_resume, extract_text_from_image, estimate_nutrition
 
 load_dotenv()
 
@@ -142,6 +142,37 @@ def extract_text(body: ExtractTextRequest):
         raise HTTPException(status_code=500, detail=f"텍스트 추출 오류: {e}") from e
 
     return {"text": text}
+
+
+class EstimateNutritionRequest(BaseModel):
+    menu_name: str = Field("", description="끼니 메뉴명(+반찬 등을 합친 문자열)")
+    image_base64: Optional[str] = Field(
+        None, description="선택 — 끼니 사진 base64 또는 data:image/...;base64,... 문자열"
+    )
+
+
+@app.post(
+    "/estimate-nutrition",
+    summary="끼니 영양 정보 추정",
+    description=(
+        "메뉴명(및 선택적으로 사진)으로 일반적인 성인 1인분 기준 칼로리 범위(kcal_min~kcal_max)와 "
+        "탄수화물/단백질/지방 비율(macro_carb/macro_protein/macro_fat, 합 100)을 추정합니다. "
+        "정밀한 영양 계산이 아닌 참고용 추정치이며, 확신이 낮을수록 칼로리 범위를 넓게 잡습니다. "
+        "추정에 실패하면 모든 필드가 null인 객체를 반환합니다(에러가 아님)."
+    ),
+    dependencies=[Depends(verify_api_key)],
+)
+def estimate_nutrition_endpoint(body: EstimateNutritionRequest):
+    image_path = None
+    if body.image_base64 and body.image_base64.strip():
+        raw = body.image_base64.strip()
+        _check_image_size(raw)
+        image_path = raw if raw.startswith("data:") else f"data:image/png;base64,{raw}"
+
+    try:
+        return estimate_nutrition(body.menu_name, image_path)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"영양 정보 추정 오류: {e}") from e
 
 
 @app.get("/health")

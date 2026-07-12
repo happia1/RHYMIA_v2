@@ -8,6 +8,7 @@ import { AvatarUploader } from "@/components/settings/AvatarUploader";
 import { ThemeToggle } from "@/components/settings/ThemeToggle";
 import { ShareLinkSection } from "@/components/settings/ShareLinkSection";
 import { MemberList } from "@/components/settings/MemberList";
+import { NutritionDisplayToggle } from "@/components/settings/NutritionDisplayToggle";
 import { signOut } from "./actions";
 
 export default async function SettingsPage() {
@@ -85,6 +86,14 @@ export default async function SettingsPage() {
           workspaceId={workspaceId}
           shareToken={workspace?.share_token ?? ""}
           isOwner={role === "owner"}
+        />
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <span className="text-[12px] font-medium text-stone">끼니</span>
+        <NutritionDisplayToggle
+          workspaceId={workspaceId}
+          enabled={workspace?.nutrition_display_enabled ?? true}
         />
       </section>
 

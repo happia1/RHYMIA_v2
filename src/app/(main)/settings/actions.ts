@@ -140,6 +140,28 @@ export async function deleteManagedMember(memberId: string) {
   return { ok: true as const };
 }
 
+/** 끼니 영양 정보(추정) 표시 여부 — 워크스페이스 단위(오너 제한 없이 아무 멤버나 변경 가능,
+ * 공유 링크 재발급과 달리 "표시만" 켜고 끄는 설정이라 위험도가 낮음). 끄면 끼니 카드/식탁 탭
+ * 하루 합계/끼니 상세의 영양 정보 섹션이 전부 숨겨진다 — 저장된 추정치 자체는 지워지지 않는다. */
+export async function updateNutritionDisplayEnabled(workspaceId: string, enabled: boolean) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { error } = await supabase
+    .from("family_workspace")
+    .update({ nutrition_display_enabled: enabled })
+    .eq("id", workspaceId);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/settings");
+  revalidatePath("/food");
+  return { ok: true as const };
+}
+
 export async function regenerateShareToken(workspaceId: string) {
   const supabase = await createClient();
   const {

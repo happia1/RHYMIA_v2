@@ -30,3 +30,17 @@ export const requireWorkspaceContext = cache(async function requireWorkspaceCont
     displayName: membership!.display_name as string | null,
   };
 });
+
+/** 끼니 영양 정보(추정) 표시 여부 — 워크스페이스 단위, 기본 켜짐(컬럼 자체 기본값과 동일).
+ * 같은 요청 안에서 여러 곳(식탁 탭 목록/상세)이 부를 수 있어 cache()로 중복 조회를 막는다. */
+export const getNutritionDisplayEnabled = cache(async function getNutritionDisplayEnabled(
+  workspaceId: string
+): Promise<boolean> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("family_workspace")
+    .select("nutrition_display_enabled")
+    .eq("id", workspaceId)
+    .maybeSingle();
+  return data?.nutrition_display_enabled ?? true;
+});

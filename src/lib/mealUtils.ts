@@ -1,5 +1,13 @@
 export const MEAL_TAGS = ["아침", "브런치", "점심", "간식", "저녁", "야식"] as const;
 
+/** kcal_min~kcal_max 범위의 중앙값을 50 단위로 반올림 — 끼니 카드/하루 합계/상세 어디서든
+ * "약 {중앙값}kcal" 표기에 이 값을 쓴다(추정치임을 표시할 뿐 소수점까지 정밀한 척 하지 않기 위함).
+ * 둘 중 하나라도 없으면(추정 안 됨) null. */
+export function mealKcalMedian(meal: { kcal_min: number | null; kcal_max: number | null }) {
+  if (meal.kcal_min == null || meal.kcal_max == null) return null;
+  return Math.round((meal.kcal_min + meal.kcal_max) / 2 / 50) * 50;
+}
+
 const TAG_HOUR: Record<string, number> = {
   아침: 7,
   브런치: 10,

@@ -166,6 +166,24 @@ export interface Meal {
   emoji: string;
   color: string;
   created_at: string;
+  /** 아래 5개는 2026-07-12 추가 — 에이전트가 메뉴명 기준으로 추정한 영양 정보(참고용).
+   * 저장 실패 시 전부 null일 수 있음(끼니 저장과 무관한 부가 정보). */
+  kcal_min: number | null;
+  kcal_max: number | null;
+  /** 탄수화물/단백질/지방 비율(%), 셋의 합은 100 */
+  macro_carb: number | null;
+  macro_protein: number | null;
+  macro_fat: number | null;
+  nutrition_source: string | null;
+}
+
+/** 에이전트 /estimate-nutrition 응답 — meal.kcal_min 등 5개 컬럼과 1:1 대응 */
+export interface MealNutritionEstimate {
+  kcal_min: number | null;
+  kcal_max: number | null;
+  macro_carb: number | null;
+  macro_protein: number | null;
+  macro_fat: number | null;
 }
 
 export interface MealParticipation {

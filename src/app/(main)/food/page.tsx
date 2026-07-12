@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { IconPlus } from "@tabler/icons-react";
-import { requireWorkspaceContext } from "@/lib/workspace";
+import { requireWorkspaceContext, getNutritionDisplayEnabled } from "@/lib/workspace";
 import { getWeekDates, toDateStr } from "@/lib/date";
 import { getFrequentMenus } from "@/lib/mealUtils";
 import { getWorkspaceMembers } from "@/lib/members";
@@ -11,6 +11,7 @@ import { MealVoteCard } from "@/components/food/MealVoteCard";
 import { SuggestionSection } from "@/components/food/SuggestionSection";
 import { FoodTabActions } from "@/components/food/FoodTabActions";
 import { MealListSection, type MealRow } from "@/components/food/MealListSection";
+import { MealNutritionSummary } from "@/components/food/MealNutritionSummary";
 import type { FridgeItem } from "@/types";
 
 export default async function FoodPage({
@@ -32,6 +33,7 @@ export default async function FoodPage({
     { data: voteRows },
     { data: fridgeItems },
     trackingDays,
+    nutritionEnabled,
   ] = await Promise.all([
     getWorkspaceMembers(workspaceId),
     supabase
@@ -65,6 +67,7 @@ export default async function FoodPage({
       .eq("workspace_id", workspaceId)
       .order("created_at", { ascending: false }),
     getMealTrackingDayCount(workspaceId),
+    getNutritionDisplayEnabled(workspaceId),
   ]);
 
   const datesWithMeals = new Set((weekMeals ?? []).map((m) => m.date));
@@ -72,6 +75,11 @@ export default async function FoodPage({
   const todayVote = voteRows?.[0] ?? null;
   // 진행 중인 투표가 있으면 같은 날짜에 새 투표를 또 만들 수 없게 막는 용도 (결과 카드는 마감 여부와 무관하게 표시)
   const blockingVote = todayVote && !todayVote.is_closed ? todayVote : null;
+  const todayStr = toDateStr(new Date());
+  const nutritionDateLabel =
+    selectedDate === todayStr
+      ? "오늘"
+      : `${Number(selectedDate.slice(5, 7))}.${Number(selectedDate.slice(8, 10))}`;
 
   return (
     <div className="flex h-[calc(100dvh-64px)] flex-col gap-4 overflow-hidden px-4 pt-6">
@@ -96,11 +104,20 @@ export default async function FoodPage({
             activeVote={blockingVote}
           />
         ) : (
-          <MealListSection
-            meals={(dayMeals ?? []) as MealRow[]}
-            members={members}
-            currentUserId={user.id}
-          />
+          <>
+            <MealListSection
+              meals={(dayMeals ?? []) as MealRow[]}
+              members={members}
+              currentUserId={user.id}
+              nutritionEnabled={nutritionEnabled}
+            />
+            {nutritionEnabled && (
+              <MealNutritionSummary
+                dateLabel={nutritionDateLabel}
+                meals={(dayMeals ?? []) as MealRow[]}
+              />
+            )}
+          </>
         )}
 
         <div className="h-px w-full shrink-0 bg-border-light" />

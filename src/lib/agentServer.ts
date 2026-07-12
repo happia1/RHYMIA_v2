@@ -51,3 +51,23 @@ export async function proxyAgentRequest(path: string, body: string): Promise<Res
     headers: { "Content-Type": "application/json" },
   });
 }
+
+/** 서버 액션에서 직접 에이전트 서버를 호출할 때 쓴다(예: 끼니 저장 후 백그라운드 영양 추정) —
+ * 이미 서버 코드라 브라우저를 거치지 않으므로 /api/agent/* 프록시 라우트를 왕복할 필요가 없고,
+ * 호출부가 이미 로그인 여부를 확인한 뒤라 requireAuthOrRespond()도 필요 없다. */
+export async function callAgentServer<T>(path: string, body: unknown): Promise<T> {
+  const headers: HeadersInit = { "Content-Type": "application/json" };
+  if (process.env.AGENT_API_KEY) headers["X-API-Key"] = process.env.AGENT_API_KEY;
+
+  const res = await fetch(`${AGENT_API_URL}${path}`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(typeof data?.message === "string" ? data.message : `agent_http_${res.status}`);
+  }
+  return data as T;
+}

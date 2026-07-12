@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { requireWorkspaceContext } from "@/lib/workspace";
+import { requireWorkspaceContext, getNutritionDisplayEnabled } from "@/lib/workspace";
 import { mapWorkspaceMembers } from "@/lib/members";
 import { MealDetail } from "@/components/food/MealDetail";
 import type { Meal, MealComment } from "@/types";
@@ -12,7 +12,7 @@ export default async function MealDetailPage({
   const { mealId } = await params;
   const { supabase, user, workspaceId } = await requireWorkspaceContext();
 
-  const [{ data: meal }, { data: memberRows }] = await Promise.all([
+  const [{ data: meal }, { data: memberRows }, nutritionEnabled] = await Promise.all([
     supabase
       .from("meal")
       .select(
@@ -27,6 +27,7 @@ export default async function MealDetailPage({
         "id, user_id, member_type, display_name, name, avatar_color, avatar_image_url, birth_year, users(avatar_color, avatar_text_color, avatar_image_url)"
       )
       .eq("workspace_id", workspaceId),
+    getNutritionDisplayEnabled(workspaceId),
   ]);
 
   if (!meal) notFound();
@@ -52,6 +53,7 @@ export default async function MealDetailPage({
         (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       )}
       currentUserId={user.id}
+      nutritionEnabled={nutritionEnabled}
     />
   );
 }
