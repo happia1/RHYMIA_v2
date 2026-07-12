@@ -2,7 +2,7 @@ import { IconCalendar } from "@tabler/icons-react";
 import { requireWorkspaceContext } from "@/lib/workspace";
 import { toDateStr, getWeekDates } from "@/lib/date";
 import { getCurrentWeather } from "@/lib/weather";
-import { mapWorkspaceMembers } from "@/lib/members";
+import { getWorkspaceMembers } from "@/lib/members";
 import { ScheduleTabs } from "@/components/schedule/ScheduleTabs";
 import { EventFilters } from "@/components/schedule/EventFilters";
 import { ScheduleDayView } from "@/components/schedule/ScheduleDayView";
@@ -74,13 +74,8 @@ export default async function SchedulePage({
       ? yearRange(anchor)
       : { start: getWeekDates(anchor)[0], end: getWeekDates(anchor)[6] };
 
-  const [{ data: memberRows }, weather, scheduleRows] = await Promise.all([
-    supabase
-      .from("workspace_member")
-      .select(
-        "id, user_id, member_type, display_name, name, avatar_color, avatar_image_url, birth_year, routine_enabled, users(avatar_color, avatar_text_color, avatar_image_url)"
-      )
-      .eq("workspace_id", workspaceId),
+  const [members, weather, scheduleRows] = await Promise.all([
+    getWorkspaceMembers(workspaceId),
     getCurrentWeather(),
     view === "day"
       ? Promise.resolve<Schedule[]>([])
@@ -100,7 +95,6 @@ export default async function SchedulePage({
       : getSchedulesForRange(workspaceId, user.id, range.start, range.end),
   ]);
 
-  const members = mapWorkspaceMembers(memberRows ?? []);
   const myMember = members.find((m) => m.user_id === user.id);
   const membersById = Object.fromEntries(members.map((m) => [m.id, m]));
 

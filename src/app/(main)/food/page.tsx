@@ -3,7 +3,7 @@ import { IconPlus } from "@tabler/icons-react";
 import { requireWorkspaceContext } from "@/lib/workspace";
 import { getWeekDates, toDateStr } from "@/lib/date";
 import { getFrequentMenus } from "@/lib/mealUtils";
-import { mapWorkspaceMembers } from "@/lib/members";
+import { getWorkspaceMembers } from "@/lib/members";
 import { getMealTrackingDayCount } from "@/app/(main)/food/actions";
 import { WeekCalendar } from "@/components/food/WeekCalendar";
 import { MealEmptyState } from "@/components/food/MealEmptyState";
@@ -25,7 +25,7 @@ export default async function FoodPage({
   const weekDates = getWeekDates(new Date(selectedDate));
 
   const [
-    { data: memberRows },
+    members,
     { data: weekMeals },
     { data: dayMeals },
     { data: mealHistory },
@@ -33,12 +33,7 @@ export default async function FoodPage({
     { data: fridgeItems },
     trackingDays,
   ] = await Promise.all([
-    supabase
-      .from("workspace_member")
-      .select(
-        "id, user_id, member_type, display_name, name, avatar_color, avatar_image_url, birth_year, users(avatar_color, avatar_text_color, avatar_image_url)"
-      )
-      .eq("workspace_id", workspaceId),
+    getWorkspaceMembers(workspaceId),
     supabase
       .from("meal")
       .select("date")
@@ -71,8 +66,6 @@ export default async function FoodPage({
       .order("created_at", { ascending: false }),
     getMealTrackingDayCount(workspaceId),
   ]);
-
-  const members = mapWorkspaceMembers(memberRows ?? []);
 
   const datesWithMeals = new Set((weekMeals ?? []).map((m) => m.date));
   const frequentMenus = getFrequentMenus(mealHistory ?? []);

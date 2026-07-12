@@ -1,6 +1,31 @@
 # 개발 참조 문서
 
-## 마지막 업데이트: 2026-07-12 (홈/식탁/게시판 UI 미세조정 + SectionExpand를 더보기→페이지네이션으로 재설계)
+## 마지막 업데이트: 2026-07-12 (성능 진단 리포트 §5 후속 — requireWorkspaceContext/getWorkspaceMembers에 cache() 적용)
+
+- 2026-07-12: 성능 진단 리포트(탭 전환 속도) §5 제안 3종에 대한 결정 반영
+  - **cache() 2곳 적용**: `src/lib/workspace.ts`의 `requireWorkspaceContext()`와 `src/lib/members.ts`에 신설한
+    `getWorkspaceMembers(workspaceId)`(기존에 홈/식탁/일정/게시판 4개 페이지가 각자 실행하던 `workspace_member`+
+    `users` 조회+`mapWorkspaceMembers()` 매핑을 공용 함수로 추출)를 React `cache()`로 감쌈. 요청 단위
+    메모이제이션이라 `(main)/layout.tsx`와 각 `page.tsx`가 같은 요청 안에서 이 함수들을 중복 호출해도 한 번만
+    실행됨 — 스테일 위험 없음(요청이 끝나면 캐시도 초기화). 4개 페이지(`home`/`food`/`schedule`/`board`)의
+    `page.tsx`를 이 공용 함수를 쓰도록 갱신. `requireWorkspaceContext`의 layout.tsx↔page.tsx 실제 중복 호출
+    여부는 파일 기반 임시 로그로 확인을 시도했으나(dev 서버 프로세스가 여럿 떠 있어 콘솔 대신 파일에 기록),
+    미인증 요청은 layout의 첫 호출에서 바로 리다이렉트돼 page 쪽 코드가 실행되지 않아 완전 확정은 못 함 —
+    다만 `cache()`는 중복 호출 유무와 무관하게 안전하고 있다면 정확히 그 문제를 없애는 수정이라 확인 여부와
+    무관하게 적용함.
+  - **unstable_cache 3곳 보류**: 일정 탭 `getSchedulesForRange`(연간 뷰)/식탁 탭 `getFrequentMenus` 원본
+    조회/`getMealTrackingDayCount` 전부 — 각각 `createSchedule`류·`createMeal`이라는 흔한 쓰기 경로를 갖고
+    있어 "쓰기 경로가 없거나 극히 드문 정적 데이터"라는 승인 조건에 해당하지 않음. 가족 대시보드 특성상
+    "방금 등록했는데 안 보임"이 최악의 UX라 보류 유지.
+  - **dynamic import 3곳 제외**: `HomeSections.tsx`(`@dnd-kit`)는 `DndContext`/`SortableContext`가 첫 화면에
+    보이는 위젯 4개를 직접 감싸는 구조라 무거운 라이브러리 조건은 만족하지만 "첫 페인트 비노출" 조건에서
+    탈락(스켈레톤 깜빡임 위험). `RouletteBoard`/`LadderGame`, `AgentLauncher`/`AgentSheet`/`ConfirmCards`는
+    코드를 다시 읽어 확인한 결과 `@tabler/icons-react` 외 제3자 라이브러리 의존이 전혀 없는 순수 React
+    컴포넌트라("서비스 자체 canvas 유틸"인 `compressImage` 포함) "무거운 라이브러리" 조건에서 탈락 — 셋 다
+    적용 안 함.
+  - 판정 근거와 표는 이전 세션에서 만든 진단 리포트 아티팩트의 §6에 정리(성능 진단 리포트, URL은 대화 참고).
+  - 검증: `tsc --noEmit`/`next lint` 클린(기존 무관 오류 1건 제외), 8개 라우트(홈/식탁/식탁 추가/게시판/일정
+    4개 뷰) 스모크 테스트 통과.
 
 - 2026-07-12: 홈/식탁/게시판 UI 미세조정 5건 + `SectionExpand` 더보기→페이지네이션 재설계
   - **홈 "하고싶은 말"**: 내용/작성자 순서를 뒤바꿔 내용이 위, 작성자가 아래로 오도록 변경(`HomeStickySection.tsx`). 미리보기 개수도 4개→3개로 줄임(장바구니 섹션과 다시 안 맞게 됐지만 스티키 자체 요청).

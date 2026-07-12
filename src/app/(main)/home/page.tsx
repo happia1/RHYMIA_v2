@@ -3,7 +3,7 @@ import { getWeekDates, toDateStr } from "@/lib/date";
 import { tagOrderIndex } from "@/lib/mealUtils";
 import { getCurrentBlock, STATUS_EMOJI, DEFAULT_STATUS_EMOJI } from "@/lib/routineUtils";
 import { getCurrentWeather } from "@/lib/weather";
-import { mapWorkspaceMembers } from "@/lib/members";
+import { getWorkspaceMembers } from "@/lib/members";
 import { mirror } from "@/lib/homeTheme";
 import { resolveHomeLayout } from "@/lib/homeLayout";
 import { HomeHeader, type FamilyMemberStatus } from "@/components/home/HomeHeader";
@@ -25,14 +25,9 @@ export default async function HomePage() {
   const weekStart = weekDates[0];
   const weekEnd = weekDates[6];
 
-  const [{ data: memberRows }, weather, { data: schedules }, { data: meals }, { data: shoppingItems }, { data: stickers }, { data: myUserRow }] =
+  const [members, weather, { data: schedules }, { data: meals }, { data: shoppingItems }, { data: stickers }, { data: myUserRow }] =
     await Promise.all([
-      supabase
-        .from("workspace_member")
-        .select(
-          "id, user_id, member_type, display_name, name, avatar_color, avatar_image_url, birth_year, users(avatar_color, avatar_text_color, avatar_image_url)"
-        )
-        .eq("workspace_id", workspaceId),
+      getWorkspaceMembers(workspaceId),
       getCurrentWeather(),
       supabase
         .from("schedule")
@@ -65,8 +60,6 @@ export default async function HomePage() {
     ]);
 
   const homeSectionOrder = resolveHomeLayout(myUserRow?.home_layout);
-
-  const members = mapWorkspaceMembers(memberRows ?? []);
 
   // 대상 선택/표시용(target_members, routine.member_id 등): workspace_member.id로 키
   const membersById: Record<string, MemberInfo> = Object.fromEntries(
