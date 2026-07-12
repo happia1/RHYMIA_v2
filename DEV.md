@@ -1,6 +1,33 @@
 # 개발 참조 문서
 
-## 마지막 업데이트: 2026-07-12 (스크린샷 피드백 기반 UI 다듬기 9건 — 스마트미러 원칙 유지)
+## 마지막 업데이트: 2026-07-12 (에이전트 개발 편의 — dev:all 통합 실행 + 에이전트 다운 시 친절한 실패)
+
+- 2026-07-12: 에이전트 개발 편의 2건
+  - **`npm run dev:all`로 통합 실행**: `concurrently`를 devDependency로 추가하고 `dev:agent`
+    (`agent\.venv\Scripts\python.exe agent\main.py`, Windows 경로 기준)와 `dev:all`
+    (`concurrently -n next,agent -c blue,green -k "npm:dev" "npm:dev:agent"`) 스크립트를
+    `package.json`에 신규 추가 — 터미널 하나로 Next.js와 Python 에이전트 서버가 함께 뜨고, 로그가
+    `next`(파란색)/`agent`(초록색)로 구분되어 찍힌다. `-k`(kill-others)로 둘 중 하나가 죽으면
+    나머지도 같이 종료돼 터미널이 반쪽만 살아있는 상태로 남지 않는다. `agent/main.py`는 스크립트
+    자신의 디렉터리를 기준으로 상대 임포트(`from agent import ...`)와 `.env` 탐색을 하므로 저장소
+    루트에서 `agent\main.py` 경로로 실행해도(즉 `cd agent` 없이도) 정상 동작 확인. 기존 `npm run dev`/
+    수동으로 `agent/`에서 `python main.py` 띄우는 방식도 그대로 유효 — "로컬 실행 방법"/"일정 파싱
+    에이전트 로컬 실행" 두 섹션 모두 `dev:all`을 우선 안내하도록 갱신.
+  - **에이전트 다운 시 친절한 실패**: `agentServer.ts`의 `proxyAgentRequest`가 에이전트 서버로의
+    `fetch` 자체가 실패(서버가 꺼져 있어 `ECONNREFUSED` 등)하는 경우를 try/catch로 잡아, 500 원문
+    대신 `{ ok: false, message: "AI 도우미 서버가 꺼져 있어요. 터미널에서 npm run dev:all로
+    실행해주세요." }`(HTTP 503)를 반환하도록 함(에이전트 서버가 실제로 401/500 등을 응답한 경우는
+    기존처럼 그 응답을 그대로 프록시 — 이 처리는 fetch 자체가 던질 때만 개입). 클라이언트 쪽
+    `agentApi.ts`의 `callAgent`/`extractTextFromImage`가 `!res.ok`일 때 응답 JSON의 `message`
+    필드를 읽어 `Error`로 던지도록 바꿔 이 메시지가 유실되지 않게 하고, `AgentSheet.tsx`(플로팅
+    에이전트 채팅)와 `BoardSection.tsx`(메모 작성 시트의 "사진에서 텍스트 채우기" OCR)의 catch
+    블록 모두 `err.message`가 `agent_http_`로 시작하지 않으면(= 사람이 읽을 서버 메시지면) 그대로
+    화면에 보여주고, 아니면 기존 범용 문구("잠시 후 다시 시도해주세요."/"텍스트 추출에
+    실패했어요.")로 폴백하도록 통일.
+  - 검증: `tsc --noEmit` 클린. `dev:agent` 스크립트를 단독 실행해 Windows 경로가 정확히 resolve되고
+    uvicorn이 기동됨을 로그로 확인(포트 8000이 이미 다른 프로세스로 떠있어 bind는 실패했지만, 그
+    쪽은 기존에 떠 있던 정상 에이전트 서버였고 `GET /health`도 정상 응답 — 스크립트 자체의 경로/
+    커맨드가 유효함을 확인하는 목적은 달성).
 
 - 2026-07-12: 스크린샷 피드백 기반 UI 다듬기 9건 (스마트미러 원칙 유지)
   - **게시판 스티커 카드 높이 통일**: `BoardSection.tsx` — 스티커 카드를 `min-h-28`(내용에 따라 늘어남)에서
@@ -615,11 +642,19 @@ agent/                                                     2026-07-08 신규: Ne
 
 ## 로컬 실행 방법
 
+Next.js와 일정 파싱 에이전트(Python) 서버를 한 터미널에서 동시에 띄우려면(2026-07-12 신규):
+
 ```bash
 npm install
-npm run dev
+npm run dev:all
 ```
-- http://localhost:3000 (포트 사용 중이면 3001/3002로 자동 변경됨)
+- `dev:all`은 `concurrently`로 `next dev`(파란색 로그)와 `agent/.venv/Scripts/python.exe agent/main.py`
+  (초록색 로그, `dev:agent` 스크립트)를 함께 실행한다 — 둘 중 하나가 죽으면(`-k`) 나머지도 같이 종료돼
+  터미널이 멈춰 있지 않는다. **agent/.venv가 미리 만들어져 있어야 함**(아래 "일정 파싱 에이전트 로컬
+  실행" 최초 세팅 참고) — 없으면 `dev:agent`가 즉시 에러로 종료되고 `-k` 때문에 `next dev`도 같이
+  꺼진다.
+- Next.js만 필요하면 기존대로 `npm run dev`도 그대로 동작한다.
+- http://localhost:3000 (포트 사용 중이면 3001/3002로 자동 변경됨), 에이전트는 http://localhost:8000
 - 최초 세팅 시 `.env.local`에 위 4개 환경변수 필요
 - Supabase SQL Editor에서 아래 순서로 스크립트 실행 필요 (이미 실행했다면 재실행해도 안전):
   1. `supabase/fix_rls_v2.sql`
@@ -638,6 +673,8 @@ npm run dev
 ### 일정 파싱 에이전트(`agent/`) 로컬 실행
 
 Next.js와 별도 프로세스로 떠 있어야 하는 Python 서버다. 둘 다 띄워야 플로팅 에이전트가 동작한다.
+최초 1회는 가상환경을 직접 만들어야 하고, 그 이후엔 위 "로컬 실행 방법"의 `npm run dev:all`이
+루트에서 `agent/.venv/Scripts/python.exe agent/main.py`를 대신 실행해준다(Windows 경로 기준).
 
 ```bash
 cd agent
@@ -645,12 +682,17 @@ python -m venv .venv
 .venv/Scripts/activate        # macOS/Linux는 source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env          # .env에 GEMINI_API_KEY 채워넣기
-python main.py                 # http://localhost:8000
+python main.py                 # http://localhost:8000 — 최초 세팅 확인용. 이후엔 npm run dev:all 사용
 ```
 - `GET /health`로 기동 확인, `POST /process-schedule`이 실제 파싱 엔드포인트
 - Next.js 쪽 `.env.local`에 `NEXT_PUBLIC_AGENT_API_URL=http://localhost:8000` 필요(로컬 기본값과 동일하면 생략 가능)
 - 아직 별도 배포 전 — Render 등에 배포할 예정이며, 배포 후 `agent/.env`의 `ALLOWED_ORIGINS`와 Next.js의 `NEXT_PUBLIC_AGENT_API_URL`을 실제 배포 도메인으로 갱신할 것
 - Windows 콘솔에 한글 로그가 깨져 보일 수 있음(코드페이지 문제, 실제 API 응답 JSON은 항상 UTF-8이라 영향 없음) — 필요하면 `PYTHONUTF8=1 python main.py`로 실행
+- 2026-07-12: `agent/main.py`가 꺼져 있는 상태로 `npm run dev`만 띄워 에이전트 기능(사진/텍스트 일정
+  파싱, 메모 이미지 텍스트 추출)을 쓰면, 이제 `/api/agent/*` route handler(`agentServer.ts`의
+  `proxyAgentRequest`)가 `fetch` 자체의 `ECONNREFUSED` 등을 잡아 500 원문 대신
+  `{ ok: false, message: "AI 도우미 서버가 꺼져 있어요. 터미널에서 npm run dev:all로 실행해주세요." }`
+  (HTTP 503)를 돌려주고, `AgentSheet`/게시판 OCR 첨부 둘 다 이 메시지를 그대로 화면에 보여준다.
 
 ---
 
