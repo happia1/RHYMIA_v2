@@ -1,12 +1,11 @@
 import { IconCalendar } from "@tabler/icons-react";
 import { requireWorkspaceContext } from "@/lib/workspace";
 import { toDateStr, getWeekDates } from "@/lib/date";
-import { getCurrentBlock } from "@/lib/routineUtils";
 import { getCurrentWeather } from "@/lib/weather";
 import { mapWorkspaceMembers } from "@/lib/members";
-import { RoutineTopWidget } from "@/components/schedule/RoutineTopWidget";
 import { ScheduleTabs } from "@/components/schedule/ScheduleTabs";
 import { EventFilters } from "@/components/schedule/EventFilters";
+import { ScheduleDayView } from "@/components/schedule/ScheduleDayView";
 import { MonthView } from "@/components/schedule/MonthView";
 import { WeekView } from "@/components/schedule/WeekView";
 import { YearView } from "@/components/schedule/YearView";
@@ -14,15 +13,16 @@ import { AddEventEntry } from "@/components/schedule/AddEventEntry";
 import { AgentLauncher } from "@/components/agent/AgentLauncher";
 import { SectionLabel } from "@/components/home/SectionLabel";
 import { getSchedulesForRange } from "@/app/(main)/schedule/actions";
-import type { Schedule, RoutineBlock } from "@/types";
+import type { Schedule, Routine } from "@/types";
 
-const VIEW_LABEL: Record<"month" | "week" | "year", string> = {
+const VIEW_LABEL: Record<"day" | "month" | "week" | "year", string> = {
+  day: "하루 일과",
   month: "월간 일정",
   week: "주간 일정",
   year: "연간 일정",
 };
 
-type ViewMode = "month" | "week" | "year";
+type ViewMode = "day" | "month" | "week" | "year";
 
 function monthRange(anchor: Date) {
   const start = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
@@ -47,15 +47,83 @@ export default async function SchedulePage({
     keywordMain?: string;
     keywordSub?: string;
     new?: string;
+    member?: string;
+    highlight?: string;
   }>;
 }) {
   const params = await searchParams;
   const { supabase, user, workspaceId } = await requireWorkspaceContext();
 
   const view: ViewMode =
-    params.view === "week" || params.view === "year" ? (params.view as ViewMode) : "month";
+    params.view === "day" || params.view === "week" || params.view === "year"
+      ? (params.view as ViewMode)
+      : "month";
   const anchor = new Date(params.date ?? toDateStr(new Date()));
   const anchorStr = toDateStr(anchor);
+
+  const [{ data: memberRows }, weather] = await Promise.all([
+    supabase
+      .from("workspace_member")
+      .select(
+        "id, user_id, member_type, display_name, name, avatar_color, avatar_image_url, birth_year, routine_enabled, users(avatar_color, avatar_text_color, avatar_image_url)"
+      )
+      .eq("workspace_id", workspaceId),
+    getCurrentWeather(),
+  ]);
+
+  const members = mapWorkspaceMembers(memberRows ?? []);
+  const myMember = members.find((m) => m.user_id === user.id);
+  const membersById = Object.fromEntries(members.map((m) => [m.id, m]));
+
+  // "하루" 뷰는 반복 일정(schedule)이 아니라 루틴(routine) 도넛+블록 편집 화면이라 데이터
+  // 소스가 완전히 달라서(월간/주간/연간과 다르게 scope/target 필터도 없음) 별도로 분기한다.
+  // 예전 /schedule/routine 페이지(RoutineEditor)가 하던 조회를 그대로 옮겨온 것.
+  if (view === "day") {
+    const editableMembers = members.filter(
+      (m) => m.user_id === user.id || m.member_type === "managed"
+    );
+    const memberIds = editableMembers.map((m) => m.id);
+
+    const { data: routines } = await supabase
+      .from("routine")
+      .select("*")
+      .in("member_id", memberIds.length ? memberIds : [""]);
+
+    // 홈 가족상태 탭 등에서 ?member= 로 특정 멤버를 지정해 들어올 수 있음(딥링크) —
+    // 그 멤버가 이 워크스페이스에서 실제로 편집 가능한 대상일 때만 반영.
+    const requestedMemberId =
+      params.member && editableMembers.some((m) => m.id === params.member)
+        ? params.member
+        : myMember?.id ?? editableMembers[0]?.id ?? "";
+
+    return (
+      <div className="flex flex-col gap-section px-4 pb-24 pt-6">
+        <ScheduleTabs anchorDate={anchorStr} view={view} />
+
+        <div className="h-px w-full bg-border-light" />
+
+        <section className="flex flex-col gap-label-gap">
+          <SectionLabel icon={<IconCalendar size={14} />}>{VIEW_LABEL[view]}</SectionLabel>
+          <div className="pl-section-indent">
+            <ScheduleDayView
+              members={editableMembers}
+              initialRoutines={(routines as Routine[]) ?? []}
+              defaultMemberId={requestedMemberId}
+            />
+          </div>
+        </section>
+
+        <AddEventEntry
+          workspaceId={workspaceId}
+          members={members}
+          defaultDate={anchorStr}
+          autoOpen={params.new === "1"}
+          weather={weather}
+        />
+        <AgentLauncher workspaceId={workspaceId} members={members} currentMemberId={myMember?.id ?? ""} />
+      </div>
+    );
+  }
 
   const range =
     view === "month"
@@ -64,47 +132,24 @@ export default async function SchedulePage({
       ? yearRange(anchor)
       : { start: getWeekDates(anchor)[0], end: getWeekDates(anchor)[6] };
 
-  const today = new Date();
-
   // 월간/연간 뷰는 반복 일정(기념일·생신 등) 가상 인스턴스까지 합쳐서 조회한다
   // (getSchedulesForRange, schedule/actions.ts). 주간 뷰는 범위가 좁아 이번 범위에서는
   // 제외 — 기존과 동일하게 저장된 행만 그대로 조회.
-  const scheduleQuery =
+  const scheduleRows =
     view === "week"
-      ? supabase
-          .from("schedule")
-          .select("*")
-          .eq("workspace_id", workspaceId)
-          .gte("date_start", range.start)
-          .lte("date_start", range.end)
-          .or(`is_shared.eq.true,author_id.eq.${user.id}`)
-          .order("date_start", { ascending: true })
-          .then(({ data, error }) => {
-            if (error) throw new Error(error.message);
-            return (data ?? []) as Schedule[];
-          })
-      : getSchedulesForRange(workspaceId, user.id, range.start, range.end);
-
-  const [{ data: memberRows }, scheduleRows, weather] = await Promise.all([
-    supabase
-      .from("workspace_member")
-      .select(
-        "id, user_id, member_type, display_name, name, avatar_color, avatar_image_url, birth_year, routine_enabled, users(avatar_color, avatar_text_color, avatar_image_url)"
-      )
-      .eq("workspace_id", workspaceId),
-    scheduleQuery,
-    getCurrentWeather(),
-  ]);
-
-  const members = mapWorkspaceMembers(memberRows ?? []);
-  const myMember = members.find((m) => m.user_id === user.id);
-
-  // 내 루틴 위젯 — 오늘 요일의 전체 블록(도넛 차트용)과 지금 이 순간의 블록(상태 텍스트용)을 함께 쓴다.
-  const { data: myRoutineRows } = await supabase
-    .from("routine")
-    .select("blocks")
-    .eq("member_id", myMember?.id ?? "")
-    .eq("day_of_week", today.getDay());
+      ? await (async () => {
+          const { data, error } = await supabase
+            .from("schedule")
+            .select("*")
+            .eq("workspace_id", workspaceId)
+            .gte("date_start", range.start)
+            .lte("date_start", range.end)
+            .or(`is_shared.eq.true,author_id.eq.${user.id}`)
+            .order("date_start", { ascending: true });
+          if (error) throw new Error(error.message);
+          return (data ?? []) as Schedule[];
+        })()
+      : await getSchedulesForRange(workspaceId, user.id, range.start, range.end);
 
   let schedules = scheduleRows;
 
@@ -127,19 +172,8 @@ export default async function SchedulePage({
     }
   }
 
-  const myBlocks = (myRoutineRows ?? []).flatMap((r) => (r.blocks as RoutineBlock[]) ?? []);
-  const myCurrentBlock = getCurrentBlock(myBlocks, today);
-
-  const membersById = Object.fromEntries(members.map((m) => [m.id, m]));
-
   return (
     <div className="flex flex-col gap-section px-4 pb-24 pt-6">
-      <RoutineTopWidget
-        blocks={myBlocks}
-        currentBlock={myCurrentBlock}
-        routineEnabled={myMember?.routine_enabled ?? true}
-      />
-
       <div className="flex flex-col gap-3">
         <ScheduleTabs anchorDate={anchorStr} view={view} />
         <EventFilters
@@ -162,6 +196,7 @@ export default async function SchedulePage({
               workspaceId={workspaceId}
               keywordMain={params.keywordMain}
               keywordSub={params.keywordSub}
+              highlightId={params.highlight}
             />
           )}
           {view === "week" && (
@@ -169,10 +204,17 @@ export default async function SchedulePage({
               weekDates={getWeekDates(anchor)}
               schedules={schedules}
               membersById={membersById}
+              workspaceId={workspaceId}
             />
           )}
           {view === "year" && (
-            <YearView anchorDate={anchorStr} schedules={schedules} membersById={membersById} />
+            <YearView
+              anchorDate={anchorStr}
+              schedules={schedules}
+              membersById={membersById}
+              keywordMain={params.keywordMain}
+              workspaceId={workspaceId}
+            />
           )}
         </div>
       </section>

@@ -9,11 +9,6 @@ import { AddPostSheet } from "@/components/home/BoardSection";
 import type { Notice } from "@/types";
 import type { WorkspaceMemberInfo } from "@/lib/members";
 
-function daysLeft(expireAt: string | null) {
-  if (!expireAt) return null;
-  return Math.ceil((new Date(expireAt).getTime() - Date.now()) / 86400000);
-}
-
 export function HomeStickySection({
   workspaceId,
   currentUserId,
@@ -27,30 +22,36 @@ export function HomeStickySection({
 }) {
   const [addingSticker, setAddingSticker] = useState(false);
 
+  const previewStickers = stickers.slice(0, 4);
+  const restCount = stickers.length - previewStickers.length;
+
   return (
     <div className="flex flex-col gap-row">
       <SectionLabel icon={<IconNote size={14} />} onAdd={() => setAddingSticker(true)} addLabel="하고싶은 말 작성">
         하고싶은 말
       </SectionLabel>
       <Link href="/board" className="flex flex-col gap-row pl-section-indent">
-        {stickers.length === 0 && (
+        {previewStickers.length === 0 && (
           <p className={`text-[12px] ${mirror.muted}`}>등록된 하고싶은 말이 없어요</p>
         )}
-        {stickers.slice(0, 3).map((s) => {
+        {previewStickers.map((s) => {
           const author = membersById[s.created_by ?? ""];
-          const left = daysLeft(s.expire_at);
           return (
-            <div key={s.id} className="flex flex-col gap-0.5">
-              <span className={`text-[10px] ${mirror.muted}`}>
-                {author?.display_name ?? "가족"}
-              </span>
-              <span className={`truncate text-[13px] ${mirror.secondary}`}>{s.content}</span>
-              {left !== null && (
-                <span className={`text-[10px] ${mirror.muted}`}>D-{Math.max(left, 0)}</span>
+            <div key={s.id} className="flex items-center gap-2">
+              {s.image_url && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={s.image_url} alt="" className="h-6 w-6 shrink-0 rounded object-cover" />
               )}
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <span className={`text-[10px] ${mirror.muted}`}>
+                  {author?.display_name ?? "가족"}
+                </span>
+                <span className={`truncate text-[13px] ${mirror.secondary}`}>{s.content}</span>
+              </div>
             </div>
           );
         })}
+        {restCount > 0 && <span className={`text-[12px] ${mirror.muted}`}>외 {restCount}개</span>}
       </Link>
 
       <AddPostSheet

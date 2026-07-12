@@ -86,6 +86,12 @@ function isSolarLeapYear(year: number) {
 // dangi 캘린더를 아예 못 만든다는 뜻(매번 다시 시도하지 않도록 결과도 캐시해둔다).
 const yearMapCache = new Map<number, Map<string, string> | null>();
 
+// 알려진 한계: 음력 11·12월은 양력으로 다음 해 1~2월까지 넘어가는 경우가 있어, 어떤
+// 양력 연도 하나에 "같은 음력 11월/12월"이 두 번(그 해 초의 전년도분 + 그 해 말의 해당분)
+// 나타날 수 있다. 지금은 map.set이 first-wins(먼저 채워진 값 유지)라 두 번째(그 해 말) 발생분이
+// 덮어써지지 않고 누락될 수 있다 — 예: 음력 11·12월에 있는 기념일의 "그 해 12월 발생분"이
+// lunarToSolarInYear(그 해, 11 또는 12, day)에서 조회되지 않을 수 있음. 필요해지면 값을
+// string[]로 바꿔 두 발생분을 모두 담고 호출부가 범위에 맞는 쪽을 고르게 확장할 것.
 function buildYearMap(solarYear: number): Map<string, string> | null {
   const cached = yearMapCache.get(solarYear);
   if (cached !== undefined) return cached;

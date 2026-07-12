@@ -10,8 +10,6 @@ import {
   IconLoader2,
   IconX,
   IconPencil,
-  IconHeart,
-  IconHeartFilled,
 } from "@tabler/icons-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Avatar } from "@/components/ui/Avatar";
@@ -22,7 +20,6 @@ import {
   addNotice,
   updateNotice,
   deleteNotice,
-  toggleNoticeLike,
   addNoticeComment,
 } from "@/app/(main)/board/actions";
 import { formatPostTimestamp } from "@/lib/date";
@@ -142,9 +139,6 @@ export function BoardSection({
     });
   };
 
-  const detailLikes = detail?.notice_like ?? [];
-  const detailLikedByMe = detailLikes.some((l) => l.user_id === currentUserId);
-
   return (
     <div className="flex flex-col gap-section">
       <section className="flex flex-col gap-label-gap">
@@ -152,7 +146,6 @@ export function BoardSection({
         <div className="pl-section-indent">
           <div className="flex gap-3 overflow-x-auto pb-1">
             {stickers.map((s) => {
-              const left = daysLeft(s.expire_at);
               const author = authorOf(s.created_by);
               return (
                 <div key={s.id} className="flex w-28 shrink-0 flex-col gap-1">
@@ -210,11 +203,6 @@ export function BoardSection({
                       }}
                     />
                   </div>
-                  {left !== null && (
-                    <span className="self-end text-[10px] text-[var(--text-muted)]">
-                      D-{Math.max(left, 0)}
-                    </span>
-                  )}
                 </div>
               );
             })}
@@ -392,24 +380,11 @@ export function BoardSection({
                     <span className="text-[11px] font-medium text-[var(--text-muted)]">
                       {authorOf(detail.created_by)?.display_name ?? "가족"}
                     </span>
-                    <button
-                      onClick={() =>
-                        startTransition(() => toggleNoticeLike(detail.id, !detailLikedByMe))
-                      }
-                      aria-label="좋아요"
-                      className="flex items-center gap-1"
-                    >
-                      {detailLikedByMe ? (
-                        <IconHeartFilled size={18} className="text-rose" />
-                      ) : (
-                        <IconHeart size={18} className="text-[var(--text-muted)]" />
-                      )}
-                      {detailLikes.length > 0 && (
-                        <span className="text-[11px] text-[var(--text-muted)]">
-                          {detailLikes.length}
-                        </span>
-                      )}
-                    </button>
+                    {daysLeft(detail.expire_at) !== null && (
+                      <span className="text-[11px] text-[var(--text-muted)]">
+                        D-{Math.max(daysLeft(detail.expire_at)!, 0)}
+                      </span>
+                    )}
                   </div>
                 ) : (
                   <div className="flex items-center justify-end gap-1.5 text-[11px] text-[var(--text-muted)]">

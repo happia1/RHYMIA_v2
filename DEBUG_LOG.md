@@ -142,6 +142,16 @@
 - 관련 파일: `src/components/settings/AvatarUploader.tsx`
 - 상태: 해결됨. 앞으로 Storage에 사용자 파일을 올릴 때는 원본 파일명을 키에 그대로 쓰지 말고, 항상 안전하게 생성한 이름(또는 화이트리스트로 정제한 이름)을 사용할 것
 
+## 2026-07-12
+
+### 이슈: 홈 화면 "하고싶은 말" 미리보기에 스티커 이미지가 안 보임
+- 증상: 게시판 탭(`/board`)에서는 스티커에 첨부한 사진이 정상적으로 보이는데, 홈 화면 미리보기에서는 같은 스티커인데도 사진이 아예 안 보이고 텍스트만 나옴
+- 진단 과정: 홈(`home/page.tsx`)과 게시판(`board/page.tsx`)의 `notice` 조회 쿼리를 비교 — 둘 다 `select("*")`로 `image_url` 컬럼을 동일하게 가져오고 있어 조회 단계 문제가 아님을 확인
+- 원인: 쿼리가 아니라 렌더 쪽 — `HomeStickySection.tsx`에는 애초에 `<img>` 엘리먼트 자체가 없었음(작성자명/본문/D-day만 렌더). `BoardSection.tsx`의 게시판 탭 카드에는 `image_url` 조건부 `<img>`가 있어서 그쪽만 정상 동작했던 것
+- 해결: `HomeStickySection.tsx`에 `s.image_url` 있을 때 24px 썸네일을 렌더하도록 추가
+- 관련 파일: `src/components/home/HomeStickySection.tsx`
+- 상태: 해결됨
+
 ---
 
 ### 기록 규칙

@@ -1,7 +1,11 @@
+"use client";
+
+import { useState } from "react";
 import { IconPaperclip } from "@tabler/icons-react";
 import { getHoliday } from "@/lib/holidays";
 import { targetLabel, type MemberInfo } from "@/lib/scheduleTargets";
-import type { Schedule } from "@/types";
+import { AddEventSheet } from "@/components/schedule/AddEventSheet";
+import type { ExpandedSchedule } from "@/lib/recurrence";
 
 const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
 
@@ -9,12 +13,16 @@ export function WeekView({
   weekDates,
   schedules,
   membersById,
+  workspaceId,
 }: {
   weekDates: string[];
-  schedules: Schedule[];
+  schedules: ExpandedSchedule[];
   membersById: Record<string, MemberInfo>;
+  workspaceId: string;
 }) {
-  const byDate: Record<string, Schedule[]> = {};
+  const [editingSchedule, setEditingSchedule] = useState<ExpandedSchedule | null>(null);
+
+  const byDate: Record<string, ExpandedSchedule[]> = {};
   for (const date of weekDates) byDate[date] = [];
   for (const s of schedules) {
     if (byDate[s.date_start]) byDate[s.date_start].push(s);
@@ -44,7 +52,11 @@ export function WeekView({
             ) : (
               <div className="flex flex-col gap-row pl-section-indent">
                 {daySchedules.map((s) => (
-                  <div key={s.id} className="flex items-center gap-3">
+                  <button
+                    key={s.id}
+                    onClick={() => setEditingSchedule(s)}
+                    className="flex items-center gap-3 text-left"
+                  >
                     <span
                       className="w-12 shrink-0 text-[13px] text-honey"
                       style={{ fontVariantNumeric: "tabular-nums" }}
@@ -64,13 +76,22 @@ export function WeekView({
                     <span className="ml-auto shrink-0 text-[11px] text-[var(--text-muted)]">
                       {targetLabel(s.target_members, membersById)}
                     </span>
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
           </div>
         );
       })}
+
+      <AddEventSheet
+        open={!!editingSchedule}
+        onClose={() => setEditingSchedule(null)}
+        workspaceId={workspaceId}
+        members={Object.entries(membersById).map(([id, m]) => ({ id, display_name: m.display_name }))}
+        defaultDate={editingSchedule?.date_start ?? weekDates[0]}
+        existingSchedule={editingSchedule}
+      />
     </div>
   );
 }

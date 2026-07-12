@@ -104,7 +104,7 @@ function ShoppingItemRow({
         {item.is_purchased && <IconCheck size={SHOPPING_DOT_SIZE * 0.6} stroke={2.5} />}
       </span>
       <span
-        className={`min-w-0 flex-1 truncate text-[14px] ${
+        className={`min-w-0 flex-1 truncate text-[15px] ${
           item.is_purchased ? "text-[var(--text-muted)] line-through" : "text-ink"
         }`}
       >
@@ -246,15 +246,15 @@ export function GlobalShoppingSheet({
   };
 
   return (
-    <BottomSheet open={open} onClose={onClose}>
+    <BottomSheet open={open} onClose={onClose} tall>
       <div className="flex flex-col gap-4">
-        <div className="flex gap-2">
+        <div className="flex gap-4 border-b border-border-light">
           {(["list", "history"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`rounded-full px-3 py-1.5 text-[13px] font-medium ${
-                tab === t ? "bg-ink text-cream" : "bg-cream text-stone"
+              className={`border-b-2 pb-2 text-[13px] font-medium ${
+                tab === t ? "border-honey text-ink" : "border-transparent text-[var(--text-muted)]"
               }`}
             >
               {t === "list" ? "장볼 것" : "기록"}
@@ -266,11 +266,12 @@ export function GlobalShoppingSheet({
           <>
             <div className="flex items-center gap-2">
               <Input
+                variant="underline"
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleAdd()}
                 placeholder="살 것을 입력하세요"
-                className="h-11 flex-1 rounded-xl px-3 text-[14px]"
+                className="h-11 flex-1 px-0 text-[15px]"
               />
               {speechSupported && (
                 <button
@@ -321,18 +322,20 @@ export function GlobalShoppingSheet({
                   <span className={LABEL_CLASS}>어디서, 얼마 냈나요</span>
                   <div className="flex gap-3">
                     <Input
+                      variant="underline"
                       value={place}
                       onChange={(e) => setPlace(e.target.value)}
                       placeholder="구매처 (예: 트레이더스)"
-                      className="h-10 flex-1 rounded-xl px-3 text-[13px]"
+                      className="h-10 flex-1 px-0 text-[13px]"
                     />
                     <Input
+                      variant="underline"
                       type="number"
                       inputMode="numeric"
                       value={amount}
                       onChange={(e) => setAmount(e.target.value)}
                       placeholder="금액"
-                      className="h-10 w-24 rounded-xl px-3 text-[13px]"
+                      className="h-10 w-24 px-0 text-[13px]"
                     />
                   </div>
                   <div className="flex gap-2">
@@ -526,13 +529,14 @@ function GroceryHistoryTab({ workspaceId }: { workspaceId: string }) {
       </div>
 
       <Input
+        variant="underline"
         value={query}
         onChange={(e) => {
           setQuery(e.target.value);
           setSelectedDay(null);
         }}
         placeholder="품목·구매처 검색"
-        className="h-10 rounded-xl px-3 text-[13px]"
+        className="h-10 px-0 text-[13px]"
       />
 
       {loadError && <p className="text-[12px] text-terra">{loadError}</p>}

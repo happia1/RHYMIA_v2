@@ -6,10 +6,13 @@ export function BottomSheet({
   open,
   onClose,
   children,
+  tall = false,
 }: {
   open: boolean;
   onClose: () => void;
   children: React.ReactNode;
+  /** 장보기 시트처럼 더 높은 높이가 필요할 때 — 92dvh (기본 85vh) */
+  tall?: boolean;
 }) {
   const [mounted, setMounted] = useState(open);
 
@@ -32,9 +35,9 @@ export function BottomSheet({
       <div className="absolute inset-0 bg-black/30" />
       <div
         onClick={(e) => e.stopPropagation()}
-        className={`relative z-10 flex max-h-[85vh] w-full flex-col overflow-y-auto rounded-t-3xl bg-surface p-6 transition-transform duration-200 ${
-          open ? "translate-y-0" : "translate-y-full"
-        }`}
+        className={`relative z-10 flex w-full flex-col overflow-y-auto rounded-t-3xl bg-surface p-6 transition-transform duration-200 ${
+          tall ? "max-h-[92dvh]" : "max-h-[85vh]"
+        } ${open ? "translate-y-0" : "translate-y-full"}`}
       >
         <div className="mx-auto mb-4 h-1 w-9 shrink-0 rounded-full bg-[#E8E6E0]" />
         {children}

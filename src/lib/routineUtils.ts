@@ -38,8 +38,14 @@ export function getCurrentBlock(
   return (
     blocks.find((block) => {
       const start = toMinutes(block.start);
-      const end = toMinutes(block.end);
-      return nowMinutes >= start && nowMinutes < end;
+      let end = toMinutes(block.end);
+      if (end <= start) end += 24 * 60; // 자정을 넘기는 블록(예: 21:00~07:30, "잠")
+      // 자정 넘김 블록은 "지금"이 자정 이후 이른 새벽일 때도 걸려야 하므로 하루를 더한
+      // nowMinutes로도 함께 확인한다(예: 새벽 3시=180분이 전날 21시~다음날 7시반 블록에 속하는지).
+      return (
+        (nowMinutes >= start && nowMinutes < end) ||
+        (nowMinutes + 24 * 60 >= start && nowMinutes + 24 * 60 < end)
+      );
     }) ?? null
   );
 }

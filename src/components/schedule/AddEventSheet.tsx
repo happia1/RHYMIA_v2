@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { useToast } from "@/components/ui/Toast";
 import { Input, Textarea } from "@/components/ui/Input";
 import { PlaceInput } from "@/components/schedule/PlaceInput";
-import { createSchedule } from "@/app/(main)/schedule/actions";
+import { createSchedule, updateSchedule, deleteSchedule } from "@/app/(main)/schedule/actions";
 import { KEYWORD_GROUPS } from "@/lib/scheduleKeywords";
+import type { ExpandedSchedule } from "@/lib/recurrence";
 import type { NotifyOffset, RecurType, RecurCalendar } from "@/types";
 
 interface MemberOption {
@@ -27,23 +28,29 @@ const RECUR_OPTIONS: { value: RecurType; label: string }[] = [
   { value: "yearly", label: "매년" },
 ];
 
-/** 신규 등록 전용(수정 모드 없음) — 반복 일정 편집 화면은 다음 작업에서 구현 예정.
- * 그때는: 가상 인스턴스(originalId/isVirtual, src/lib/recurrence.ts)를 열면 "원본을
- * 수정합니다" 안내를 보여주고 저장/삭제 모두 originalId로 라우팅해야 함. "이번 회만
- * 수정"(단일 인스턴스 예외 처리)은 P2로 미룸 — recur_until로 원본을 끊고 새 반복을
- * 만드는 우회로만 우선 지원. */
+/** "이번 회만 수정"(단일 인스턴스 예외 처리)은 P2로 미룸 — recur_until로 원본을 끊고
+ * 새 반복을 만드는 우회로만 우선 지원. */
 export function AddEventSheet({
   open,
   onClose,
   workspaceId,
   members,
   defaultDate,
+  prefill,
+  existingSchedule,
 }: {
   open: boolean;
   onClose: () => void;
   workspaceId: string;
   members: MemberOption[];
   defaultDate: string;
+  /** "작년 이맘때" 등에서 제목/키워드만 미리 채우고 싶을 때 — 날짜는 defaultDate를 그대로
+   * 쓰므로, 날짜를 비워두고 싶으면 호출부가 defaultDate 자체를 ""로 넘기면 된다. */
+  prefill?: { title: string; keywordMain: string | null; keywordSub: string | null } | null;
+  /** 지정하면 수정 모드로 열림 — 기존 값을 프리필하고 저장 시 createSchedule 대신
+   * updateSchedule을 호출한다. 가상 인스턴스(isVirtual)면 originalId로 저장/삭제하고
+   * "반복 일정의 원본을 수정합니다" 안내를 보여준다. */
+  existingSchedule?: ExpandedSchedule | null;
 }) {
   const { showToast } = useToast();
   const [title, setTitle] = useState("");
@@ -69,6 +76,10 @@ export function AddEventSheet({
   const [recurType, setRecurType] = useState<RecurType>("none");
   const [recurCalendar, setRecurCalendar] = useState<RecurCalendar>("solar");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+
+  // 가상 인스턴스를 열면 실제로는 원본(originalId)을 수정/삭제해야 한다.
+  const targetId = existingSchedule ? existingSchedule.originalId ?? existingSchedule.id : null;
 
   const activeGroup = KEYWORD_GROUPS.find((g) => g.main === keywordMain);
 
@@ -78,8 +89,12 @@ export function AddEventSheet({
     );
   };
 
-  const reset = () => {
-    setTitle("");
+  const reset = (
+    initialTitle = "",
+    initialKeywordMain: string | null = null,
+    initialKeywordSub: string | null = null
+  ) => {
+    setTitle(initialTitle);
     setDateStart(defaultDate);
     setIsRange(false);
     setDateEnd(defaultDate);
@@ -88,8 +103,8 @@ export function AddEventSheet({
     setTimeEnd("");
     setTargets([]);
     setIsShared(true);
-    setKeywordMain(null);
-    setKeywordSub(null);
+    setKeywordMain(initialKeywordMain);
+    setKeywordSub(initialKeywordSub);
     setMemo("");
     setIsImportant(false);
     setPlace("");
@@ -103,10 +118,45 @@ export function AddEventSheet({
     setRecurCalendar("solar");
   };
 
+  // 시트가 열릴 때마다 필드를 다시 채운다 — existingSchedule이 있으면 수정 모드로 전체
+  // 필드를 프리필하고, 없으면 prefill(예: "작년 이맘때")로 제목/키워드만, 그것도 없으면
+  // 빈 상태로. 시트가 상시 마운트된 채 open만 토글되는 구조라 필요.
+  useEffect(() => {
+    if (!open) return;
+    setDeleteConfirmOpen(false);
+    if (existingSchedule) {
+      setTitle(existingSchedule.title);
+      setDateStart(existingSchedule.date_start);
+      setIsRange(Boolean(existingSchedule.date_end && existingSchedule.date_end !== existingSchedule.date_start));
+      setDateEnd(existingSchedule.date_end ?? existingSchedule.date_start);
+      setIsAllDay(existingSchedule.is_all_day);
+      setTimeStart(existingSchedule.time_start ?? "");
+      setTimeEnd(existingSchedule.time_end ?? "");
+      setTargets(existingSchedule.target_members);
+      setIsShared(existingSchedule.is_shared);
+      setKeywordMain(existingSchedule.keyword_main);
+      setKeywordSub(existingSchedule.keyword_sub);
+      setMemo(existingSchedule.memo ?? "");
+      setIsImportant(existingSchedule.is_important);
+      setPlace(existingSchedule.place ?? "");
+      setImageUrl(existingSchedule.image_url ?? "");
+      setIsGrocery(existingSchedule.is_grocery);
+      setAmount(existingSchedule.amount != null ? String(existingSchedule.amount) : "");
+      setReceiptUrl(existingSchedule.receipt_image_url ?? "");
+      setNotifyOffset(existingSchedule.notify_offset);
+      setNotifyCustomAt(existingSchedule.notify_custom_at ?? "");
+      setRecurType(existingSchedule.recur_type);
+      setRecurCalendar(existingSchedule.recur_calendar);
+    } else {
+      reset(prefill?.title ?? "", prefill?.keywordMain ?? null, prefill?.keywordSub ?? null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, existingSchedule]);
+
   const handleSubmit = async () => {
     if (!title.trim()) return;
     setIsSubmitting(true);
-    const result = await createSchedule(workspaceId, {
+    const input = {
       title,
       date_start: dateStart,
       date_end: isRange ? dateEnd : null,
@@ -127,21 +177,47 @@ export function AddEventSheet({
       notify_offset: notifyOffset,
       notify_custom_at: notifyOffset === "custom" ? notifyCustomAt || null : null,
       recur_type: recurType,
-      recur_calendar: recurType === "yearly" ? recurCalendar : "solar",
-    });
+      recur_calendar: recurType === "yearly" ? recurCalendar : ("solar" as RecurCalendar),
+    };
+    const result = targetId
+      ? await updateSchedule(targetId, input)
+      : await createSchedule(workspaceId, input);
     setIsSubmitting(false);
 
     if (result.ok) {
-      showToast("일정이 등록되었습니다.");
+      showToast(targetId ? "일정이 수정되었습니다." : "일정이 등록되었습니다.");
       reset();
       onClose();
+    } else {
+      showToast((result as { message?: string }).message ?? "일정 처리에 실패했습니다.");
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!targetId) return;
+    setIsSubmitting(true);
+    const result = await deleteSchedule(targetId);
+    setIsSubmitting(false);
+    if (result.ok) {
+      showToast("일정이 삭제되었습니다.");
+      onClose();
+    } else {
+      showToast(result.message);
     }
   };
 
   return (
     <BottomSheet open={open} onClose={onClose}>
       <div className="flex flex-col gap-4">
-        <h2 className="text-[17px] font-medium text-ink">일정 등록</h2>
+        <h2 className="text-[17px] font-medium text-ink">
+          {existingSchedule ? "일정 수정" : "일정 등록"}
+        </h2>
+
+        {existingSchedule?.isVirtual && (
+          <p className="rounded-xl bg-cream px-3 py-2.5 text-[12px] text-stone">
+            반복 일정의 원본을 수정합니다.
+          </p>
+        )}
 
         <Input
           value={title}
@@ -401,13 +477,45 @@ export function AddEventSheet({
           </div>
         )}
 
-        <button
-          onClick={handleSubmit}
-          disabled={isSubmitting}
-          className="flex h-12 items-center justify-center rounded-2xl bg-ink text-[15px] font-medium text-cream"
-        >
-          등록하기
-        </button>
+        {deleteConfirmOpen ? (
+          <div className="flex flex-col gap-2">
+            <p className="text-[13px] text-ink">정말 삭제하시겠어요?</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setDeleteConfirmOpen(false)}
+                className="flex-1 rounded-2xl bg-cream py-3 text-[14px] font-medium text-stone"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={isSubmitting}
+                className="flex flex-1 items-center justify-center rounded-2xl bg-terra py-3 text-[14px] font-medium text-white disabled:opacity-50"
+              >
+                삭제하기
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            {existingSchedule && (
+              <button
+                onClick={() => setDeleteConfirmOpen(true)}
+                disabled={isSubmitting}
+                className="flex h-12 items-center justify-center rounded-2xl bg-cream px-5 text-[15px] font-medium text-terra"
+              >
+                삭제
+              </button>
+            )}
+            <button
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              className="flex h-12 flex-1 items-center justify-center rounded-2xl bg-ink text-[15px] font-medium text-cream"
+            >
+              {existingSchedule ? "저장하기" : "등록하기"}
+            </button>
+          </div>
+        )}
       </div>
     </BottomSheet>
   );

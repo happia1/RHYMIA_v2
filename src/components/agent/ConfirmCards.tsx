@@ -643,10 +643,10 @@ export function ConfirmCards({
 
               {card.status === "registered" && (
                 <Link
-                  href="/schedule/routine"
+                  href="/schedule?view=day"
                   className="self-start text-[11px] font-medium text-honey underline underline-offset-2"
                 >
-                  내 루틴 화면에서 보기
+                  하루 화면에서 보기
                 </Link>
               )}
 

@@ -34,7 +34,9 @@ function parseDateStr(dateStr: string): Date {
   return new Date(`${dateStr}T00:00:00.000Z`);
 }
 
-function addDaysToDateStr(dateStr: string, days: number): string {
+/** schedule/actions.ts의 getSchedulesForRange도 재사용 — 기간 일정이 범위 이전에 시작해
+ * 이어지는 경우를 보정할 때 rangeStart를 이만큼 앞당기는 용도로 함께 쓴다. */
+export function addDaysToDateStr(dateStr: string, days: number): string {
   const d = parseDateStr(dateStr);
   d.setUTCDate(d.getUTCDate() + days);
   return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;

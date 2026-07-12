@@ -23,7 +23,11 @@ export function TodayEvents({
       {todaySchedules.length > 0 && (
         <div className="flex flex-col gap-row">
           {visible.map((s) => (
-            <div key={s.id} className="flex items-center gap-2">
+            <Link
+              key={s.id}
+              href={`/schedule?view=month&date=${s.date_start}&highlight=${s.id}`}
+              className="flex items-center gap-2"
+            >
               <span
                 className={`min-w-0 flex-1 truncate text-[14px] ${
                   s.is_important ? "font-medium" : ""
@@ -41,7 +45,7 @@ export function TodayEvents({
               <span className={`shrink-0 text-[11px] ${mirror.muted}`}>
                 {targetLabel(s.target_members, membersById)}
               </span>
-            </div>
+            </Link>
           ))}
         </div>
       )}

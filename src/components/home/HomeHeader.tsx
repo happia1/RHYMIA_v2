@@ -57,17 +57,22 @@ export function HomeHeader({
       </div>
 
       <div className="flex items-start justify-between gap-4">
-        {/* 왼쪽: 날씨 — 구글 스마트 디스플레이 스타일 대칭 배치 */}
+        {/* 왼쪽: 날씨 — 위치 → 기온+아이콘 → 최저/최고 순 배치 */}
         <div className="flex min-w-0 flex-col gap-1">
+          <span className={`truncate text-[10px] ${mirror.muted}`}>
+            {weather ? `${weather.location} · ${weather.description}` : "서울"}
+          </span>
           <div className="flex items-baseline gap-1.5">
             <span className={`text-[40px] font-light leading-none ${mirror.primary}`}>
               {weather ? `${weather.tempC}°` : "-°"}
             </span>
             {weather && <span className="text-[26px] leading-none">{weather.icon}</span>}
           </div>
-          <span className={`truncate text-[12px] ${mirror.secondary}`}>
-            {weather ? `${weather.description} · 서울` : "서울"}
-          </span>
+          {weather && weather.tempMinC !== null && weather.tempMaxC !== null && (
+            <span className={`text-[10px] ${mirror.muted}`}>
+              최저 {weather.tempMinC}° · 최고 {weather.tempMaxC}°
+            </span>
+          )}
         </div>
 
         {/* 오른쪽: 시간 — 오른쪽 정렬, PM/AM이 시간 앞에 작게 */}
@@ -84,7 +89,11 @@ export function HomeHeader({
 
       <div className="flex items-center gap-4 overflow-x-auto">
         {familyStatus.map((m) => (
-          <div key={m.id} className="flex shrink-0 items-center gap-1.5">
+          <Link
+            key={m.id}
+            href={`/schedule?view=day&member=${m.id}`}
+            className="flex shrink-0 items-center gap-1.5"
+          >
             <Avatar
               name={m.display_name}
               color={m.avatar_color}
@@ -95,7 +104,7 @@ export function HomeHeader({
             <span className={`whitespace-nowrap text-[12px] ${mirror.secondary}`}>
               {m.display_name} {m.statusText}
             </span>
-          </div>
+          </Link>
         ))}
       </div>
     </div>
