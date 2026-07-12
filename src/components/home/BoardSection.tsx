@@ -10,11 +10,13 @@ import {
   IconLoader2,
   IconX,
   IconPencil,
+  IconPin,
 } from "@tabler/icons-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Avatar } from "@/components/ui/Avatar";
 import { Input, Textarea } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
+import { SectionExpand } from "@/components/ui/SectionExpand";
 import { SectionLabel } from "@/components/home/SectionLabel";
 import {
   addNotice,
@@ -71,7 +73,6 @@ export function BoardSection({
   const [addingSticky, setAddingSticky] = useState(false);
   const [addingPost, setAddingPost] = useState(false);
   const [editingNotice, setEditingNotice] = useState<Notice | null>(null);
-  const [postsExpanded, setPostsExpanded] = useState(false);
   const [commentDraft, setCommentDraft] = useState("");
   const [isEditingDetail, setIsEditingDetail] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -80,19 +81,48 @@ export function BoardSection({
   const [isPending, startTransition] = useTransition();
 
   const stickers = notices.filter((n) => n.type === "sticky");
-  // 고정(is_pinned)이 최우선, 그다음 공지가 항상 일반 메모보다 위 — 둘 다 같으면
-  // notices 원래 순서(작성일 최신순)를 그대로 유지한다(정렬 안정성에 의존).
+  // 고정(is_pinned)이 최우선 — 같으면 notices 원래 순서(작성일 최신순)를 그대로 유지한다
+  // (정렬 안정성에 의존). 공지(notice) 타입은 폐지되어 메모로 통합됨(supabase/merge_notice_into_memo.sql).
   const posts = notices
     .filter((n) => n.type !== "sticky")
-    .sort((a, b) => {
-      if (a.is_pinned !== b.is_pinned) return Number(b.is_pinned) - Number(a.is_pinned);
-      if (a.type !== b.type) return a.type === "notice" ? -1 : 1;
-      return 0;
-    });
-  const visiblePosts = postsExpanded ? posts : posts.slice(0, POSTS_PREVIEW_COUNT);
+    .sort((a, b) => Number(b.is_pinned) - Number(a.is_pinned));
 
   const authorOf = (userId: string | null) =>
     (userId && membersById[userId]) || null;
+
+  const renderPost = (n: Notice, i: number) => (
+    <div
+      key={n.id}
+      onClick={() => setDetail(n)}
+      className={`flex cursor-pointer flex-col gap-1 py-3 text-left ${
+        i > 0 ? "border-t border-border-light" : ""
+      }`}
+    >
+      {n.is_pinned && (
+        <div className="flex items-center gap-1 text-[10px] font-medium text-honey">
+          <IconPin size={11} />
+          고정
+        </div>
+      )}
+      {n.title && <span className="truncate text-[13px] font-medium text-ink">{n.title}</span>}
+      <p className="truncate text-[12px] text-[var(--text-muted)]">{n.content}</p>
+      <div className="flex items-center justify-end gap-1.5 text-[11px] text-[var(--text-muted)]">
+        <span className="font-medium">{authorOf(n.created_by)?.display_name ?? "가족"}</span>
+        <span>· {formatPostTimestamp(n.created_at)}</span>
+        {n.created_by === currentUserId && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setEditingNotice(n);
+            }}
+            aria-label="수정"
+          >
+            <IconPencil size={13} className="text-[var(--text-muted)]" />
+          </button>
+        )}
+      </div>
+    </div>
+  );
 
   // 상세 시트를 열 때마다(대상이 바뀔 때 포함) 수정/삭제 확인 상태를 초기화한다.
   useEffect(() => {
@@ -144,7 +174,7 @@ export function BoardSection({
       <section className="flex flex-col gap-label-gap">
         <SectionLabel icon={<IconNote size={14} />}>하고싶은 말</SectionLabel>
         <div className="pl-section-indent">
-          <div className="flex gap-3 overflow-x-auto pb-1">
+          <div className="scrollbar-hide flex gap-3 overflow-x-auto pb-1">
             {stickers.map((s) => {
               const author = authorOf(s.created_by);
               return (
@@ -223,56 +253,15 @@ export function BoardSection({
         <SectionLabel
           icon={<IconMessage2 size={14} />}
           onAdd={() => setAddingPost(true)}
-          addLabel="메모/공지 작성"
+          addLabel="메모 작성"
         >
-          메모 · 공지
+          메모
         </SectionLabel>
         <div className="flex flex-col pl-section-indent">
           {posts.length === 0 && (
             <p className="text-[13px] text-[var(--text-muted)]">등록된 글이 없어요</p>
           )}
-          {visiblePosts.map((n, i) => {
-            const author = authorOf(n.created_by);
-            return (
-              <div
-                key={n.id}
-                onClick={() => setDetail(n)}
-                className={`flex cursor-pointer flex-col gap-1 py-3 text-left ${
-                  i > 0 ? "border-t border-border-light" : ""
-                }`}
-              >
-                {n.title && (
-                  <span className="truncate text-[13px] font-medium text-ink">
-                    {n.type === "notice" ? `📌 ${n.title}` : n.title}
-                  </span>
-                )}
-                <p className="truncate text-[12px] text-[var(--text-muted)]">{n.content}</p>
-                <div className="flex items-center justify-end gap-1.5 text-[11px] text-[var(--text-muted)]">
-                  <span className="font-medium">{author?.display_name ?? "가족"}</span>
-                  <span>· {formatPostTimestamp(n.created_at)}</span>
-                  {n.created_by === currentUserId && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setEditingNotice(n);
-                      }}
-                      aria-label="수정"
-                    >
-                      <IconPencil size={13} className="text-[var(--text-muted)]" />
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-          {posts.length > POSTS_PREVIEW_COUNT && (
-            <button
-              onClick={() => setPostsExpanded((v) => !v)}
-              className="self-end text-[11px] text-[var(--text-muted)]"
-            >
-              {postsExpanded ? "접기" : "더보기"}
-            </button>
-          )}
+          <SectionExpand items={posts} previewCount={POSTS_PREVIEW_COUNT} title="메모" renderItem={renderPost} />
         </div>
       </section>
 
@@ -354,10 +343,14 @@ export function BoardSection({
               </>
             ) : (
               <>
+                {detail.type !== "sticky" && detail.is_pinned && (
+                  <div className="flex items-center gap-1 text-[10px] font-medium text-honey">
+                    <IconPin size={12} />
+                    고정
+                  </div>
+                )}
                 {detail.title && (
-                  <h2 className="text-[17px] font-medium text-ink">
-                    {detail.type === "notice" ? `📌 ${detail.title}` : detail.title}
-                  </h2>
+                  <h2 className="text-[17px] font-medium text-ink">{detail.title}</h2>
                 )}
                 {detail.image_url && (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -632,27 +625,6 @@ export function AddPostSheet({
   return (
     <BottomSheet open={open} onClose={onClose}>
       <div className="flex flex-col gap-4">
-        {!fixedType && type !== "sticky" && (
-          <div className="flex gap-2">
-            {(
-              [
-                ["memo", "메모"],
-                ["notice", "공지"],
-              ] as [NoticeType, string][]
-            ).map(([value, label]) => (
-              <button
-                key={value}
-                onClick={() => setType(value)}
-                className={`rounded-full px-3 py-1.5 text-[13px] font-medium ${
-                  type === value ? "bg-ink text-cream" : "bg-cream text-stone"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        )}
-
         {type === "sticky" ? (
           <>
             <div className="flex gap-2">

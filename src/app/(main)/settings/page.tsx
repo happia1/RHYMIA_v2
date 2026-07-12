@@ -79,7 +79,7 @@ export default async function SettingsPage() {
           읽기 전용 링크예요. 돌봄자·조부모에게 전달해보세요.
         </p>
         <p className={mirror.label}>
-          링크가 있는 누구나 오늘 식탁, 공유 일정, 고정 공지를 볼 수 있어요
+          링크가 있는 누구나 오늘 식탁, 공유 일정, 고정 메모를 볼 수 있어요
         </p>
         <ShareLinkSection
           workspaceId={workspaceId}

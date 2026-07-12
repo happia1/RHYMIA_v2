@@ -2,14 +2,16 @@ import Link from "next/link";
 import { IconPlus } from "@tabler/icons-react";
 import { requireWorkspaceContext } from "@/lib/workspace";
 import { getWeekDates, toDateStr } from "@/lib/date";
-import { getFrequentMenus, WEEKEND_ACTIVITY_POOL } from "@/lib/mealUtils";
-import { pickDeterministic } from "@/lib/randomPick";
+import { getFrequentMenus } from "@/lib/mealUtils";
 import { mapWorkspaceMembers } from "@/lib/members";
+import { getMealTrackingDayCount } from "@/app/(main)/food/actions";
 import { WeekCalendar } from "@/components/food/WeekCalendar";
-import { MealCard, type MealCardParticipant } from "@/components/food/MealCard";
 import { MealEmptyState } from "@/components/food/MealEmptyState";
 import { MealVoteCard } from "@/components/food/MealVoteCard";
 import { SuggestionSection } from "@/components/food/SuggestionSection";
+import { FoodTabActions } from "@/components/food/FoodTabActions";
+import { MealListSection, type MealRow } from "@/components/food/MealListSection";
+import type { FridgeItem } from "@/types";
 
 export default async function FoodPage({
   searchParams,
@@ -22,40 +24,53 @@ export default async function FoodPage({
   const selectedDate = date ?? toDateStr(new Date());
   const weekDates = getWeekDates(new Date(selectedDate));
 
-  const [{ data: memberRows }, { data: weekMeals }, { data: dayMeals }, { data: mealHistory }, { data: voteRows }] =
-    await Promise.all([
-      supabase
-        .from("workspace_member")
-        .select(
-          "id, user_id, member_type, display_name, name, avatar_color, avatar_image_url, birth_year, users(avatar_color, avatar_text_color, avatar_image_url)"
-        )
-        .eq("workspace_id", workspaceId),
-      supabase
-        .from("meal")
-        .select("date")
-        .eq("workspace_id", workspaceId)
-        .gte("date", weekDates[0])
-        .lte("date", weekDates[6]),
-      supabase
-        .from("meal")
-        .select("*, meal_participation(user_id, status), meal_like(user_id)")
-        .eq("workspace_id", workspaceId)
-        .eq("date", selectedDate)
-        .order("created_at", { ascending: true }),
-      supabase
-        .from("meal")
-        .select("main_menu, date")
-        .eq("workspace_id", workspaceId)
-        .order("date", { ascending: false })
-        .limit(200),
-      supabase
-        .from("meal_vote")
-        .select("*, meal_vote_ballot(*)")
-        .eq("workspace_id", workspaceId)
-        .eq("date", selectedDate)
-        .order("created_at", { ascending: false })
-        .limit(1),
-    ]);
+  const [
+    { data: memberRows },
+    { data: weekMeals },
+    { data: dayMeals },
+    { data: mealHistory },
+    { data: voteRows },
+    { data: fridgeItems },
+    trackingDays,
+  ] = await Promise.all([
+    supabase
+      .from("workspace_member")
+      .select(
+        "id, user_id, member_type, display_name, name, avatar_color, avatar_image_url, birth_year, users(avatar_color, avatar_text_color, avatar_image_url)"
+      )
+      .eq("workspace_id", workspaceId),
+    supabase
+      .from("meal")
+      .select("date")
+      .eq("workspace_id", workspaceId)
+      .gte("date", weekDates[0])
+      .lte("date", weekDates[6]),
+    supabase
+      .from("meal")
+      .select("*, meal_participation(user_id, status)")
+      .eq("workspace_id", workspaceId)
+      .eq("date", selectedDate)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("meal")
+      .select("main_menu, date")
+      .eq("workspace_id", workspaceId)
+      .order("date", { ascending: false })
+      .limit(200),
+    supabase
+      .from("meal_vote")
+      .select("*, meal_vote_ballot(*)")
+      .eq("workspace_id", workspaceId)
+      .eq("date", selectedDate)
+      .order("created_at", { ascending: false })
+      .limit(1),
+    supabase
+      .from("fridge_item")
+      .select("*")
+      .eq("workspace_id", workspaceId)
+      .order("created_at", { ascending: false }),
+    getMealTrackingDayCount(workspaceId),
+  ]);
 
   const members = mapWorkspaceMembers(memberRows ?? []);
 
@@ -64,73 +79,49 @@ export default async function FoodPage({
   const todayVote = voteRows?.[0] ?? null;
   // 진행 중인 투표가 있으면 같은 날짜에 새 투표를 또 만들 수 없게 막는 용도 (결과 카드는 마감 여부와 무관하게 표시)
   const blockingVote = todayVote && !todayVote.is_closed ? todayVote : null;
-  const weekendSuggestion = pickDeterministic(WEEKEND_ACTIVITY_POOL, selectedDate);
 
   return (
-    <div className="flex flex-col gap-4 px-4 pb-6 pt-6">
-      <WeekCalendar
-        weekDates={weekDates}
-        selectedDate={selectedDate}
-        datesWithMeals={datesWithMeals}
-      />
+    <div className="flex h-[calc(100dvh-64px)] flex-col gap-4 overflow-hidden px-4 pt-6">
+      <div className="shrink-0">
+        <WeekCalendar
+          weekDates={weekDates}
+          selectedDate={selectedDate}
+          datesWithMeals={datesWithMeals}
+        />
+      </div>
 
-      {todayVote && (
-        <MealVoteCard vote={todayVote} workspaceId={workspaceId} currentUserId={user.id} />
-      )}
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pb-6">
+        {todayVote && (
+          <MealVoteCard vote={todayVote} workspaceId={workspaceId} currentUserId={user.id} />
+        )}
 
-      <div className="flex flex-col divide-y divide-border-light">
-        {(dayMeals ?? []).length === 0 && (
+        {(dayMeals ?? []).length === 0 ? (
           <MealEmptyState
             workspaceId={workspaceId}
             selectedDate={selectedDate}
             frequentMenus={frequentMenus}
             activeVote={blockingVote}
           />
+        ) : (
+          <MealListSection
+            meals={(dayMeals ?? []) as MealRow[]}
+            members={members}
+            currentUserId={user.id}
+          />
         )}
-        {(dayMeals ?? []).map((meal) => {
-          const participation = (
-            meal.meal_participation as { user_id: string; status: boolean | null }[]
-          ) ?? [];
-          const likes = (meal.meal_like as { user_id: string }[]) ?? [];
 
-          const participants: MealCardParticipant[] = participation
-            .filter((p) => p.status === true)
-            .map((p) => {
-              const m = members.find((mm) => mm.user_id === p.user_id);
-              return {
-                user_id: p.user_id,
-                display_name: m?.display_name ?? "가족",
-                avatar_color: m?.avatar_color ?? "#E1F5EE",
-                avatar_text_color: m?.avatar_text_color ?? "#0F6E56",
-                avatar_image_url: m?.avatar_image_url ?? null,
-              };
-            });
+        <div className="h-px w-full shrink-0 bg-border-light" />
 
-          const myParticipation =
-            participation.find((p) => p.user_id === user.id)?.status ?? null;
-          const liked = likes.some((l) => l.user_id === user.id);
+        <SuggestionSection
+          workspaceId={workspaceId}
+          selectedDate={selectedDate}
+          frequentMenus={frequentMenus}
+          trackingDays={trackingDays}
+          activeVote={blockingVote}
+        />
 
-          return (
-            <MealCard
-              key={meal.id}
-              meal={meal}
-              participants={participants}
-              liked={liked}
-              myParticipation={myParticipation}
-            />
-          );
-        })}
+        <FoodTabActions workspaceId={workspaceId} fridgeItems={(fridgeItems as FridgeItem[]) ?? []} />
       </div>
-
-      <div className="h-px w-full bg-border-light" />
-
-      <SuggestionSection
-        workspaceId={workspaceId}
-        selectedDate={selectedDate}
-        frequentMenus={frequentMenus}
-        weekendSuggestion={weekendSuggestion}
-        activeVote={blockingVote}
-      />
 
       <Link
         href={`/food/add?date=${selectedDate}`}

@@ -88,10 +88,10 @@ export default async function SharePage({
       </section>
 
       <section className="flex flex-col gap-2">
-        <span className="text-[12px] font-medium text-stone">공지</span>
+        <span className="text-[12px] font-medium text-stone">고정 메모</span>
         <div className="flex flex-col gap-2 rounded-2xl border border-border-light bg-surface p-4">
           {(notices ?? []).length === 0 && (
-            <p className="text-[13px] text-stone">고정된 공지가 없어요</p>
+            <p className="text-[13px] text-stone">고정된 메모가 없어요</p>
           )}
           {(notices ?? []).map((n) => (
             <div key={n.id}>

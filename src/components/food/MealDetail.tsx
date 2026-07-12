@@ -2,16 +2,11 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import {
-  IconArrowLeft,
-  IconHeart,
-  IconHeartFilled,
-  IconMapPin,
-} from "@tabler/icons-react";
+import { IconArrowLeft, IconMapPin } from "@tabler/icons-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { CheckToggle } from "@/components/ui/CheckToggle";
 import { Input } from "@/components/ui/Input";
-import { toggleMealLike, addMealComment } from "@/app/(main)/food/actions";
+import { addMealComment } from "@/app/(main)/food/actions";
 import { toggleMealParticipation } from "@/app/(main)/home/actions";
 import { AVATAR_SIZE } from "@/lib/uiTokens";
 import type { Meal, MealComment } from "@/types";
@@ -28,14 +23,12 @@ export function MealDetail({
   meal,
   members,
   participation,
-  likedByMe,
   comments,
   currentUserId,
 }: {
   meal: Meal;
   members: MemberInfo[];
   participation: { user_id: string; status: boolean | null }[];
-  likedByMe: boolean;
   comments: MealComment[];
   currentUserId: string;
 }) {
@@ -148,18 +141,6 @@ export function MealDetail({
             )}
           </div>
           <div className="flex items-center gap-3">
-            <button
-              onClick={() =>
-                startTransition(() => toggleMealLike(meal.id, !likedByMe))
-              }
-              aria-label="좋아요"
-            >
-              {likedByMe ? (
-                <IconHeartFilled size={22} className="text-rose" />
-              ) : (
-                <IconHeart size={22} className="text-stone" />
-              )}
-            </button>
             <CheckToggle
               checked={myParticipation === true}
               onChange={() =>

@@ -59,12 +59,6 @@ export const DEFAULT_MENU_POOL = [
   "초밥", "고기구이", "치킨", "피자", "짜장면", "떡볶이", "김치찌개", "비빔밥",
 ];
 
-// "오늘의 제안" 주말 활동 카드용 정적 큐레이션 풀 (DB 없이 클라이언트에서 랜덤 선택)
-export const WEEKEND_ACTIVITY_POOL = [
-  "동네 산책하기", "가족 보드게임 하기", "홈베이킹 도전하기", "근처 공원 나들이",
-  "다 같이 영화 보기", "방 대청소하기", "자전거 타기", "새로운 카페 가보기",
-];
-
 /** 룰렛/이상형 월드컵 후보를 최근 메뉴 → 기본 풀 순서로 중복 없이 채워 지정한 개수(기본 8개)를 맞춘다. */
 export function buildCandidatePool(recentMenus: string[], size = 8): string[] {
   const seen = new Set<string>();

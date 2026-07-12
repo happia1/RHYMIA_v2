@@ -16,7 +16,7 @@ export default async function MealDetailPage({
     supabase
       .from("meal")
       .select(
-        "*, meal_participation(user_id, status), meal_like(user_id), meal_comment(id, user_id, content, created_at)"
+        "*, meal_participation(user_id, status), meal_comment(id, user_id, content, created_at)"
       )
       .eq("id", mealId)
       .eq("workspace_id", workspaceId)
@@ -40,8 +40,6 @@ export default async function MealDetailPage({
     (meal as unknown as {
       meal_participation: { user_id: string; status: boolean | null }[];
     }).meal_participation ?? [];
-  const likes =
-    (meal as unknown as { meal_like: { user_id: string }[] }).meal_like ?? [];
   const comments =
     (meal as unknown as { meal_comment: MealComment[] }).meal_comment ?? [];
 
@@ -50,7 +48,6 @@ export default async function MealDetailPage({
       meal={meal as Meal}
       members={members}
       participation={participation}
-      likedByMe={likes.some((l) => l.user_id === user.id)}
       comments={comments.sort(
         (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       )}

@@ -91,30 +91,6 @@ export async function updateMeal(mealId: string, input: MealInput) {
   redirect(`/food/${mealId}`);
 }
 
-export async function toggleMealLike(mealId: string, liked: boolean) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return;
-
-  if (liked) {
-    const { error } = await supabase
-      .from("meal_like")
-      .insert({ meal_id: mealId, user_id: user.id });
-    if (error) throw new Error(error.message);
-  } else {
-    const { error } = await supabase
-      .from("meal_like")
-      .delete()
-      .eq("meal_id", mealId)
-      .eq("user_id", user.id);
-    if (error) throw new Error(error.message);
-  }
-
-  revalidatePath("/food");
-}
-
 export async function addFridgeItem(
   workspaceId: string,
   name: string,
@@ -143,6 +119,21 @@ export async function deleteFridgeItem(itemId: string) {
   const { error } = await supabase.from("fridge_item").delete().eq("id", itemId);
   if (error) throw new Error(error.message);
   revalidatePath("/food/add");
+}
+
+/** "늘 먹던 메뉴" 콜드스타트 판정용 — 서로 다른 날짜 기준 끼니 기록 일수를 센다.
+ * meal.date에 유니크 인덱스가 없어 count distinct를 SQL로 직접 못 미뤄서, date 컬럼만
+ * 가져와 앱 코드에서 Set으로 중복 제거한다(기록이 많아져도 date는 짧은 문자열이라 부담 적음). */
+export async function getMealTrackingDayCount(workspaceId: string): Promise<number> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("meal")
+    .select("date")
+    .eq("workspace_id", workspaceId);
+
+  if (error) throw new Error(error.message);
+
+  return new Set((data ?? []).map((m) => m.date)).size;
 }
 
 export async function createMealVote(workspaceId: string, date: string, candidates: string[]) {

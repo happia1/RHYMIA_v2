@@ -42,16 +42,18 @@ export default async function BoardPage() {
   }
 
   return (
-    <div className="flex flex-col gap-section px-4 pb-24 pt-6">
-      <h1 className="text-[20px] font-medium text-ink">게시판</h1>
+    <div className="flex h-[calc(100dvh-64px)] flex-col gap-section overflow-hidden px-4 pt-6">
+      <h1 className="shrink-0 text-[20px] font-medium text-ink">게시판</h1>
 
-      <BoardSection
-        workspaceId={workspaceId}
-        notices={notices ?? []}
-        currentUserId={user.id}
-        membersById={membersById}
-        commentsByNotice={commentsByNotice}
-      />
+      <div className="min-h-0 flex-1 overflow-y-auto pb-24">
+        <BoardSection
+          workspaceId={workspaceId}
+          notices={notices ?? []}
+          currentUserId={user.id}
+          membersById={membersById}
+          commentsByNotice={commentsByNotice}
+        />
+      </div>
     </div>
   );
 }

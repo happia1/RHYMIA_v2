@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { KEYWORD_GROUPS } from "@/lib/scheduleKeywords";
 import { targetLabel, type MemberInfo } from "@/lib/scheduleTargets";
 import { AddEventSheet } from "@/components/schedule/AddEventSheet";
+import { SectionExpand } from "@/components/ui/SectionExpand";
 import type { ExpandedSchedule } from "@/lib/recurrence";
 
 function won(n: number) {
@@ -107,26 +108,33 @@ export function YearView({
         {importantSchedules.length === 0 && (
           <p className="text-[13px] text-[var(--text-muted)]">등록된 주요 일정이 없어요</p>
         )}
-        {importantSchedules.map((s, i) => (
-          <button
-            key={s.id}
-            onClick={() => setEditingSchedule(s)}
-            className={`flex items-center gap-3 py-2.5 text-left ${
-              i > 0 ? "border-t border-border-light" : ""
-            }`}
-          >
-            <span className="shrink-0 text-[12px] text-[var(--text-muted)]">{s.date_start}</span>
-            <span className="min-w-0 flex-1 truncate text-[14px] font-medium text-terra">
-              {s.title}
-            </span>
-            {s.amount != null && (
-              <span className="shrink-0 text-[12px] font-medium text-honey">{won(s.amount)}</span>
+        {importantSchedules.length > 0 && (
+          <SectionExpand
+            items={importantSchedules}
+            previewCount={6}
+            title="연간 주요 일정"
+            renderItem={(s, i) => (
+              <button
+                key={s.id}
+                onClick={() => setEditingSchedule(s)}
+                className={`flex items-center gap-3 py-2.5 text-left ${
+                  i > 0 ? "border-t border-border-light" : ""
+                }`}
+              >
+                <span className="shrink-0 text-[12px] text-[var(--text-muted)]">{s.date_start}</span>
+                <span className="min-w-0 flex-1 truncate text-[14px] font-medium text-terra">
+                  {s.title}
+                </span>
+                {s.amount != null && (
+                  <span className="shrink-0 text-[12px] font-medium text-honey">{won(s.amount)}</span>
+                )}
+                <span className="ml-auto shrink-0 text-[11px] text-[var(--text-muted)]">
+                  {targetLabel(s.target_members, membersById)}
+                </span>
+              </button>
             )}
-            <span className="ml-auto shrink-0 text-[11px] text-[var(--text-muted)]">
-              {targetLabel(s.target_members, membersById)}
-            </span>
-          </button>
-        ))}
+          />
+        )}
       </div>
 
       <AddEventSheet

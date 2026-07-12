@@ -97,21 +97,25 @@ export default async function SchedulePage({
         : myMember?.id ?? editableMembers[0]?.id ?? "";
 
     return (
-      <div className="flex flex-col gap-section px-4 pb-24 pt-6">
-        <ScheduleTabs anchorDate={anchorStr} view={view} />
+      <div className="flex h-[calc(100dvh-64px)] flex-col gap-section overflow-hidden px-4 pt-6">
+        <div className="shrink-0">
+          <ScheduleTabs anchorDate={anchorStr} view={view} />
+        </div>
 
-        <div className="h-px w-full bg-border-light" />
+        <div className="h-px w-full shrink-0 bg-border-light" />
 
-        <section className="flex flex-col gap-label-gap">
-          <SectionLabel icon={<IconCalendar size={14} />}>{VIEW_LABEL[view]}</SectionLabel>
-          <div className="pl-section-indent">
-            <ScheduleDayView
-              members={editableMembers}
-              initialRoutines={(routines as Routine[]) ?? []}
-              defaultMemberId={requestedMemberId}
-            />
-          </div>
-        </section>
+        <div className="min-h-0 flex-1 overflow-y-auto pb-24">
+          <section className="flex flex-col gap-label-gap">
+            <SectionLabel icon={<IconCalendar size={14} />}>{VIEW_LABEL[view]}</SectionLabel>
+            <div className="pl-section-indent">
+              <ScheduleDayView
+                members={editableMembers}
+                initialRoutines={(routines as Routine[]) ?? []}
+                defaultMemberId={requestedMemberId}
+              />
+            </div>
+          </section>
+        </div>
 
         <AddEventEntry
           workspaceId={workspaceId}
@@ -173,8 +177,8 @@ export default async function SchedulePage({
   }
 
   return (
-    <div className="flex flex-col gap-section px-4 pb-24 pt-6">
-      <div className="flex flex-col gap-3">
+    <div className="flex h-[calc(100dvh-64px)] flex-col gap-section overflow-hidden px-4 pt-6">
+      <div className="flex shrink-0 flex-col gap-3">
         <ScheduleTabs anchorDate={anchorStr} view={view} />
         <EventFilters
           members={members}
@@ -183,41 +187,43 @@ export default async function SchedulePage({
         />
       </div>
 
-      <div className="h-px w-full bg-border-light" />
+      <div className="h-px w-full shrink-0 bg-border-light" />
 
-      <section className="flex flex-col gap-label-gap">
-        <SectionLabel icon={<IconCalendar size={14} />}>{VIEW_LABEL[view]}</SectionLabel>
-        <div className="pl-section-indent">
-          {view === "month" && (
-            <MonthView
-              anchorDate={anchorStr}
-              schedules={schedules}
-              membersById={membersById}
-              workspaceId={workspaceId}
-              keywordMain={params.keywordMain}
-              keywordSub={params.keywordSub}
-              highlightId={params.highlight}
-            />
-          )}
-          {view === "week" && (
-            <WeekView
-              weekDates={getWeekDates(anchor)}
-              schedules={schedules}
-              membersById={membersById}
-              workspaceId={workspaceId}
-            />
-          )}
-          {view === "year" && (
-            <YearView
-              anchorDate={anchorStr}
-              schedules={schedules}
-              membersById={membersById}
-              keywordMain={params.keywordMain}
-              workspaceId={workspaceId}
-            />
-          )}
-        </div>
-      </section>
+      <div className="min-h-0 flex-1 overflow-y-auto pb-24">
+        <section className="flex flex-col gap-label-gap">
+          <SectionLabel icon={<IconCalendar size={14} />}>{VIEW_LABEL[view]}</SectionLabel>
+          <div className="pl-section-indent">
+            {view === "month" && (
+              <MonthView
+                anchorDate={anchorStr}
+                schedules={schedules}
+                membersById={membersById}
+                workspaceId={workspaceId}
+                keywordMain={params.keywordMain}
+                keywordSub={params.keywordSub}
+                highlightId={params.highlight}
+              />
+            )}
+            {view === "week" && (
+              <WeekView
+                weekDates={getWeekDates(anchor)}
+                schedules={schedules}
+                membersById={membersById}
+                workspaceId={workspaceId}
+              />
+            )}
+            {view === "year" && (
+              <YearView
+                anchorDate={anchorStr}
+                schedules={schedules}
+                membersById={membersById}
+                keywordMain={params.keywordMain}
+                workspaceId={workspaceId}
+              />
+            )}
+          </div>
+        </section>
+      </div>
 
       <AddEventEntry
         workspaceId={workspaceId}

@@ -3,14 +3,14 @@
 import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { IconArrowLeft, IconFridge, IconCamera, IconLoader2, IconX } from "@tabler/icons-react";
-import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Input, Textarea } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
 import { mirror } from "@/lib/homeTheme";
 import { createClient } from "@/lib/supabase/client";
-import { createMeal, updateMeal, addFridgeItem, deleteFridgeItem } from "@/app/(main)/food/actions";
+import { createMeal, updateMeal } from "@/app/(main)/food/actions";
 import { MEAL_TAGS } from "@/lib/mealUtils";
-import type { FridgeCategory, FridgeItem, Meal, MealType } from "@/types";
+import { FridgeStockSheet } from "@/components/food/FridgeStockSheet";
+import type { FridgeItem, Meal, MealType } from "@/types";
 
 const MEAL_TYPES: MealType[] = ["집밥", "외식", "배달"];
 
@@ -19,12 +19,6 @@ const SUGGESTIONS: Record<MealType, string[]> = {
   외식: ["돈까스", "파스타", "초밥", "고기구이"],
   배달: ["치킨", "피자", "짜장면", "떡볶이"],
 };
-
-const FRIDGE_CATEGORIES: { value: FridgeCategory; label: string }[] = [
-  { value: "cold", label: "냉장" },
-  { value: "frozen", label: "냉동" },
-  { value: "room", label: "상온" },
-];
 
 function TextToggle({
   label,
@@ -139,8 +133,8 @@ export function AddMealScreen({
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-cream pb-10">
-      <header className="flex h-14 shrink-0 items-center justify-between px-4">
+    <div className="flex h-[calc(100dvh-64px)] flex-col overflow-hidden bg-cream">
+      <header className="flex h-12 shrink-0 items-center justify-between px-4">
         <Link
           href={existingMeal ? `/food/${existingMeal.id}` : "/food"}
           aria-label="뒤로가기"
@@ -153,7 +147,7 @@ export function AddMealScreen({
         <div className="w-[22px]" />
       </header>
 
-      <div className="flex flex-col gap-6 px-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
         <section className="flex flex-col gap-2">
           <span className={mirror.label}>끼니</span>
           <div className="flex gap-4 overflow-x-auto">
@@ -279,84 +273,5 @@ export function AddMealScreen({
         items={fridgeItems}
       />
     </div>
-  );
-}
-
-function FridgeStockSheet({
-  open,
-  onClose,
-  workspaceId,
-  items,
-}: {
-  open: boolean;
-  onClose: () => void;
-  workspaceId: string;
-  items: FridgeItem[];
-}) {
-  const [category, setCategory] = useState<FridgeCategory>("cold");
-  const [draft, setDraft] = useState("");
-  const [isPending, startTransition] = useTransition();
-
-  const filtered = items.filter((i) => i.category === category);
-
-  const handleAdd = () => {
-    const value = draft.trim();
-    if (!value) return;
-    setDraft("");
-    startTransition(() => addFridgeItem(workspaceId, value, category));
-  };
-
-  return (
-    <BottomSheet open={open} onClose={onClose}>
-      <div className="flex flex-col gap-4">
-        <div className="flex gap-2">
-          {FRIDGE_CATEGORIES.map((c) => (
-            <button
-              key={c.value}
-              onClick={() => setCategory(c.value)}
-              className={`rounded-full px-3.5 py-1.5 text-[13px] font-medium ${
-                category === c.value ? "bg-ink text-cream" : "bg-cream text-stone"
-              }`}
-            >
-              {c.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex gap-2">
-          <Input
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-            placeholder="재료 이름"
-            className="h-11 flex-1 rounded-xl px-3 text-[14px]"
-          />
-          <button
-            onClick={handleAdd}
-            disabled={isPending}
-            className="rounded-xl bg-ink px-4 text-[13px] font-medium text-cream"
-          >
-            추가
-          </button>
-        </div>
-
-        <div className="flex flex-col gap-2">
-          {filtered.length === 0 && (
-            <p className="text-[13px] text-stone">등록된 재료가 없어요</p>
-          )}
-          {filtered.map((item) => (
-            <div key={item.id} className="flex items-center justify-between">
-              <span className="text-[14px] text-ink">{item.name}</span>
-              <button
-                onClick={() => startTransition(() => deleteFridgeItem(item.id))}
-                className="text-[12px] text-stone"
-              >
-                삭제
-              </button>
-            </div>
-          ))}
-        </div>
-      </div>
-    </BottomSheet>
   );
 }

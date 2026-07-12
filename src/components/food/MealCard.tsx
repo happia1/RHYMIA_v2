@@ -2,10 +2,8 @@
 
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { IconHeart, IconHeartFilled } from "@tabler/icons-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { CheckToggle } from "@/components/ui/CheckToggle";
-import { toggleMealLike } from "@/app/(main)/food/actions";
 import { toggleMealParticipation } from "@/app/(main)/home/actions";
 import { AVATAR_SIZE } from "@/lib/uiTokens";
 import type { Meal } from "@/types";
@@ -18,19 +16,23 @@ export interface MealCardParticipant {
   avatar_image_url: string | null;
 }
 
+const MAX_STACKED_AVATARS = 4;
+// 아바타 지름(AVATAR_SIZE.mirror=18px)의 1/5만 보이게 겹치는 음수 마진 — 18 * 4/5 = 14.4px
+const AVATAR_STACK_OVERLAP = "-space-x-[14.4px]";
+
 export function MealCard({
   meal,
   participants,
-  liked,
   myParticipation,
 }: {
   meal: Meal;
   participants: MealCardParticipant[];
-  liked: boolean;
   myParticipation: boolean | null;
 }) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
+  const visibleParticipants = participants.slice(0, MAX_STACKED_AVATARS);
+  const overflowCount = participants.length - visibleParticipants.length;
 
   return (
     <div
@@ -74,9 +76,12 @@ export function MealCard({
             {meal.reservation_time ? ` · ${meal.reservation_time}` : ""}
           </p>
         )}
-        {participants.length > 0 && (
-          <div className="flex -space-x-1.5">
-            {participants.map((p) => (
+      </div>
+
+      <div className="flex shrink-0 items-center gap-2 pt-0.5">
+        {visibleParticipants.length > 0 && (
+          <div className={`flex ${AVATAR_STACK_OVERLAP}`}>
+            {visibleParticipants.map((p) => (
               <Avatar
                 key={p.user_id}
                 name={p.display_name}
@@ -86,24 +91,16 @@ export function MealCard({
                 size={AVATAR_SIZE.mirror}
               />
             ))}
+            {overflowCount > 0 && (
+              <span
+                className="flex items-center justify-center rounded-full bg-border-light text-[9px] font-medium text-stone"
+                style={{ width: AVATAR_SIZE.mirror, height: AVATAR_SIZE.mirror }}
+              >
+                +{overflowCount}
+              </span>
+            )}
           </div>
         )}
-      </div>
-
-      <div className="flex shrink-0 flex-col items-end gap-2.5 pt-0.5">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            startTransition(() => toggleMealLike(meal.id, !liked));
-          }}
-          aria-label="좋아요"
-        >
-          {liked ? (
-            <IconHeartFilled size={18} className="text-rose" />
-          ) : (
-            <IconHeart size={18} className="text-[var(--text-muted)]" />
-          )}
-        </button>
         <div onClick={(e) => e.stopPropagation()}>
           <CheckToggle
             checked={myParticipation === true}

@@ -12,6 +12,7 @@ import { targetLabel, type MemberInfo } from "@/lib/scheduleTargets";
 import { ActivitySuggestionSection } from "@/components/schedule/ActivitySuggestionSection";
 import { KeywordFilterRow } from "@/components/schedule/KeywordFilterRow";
 import { AddEventSheet } from "@/components/schedule/AddEventSheet";
+import { SectionExpand } from "@/components/ui/SectionExpand";
 import { getLastYearHighlights } from "@/app/(main)/schedule/actions";
 import { ACTIVITY_SUGGESTION_POOL, pickActivityCandidates } from "@/lib/activitySuggestions";
 import { pickDeterministic } from "@/lib/randomPick";
@@ -277,33 +278,40 @@ export function MonthView({
             />
           </>
         )}
-        {selectedSchedules.map((s, i) => (
-          <button
-            key={s.id}
-            onClick={() => setEditingSchedule(s)}
-            className={`flex items-center gap-3 py-2.5 text-left ${
-              i > 0 ? "border-t border-border-light" : ""
-            } ${s.id === highlightId ? "-mx-2 rounded-xl bg-honey/10 px-2" : ""}`}
-          >
-            <span
-              className="w-12 shrink-0 text-[13px] text-honey"
-              style={{ fontVariantNumeric: "tabular-nums" }}
-            >
-              {s.time_start ? s.time_start.slice(0, 5) : "종일"}
-            </span>
-            <span
-              className={`min-w-0 flex-1 truncate text-[14px] ${
-                s.is_important ? "font-medium text-terra" : "text-ink"
-              }`}
-            >
-              {s.title}
-            </span>
-            {s.memo && <IconPaperclip size={12} className="shrink-0 text-[var(--text-muted)]" />}
-            <span className="ml-auto shrink-0 text-[11px] text-[var(--text-muted)]">
-              {targetLabel(s.target_members, membersById)}
-            </span>
-          </button>
-        ))}
+        {selectedSchedules.length > 0 && (
+          <SectionExpand
+            items={selectedSchedules}
+            previewCount={5}
+            title={`${selectedDate} 일정`}
+            renderItem={(s, i) => (
+              <button
+                key={s.id}
+                onClick={() => setEditingSchedule(s)}
+                className={`flex items-center gap-3 py-2.5 text-left ${
+                  i > 0 ? "border-t border-border-light" : ""
+                } ${s.id === highlightId ? "-mx-2 rounded-xl bg-honey/10 px-2" : ""}`}
+              >
+                <span
+                  className="w-12 shrink-0 text-[13px] text-honey"
+                  style={{ fontVariantNumeric: "tabular-nums" }}
+                >
+                  {s.time_start ? s.time_start.slice(0, 5) : "종일"}
+                </span>
+                <span
+                  className={`min-w-0 flex-1 truncate text-[14px] ${
+                    s.is_important ? "font-medium text-terra" : "text-ink"
+                  }`}
+                >
+                  {s.title}
+                </span>
+                {s.memo && <IconPaperclip size={12} className="shrink-0 text-[var(--text-muted)]" />}
+                <span className="ml-auto shrink-0 text-[11px] text-[var(--text-muted)]">
+                  {targetLabel(s.target_members, membersById)}
+                </span>
+              </button>
+            )}
+          />
+        )}
       </div>
 
       {highlights.length > 0 && (

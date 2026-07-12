@@ -8,34 +8,37 @@ import { mirror } from "@/lib/homeTheme";
 import { buildCandidatePool } from "@/lib/mealUtils";
 import type { MealVote } from "@/types";
 
+// "늘 먹던 메뉴"는 서로 다른 날짜 7일 이상의 끼니 기록이 쌓여야 의미 있는 통계라 콜드스타트를 건다.
+const FREQUENT_MENU_MIN_DAYS = 7;
+
 export function SuggestionSection({
   workspaceId,
   selectedDate,
   frequentMenus,
-  weekendSuggestion,
+  trackingDays,
   activeVote,
 }: {
   workspaceId: string;
   selectedDate: string;
   frequentMenus: string[];
-  weekendSuggestion: string;
+  /** 서로 다른 날짜 기준 끼니 기록 일수 — getMealTrackingDayCount(food/actions.ts) */
+  trackingDays: number;
   activeVote: MealVote | null;
 }) {
   const [decisionOpen, setDecisionOpen] = useState(false);
+  const frequentMenuUnlocked = trackingDays >= FREQUENT_MENU_MIN_DAYS;
 
   const cards: { title: string; body: string; onClick?: () => void }[] = [
     {
       title: "늘 먹던 메뉴",
-      body: frequentMenus[0] ?? "아직 기록이 없어요",
+      body: frequentMenuUnlocked
+        ? frequentMenus[0] ?? "아직 기록이 없어요"
+        : `식탁 기록이 7일 쌓이면 열려요 (지금 ${trackingDays}일째)`,
     },
     {
       title: "룰렛 돌리기",
       body: "메뉴 랜덤 고르기",
       onClick: () => setDecisionOpen(true),
-    },
-    {
-      title: "주말엔 이런 건 어때요",
-      body: weekendSuggestion,
     },
     {
       title: "추천 레시피",
