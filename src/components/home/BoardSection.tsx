@@ -29,6 +29,7 @@ import { formatPostTimestamp } from "@/lib/date";
 import { AVATAR_SIZE } from "@/lib/uiTokens";
 import { createClient } from "@/lib/supabase/client";
 import { extractTextFromImage } from "@/lib/agentApi";
+import { compressImage } from "@/lib/imageCompress";
 import type { WorkspaceMemberInfo } from "@/lib/members";
 import type { Notice, NoticeComment, NoticeType } from "@/types";
 
@@ -53,15 +54,6 @@ function daysLeft(expireAt: string | null) {
     (new Date(expireAt).getTime() - Date.now()) / 86400000
   );
   return diff;
-}
-
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
 }
 
 export function BoardSection({
@@ -617,7 +609,7 @@ export function AddPostSheet({
 
     setIsExtractingText(true);
     try {
-      const dataUrl = await fileToBase64(file);
+      const dataUrl = await compressImage(file);
       const text = await extractTextFromImage(dataUrl);
       if (text.trim()) {
         setContent((prev) => (prev ? `${prev}\n${text.trim()}` : text.trim()));

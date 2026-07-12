@@ -13,6 +13,7 @@ import { YearView } from "@/components/schedule/YearView";
 import { AddEventEntry } from "@/components/schedule/AddEventEntry";
 import { AgentLauncher } from "@/components/agent/AgentLauncher";
 import { SectionLabel } from "@/components/home/SectionLabel";
+import { getSchedulesForRange } from "@/app/(main)/schedule/actions";
 import type { Schedule, RoutineBlock } from "@/types";
 
 const VIEW_LABEL: Record<"month" | "week" | "year", string> = {
@@ -65,21 +66,33 @@ export default async function SchedulePage({
 
   const today = new Date();
 
-  const [{ data: memberRows }, { data: scheduleRows }, weather] = await Promise.all([
+  // 월간/연간 뷰는 반복 일정(기념일·생신 등) 가상 인스턴스까지 합쳐서 조회한다
+  // (getSchedulesForRange, schedule/actions.ts). 주간 뷰는 범위가 좁아 이번 범위에서는
+  // 제외 — 기존과 동일하게 저장된 행만 그대로 조회.
+  const scheduleQuery =
+    view === "week"
+      ? supabase
+          .from("schedule")
+          .select("*")
+          .eq("workspace_id", workspaceId)
+          .gte("date_start", range.start)
+          .lte("date_start", range.end)
+          .or(`is_shared.eq.true,author_id.eq.${user.id}`)
+          .order("date_start", { ascending: true })
+          .then(({ data, error }) => {
+            if (error) throw new Error(error.message);
+            return (data ?? []) as Schedule[];
+          })
+      : getSchedulesForRange(workspaceId, user.id, range.start, range.end);
+
+  const [{ data: memberRows }, scheduleRows, weather] = await Promise.all([
     supabase
       .from("workspace_member")
       .select(
         "id, user_id, member_type, display_name, name, avatar_color, avatar_image_url, birth_year, routine_enabled, users(avatar_color, avatar_text_color, avatar_image_url)"
       )
       .eq("workspace_id", workspaceId),
-    supabase
-      .from("schedule")
-      .select("*")
-      .eq("workspace_id", workspaceId)
-      .gte("date_start", range.start)
-      .lte("date_start", range.end)
-      .or(`is_shared.eq.true,author_id.eq.${user.id}`)
-      .order("date_start", { ascending: true }),
+    scheduleQuery,
     getCurrentWeather(),
   ]);
 
@@ -93,7 +106,7 @@ export default async function SchedulePage({
     .eq("member_id", myMember?.id ?? "")
     .eq("day_of_week", today.getDay());
 
-  let schedules = (scheduleRows ?? []) as Schedule[];
+  let schedules = scheduleRows;
 
   if (params.scope === "shared") {
     schedules = schedules.filter((s) => s.is_shared);

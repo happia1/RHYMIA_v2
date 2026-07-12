@@ -11,6 +11,7 @@ import {
   type AgentMemberOption,
   type AgentRoutine,
 } from "@/lib/agentApi";
+import { compressImage } from "@/lib/imageCompress";
 import { mirror } from "@/lib/homeTheme";
 
 type ChatMessage =
@@ -135,20 +136,16 @@ export function AgentSheet({
     runAgent({ user_text: text }, Boolean(pendingThreadId));
   };
 
-  const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file || sending) return;
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      pushMessage({ id: nextId(), role: "user", kind: "image", imageDataUrl: dataUrl });
-      // 이미지 첨부는 항상 새 요청으로 취급 (need_input 재개는 텍스트 답변 전용)
-      setPendingThreadId(null);
-      runAgent({ image_base64: dataUrl }, false);
-    };
-    reader.readAsDataURL(file);
+    const dataUrl = await compressImage(file);
+    pushMessage({ id: nextId(), role: "user", kind: "image", imageDataUrl: dataUrl });
+    // 이미지 첨부는 항상 새 요청으로 취급 (need_input 재개는 텍스트 답변 전용)
+    setPendingThreadId(null);
+    runAgent({ image_base64: dataUrl }, false);
   };
 
   const handleCardsProcessed = (summary: { registered: number; skipped: number }) => {

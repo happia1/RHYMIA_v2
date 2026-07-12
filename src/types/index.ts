@@ -1,6 +1,9 @@
 export type MealType = "집밥" | "외식" | "배달";
 export type NoticeType = "sticky" | "memo" | "notice";
 export type FridgeCategory = "cold" | "frozen" | "room";
+/** weekly는 의도적으로 없음 — 매주 반복은 routine(내 루틴)이 전담하는 영역 */
+export type RecurType = "none" | "monthly" | "yearly";
+export type RecurCalendar = "solar" | "lunar";
 
 export interface FamilyWorkspace {
   id: string;
@@ -95,6 +98,10 @@ export interface Schedule {
   notify_offset: NotifyOffset | null;
   notify_custom_at: string | null;
   created_at: string;
+  /** 2026-07-12 추가 — 반복 일정(기념일·생신 등). weekly는 없음(루틴이 전담) */
+  recur_type: RecurType;
+  recur_calendar: RecurCalendar;
+  recur_until: string | null;
 }
 
 export interface Diary {

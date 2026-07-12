@@ -7,7 +7,7 @@ import { Input, Textarea } from "@/components/ui/Input";
 import { PlaceInput } from "@/components/schedule/PlaceInput";
 import { createSchedule } from "@/app/(main)/schedule/actions";
 import { KEYWORD_GROUPS } from "@/lib/scheduleKeywords";
-import type { NotifyOffset } from "@/types";
+import type { NotifyOffset, RecurType, RecurCalendar } from "@/types";
 
 interface MemberOption {
   id: string;
@@ -21,6 +21,17 @@ const NOTIFY_OPTIONS: { value: NotifyOffset; label: string }[] = [
   { value: "custom", label: "직접 설정" },
 ];
 
+const RECUR_OPTIONS: { value: RecurType; label: string }[] = [
+  { value: "none", label: "없음" },
+  { value: "monthly", label: "매월" },
+  { value: "yearly", label: "매년" },
+];
+
+/** 신규 등록 전용(수정 모드 없음) — 반복 일정 편집 화면은 다음 작업에서 구현 예정.
+ * 그때는: 가상 인스턴스(originalId/isVirtual, src/lib/recurrence.ts)를 열면 "원본을
+ * 수정합니다" 안내를 보여주고 저장/삭제 모두 originalId로 라우팅해야 함. "이번 회만
+ * 수정"(단일 인스턴스 예외 처리)은 P2로 미룸 — recur_until로 원본을 끊고 새 반복을
+ * 만드는 우회로만 우선 지원. */
 export function AddEventSheet({
   open,
   onClose,
@@ -55,6 +66,8 @@ export function AddEventSheet({
   const [receiptUrl, setReceiptUrl] = useState("");
   const [notifyOffset, setNotifyOffset] = useState<NotifyOffset | null>(null);
   const [notifyCustomAt, setNotifyCustomAt] = useState("");
+  const [recurType, setRecurType] = useState<RecurType>("none");
+  const [recurCalendar, setRecurCalendar] = useState<RecurCalendar>("solar");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const activeGroup = KEYWORD_GROUPS.find((g) => g.main === keywordMain);
@@ -86,6 +99,8 @@ export function AddEventSheet({
     setReceiptUrl("");
     setNotifyOffset(null);
     setNotifyCustomAt("");
+    setRecurType("none");
+    setRecurCalendar("solar");
   };
 
   const handleSubmit = async () => {
@@ -111,6 +126,8 @@ export function AddEventSheet({
       image_url: imageUrl || null,
       notify_offset: notifyOffset,
       notify_custom_at: notifyOffset === "custom" ? notifyCustomAt || null : null,
+      recur_type: recurType,
+      recur_calendar: recurType === "yearly" ? recurCalendar : "solar",
     });
     setIsSubmitting(false);
 
@@ -182,6 +199,43 @@ export function AddEventSheet({
                 onChange={(e) => setTimeEnd(e.target.value)}
                 className="h-11 flex-1 rounded-xl px-3 text-[13px]"
               />
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <span className="text-[12px] font-medium text-stone">반복</span>
+          <div className="flex gap-2">
+            {RECUR_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => setRecurType(opt.value)}
+                className={`rounded-full px-3.5 py-1.5 text-[13px] font-medium ${
+                  recurType === opt.value ? "bg-ink text-cream" : "bg-cream text-stone"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          {recurType === "yearly" && (
+            <div className="flex gap-2">
+              {(
+                [
+                  ["solar", "양력"],
+                  ["lunar", "음력"],
+                ] as [RecurCalendar, string][]
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  onClick={() => setRecurCalendar(value)}
+                  className={`rounded-full px-3 py-1.5 text-[12px] font-medium ${
+                    recurCalendar === value ? "bg-ink text-cream" : "bg-cream text-stone"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
           )}
         </div>

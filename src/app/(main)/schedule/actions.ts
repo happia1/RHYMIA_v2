@@ -3,7 +3,15 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import type { HabitRepeatType, NotifyOffset, RoutineBlock } from "@/types";
+import { expandRecurring } from "@/lib/recurrence";
+import type {
+  HabitRepeatType,
+  NotifyOffset,
+  RoutineBlock,
+  RecurType,
+  RecurCalendar,
+  Schedule,
+} from "@/types";
 
 export interface ScheduleInput {
   title: string;
@@ -25,6 +33,11 @@ export interface ScheduleInput {
   image_url?: string | null;
   notify_offset?: NotifyOffset | null;
   notify_custom_at?: string | null;
+  /** 기본 'none' — weekly는 없음(루틴이 전담) */
+  recur_type?: RecurType;
+  /** recur_type이 'yearly'일 때만 의미 있음. 기본 'solar' */
+  recur_calendar?: RecurCalendar;
+  recur_until?: string | null;
 }
 
 export async function createSchedule(workspaceId: string, input: ScheduleInput) {
@@ -61,6 +74,9 @@ export async function createSchedule(workspaceId: string, input: ScheduleInput) 
     image_url: input.image_url || null,
     notify_offset: input.notify_offset || null,
     notify_custom_at: input.notify_custom_at || null,
+    recur_type: input.recur_type ?? "none",
+    recur_calendar: input.recur_calendar ?? "solar",
+    recur_until: input.recur_until || null,
   });
 
   if (error) {
@@ -82,6 +98,50 @@ export async function createSchedule(workspaceId: string, input: ScheduleInput) 
   revalidatePath("/schedule");
   revalidatePath("/home");
   return { ok: true as const };
+}
+
+/** 월간/주간/연간 뷰가 쓰는 일정 조회 — 실제 저장된 행(범위 내 date_start)과
+ * 반복 일정(recur_type != 'none')의 가상 인스턴스를 합쳐서 반환한다.
+ * 두 조회 모두 기존과 동일한 "공유거나 내가 만든 것만" 가시성 규칙을 적용한다
+ * (RLS의 schedule_select는 워크스페이스 멤버 전체에게 열려 있어, 이 앱에서는
+ * 비공개 일정 숨김을 여기 애플리케이션 코드가 담당함 — schedule/page.tsx가
+ * 하던 인라인 쿼리를 그대로 옮기고 반복 인스턴스만 추가한 것). */
+export async function getSchedulesForRange(
+  workspaceId: string,
+  userId: string,
+  rangeStart: string,
+  rangeEnd: string
+): Promise<Schedule[]> {
+  const supabase = await createClient();
+
+  const [rangeResult, recurringResult] = await Promise.all([
+    supabase
+      .from("schedule")
+      .select("*")
+      .eq("workspace_id", workspaceId)
+      .gte("date_start", rangeStart)
+      .lte("date_start", rangeEnd)
+      .or(`is_shared.eq.true,author_id.eq.${userId}`)
+      .order("date_start", { ascending: true }),
+    supabase
+      .from("schedule")
+      .select("*")
+      .eq("workspace_id", workspaceId)
+      .neq("recur_type", "none")
+      .lte("date_start", rangeEnd)
+      .or(`recur_until.is.null,recur_until.gte.${rangeStart}`)
+      .or(`is_shared.eq.true,author_id.eq.${userId}`),
+  ]);
+
+  if (rangeResult.error) throw new Error(rangeResult.error.message);
+  if (recurringResult.error) throw new Error(recurringResult.error.message);
+
+  const virtual = expandRecurring((recurringResult.data ?? []) as Schedule[], rangeStart, rangeEnd);
+
+  const merged = [...((rangeResult.data ?? []) as Schedule[]), ...virtual];
+  merged.sort((a, b) => (a.date_start < b.date_start ? -1 : a.date_start > b.date_start ? 1 : 0));
+
+  return merged;
 }
 
 export async function deleteSchedule(scheduleId: string) {
