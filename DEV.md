@@ -1,6 +1,59 @@
 # 개발 참조 문서
 
-## 마지막 업데이트: 2026-07-12 (일정 수정 기능 신설 + 홈 히어로/장바구니 시트 스타일 정리 + 스티키 버그 수정)
+## 마지막 업데이트: 2026-07-12 (게시판 공지→메모 통합 + 전역 한 화면 정책(SectionExpand) + 식탁 탭 정리 6건)
+
+- 2026-07-12: 게시판 개편 + 전역 "페이지 스크롤 없음" 정책 적용
+  - **공지(notice) 타입 폐지 → 메모로 통합**: `supabase/merge_notice_into_memo.sql` 신규(실행 필요, 재실행 안전) —
+    `is_pinned` 컬럼 존재 보장 후 `type='notice'`인 행을 `type='memo', is_pinned=true`로 UPDATE(삭제 아님).
+    `AddPostSheet`(`BoardSection.tsx`)에서 메모/공지 타입 선택 pill을 완전히 제거(이제 sticky가 아니면
+    항상 메모) — 기존에 이미 있던 "상단 고정" 체크박스는 그대로 유지. 목록/상세 양쪽에서 `n.type==="notice"`
+    기준의 "📌 제목" 접두어 표기를 없애고, 대신 `n.is_pinned` 기준 핀 아이콘(`IconPin`)+"고정" 10px 라벨을
+    별도 줄로 표시. 정렬도 "고정 우선, 그다음 공지가 메모보다 위"였던 2단 비교에서 "고정 우선"만 남게 단순화.
+  - **share 페이지/설정 문구**: `/share/[token]` 공지 섹션 라벨을 "공지"→"고정 메모", 빈 상태 문구도
+    "고정된 공지가 없어요"→"고정된 메모가 없어요"로 변경(쿼리 자체는 원래부터 `type` 필터 없이
+    `is_pinned=true`만 보고 있어서 변경 불필요). 설정 탭 "외부 공유" 안내 문구도 "고정 공지"→"고정 메모".
+  - **스티커 가로 스크롤**: `overflow-x-auto`에 `scrollbar-hide` 유틸 추가(스크롤 동작은 그대로, 스크롤바만 숨김).
+  - **전역 "페이지 세로 스크롤 없음" 정책**: 홈에만 적용돼 있던 원칙(`h-[calc(100dvh-64px)] overflow-hidden` 바깥
+    + `min-h-0 flex-1 overflow-y-auto` 안쪽 안전장치)을 `/food`, `/food/add`(및 수정), `/schedule`(하루/월간/주간/연간
+    전부), `/board`에도 동일하게 적용 — 각 페이지의 헤더/탭 등 고정 영역은 `shrink-0`, 나머지 콘텐츠 영역만
+    스크롤 가능한 flex-1 컨테이너로 감쌈.
+  - **`SectionExpand` 공용 컴포넌트 신규**(`src/components/ui/SectionExpand.tsx`): 데이터가 계속 쌓이는
+    리스트형 섹션의 공통 패턴 — 기본은 앞의 N개만 보여주고, "더보기"를 누르면 섹션 내부에서 펼치는 대신
+    (`postsExpanded` 같은 토글 방식은 폐기) 그 섹션 전용 풀스크린 오버레이로 전환해서 전체 목록을 보여준다
+    (`fixed inset-0`, 내부 스크롤은 허용하되 `scrollbar-hide`로 스크롤바만 숨김). 제네릭 `items`/`previewCount`/
+    `title`/`renderItem`만 받는 구조라 어디서든 재사용 가능. 단, **서버 컴포넌트는 클라이언트 컴포넌트에 함수
+    prop을 직접 넘길 수 없어서**(RSC 경계 제약) 서버 컴포넌트 페이지(`food/page.tsx`)에서 쓸 때는 데이터만
+    받아 내부에서 `renderItem`을 만드는 클라이언트 래퍼(`MealListSection.tsx`)를 하나 더 두는 방식을 씀 —
+    이미 클라이언트 컴포넌트인 `BoardSection.tsx`/`MonthView.tsx`/`YearView.tsx`는 래퍼 없이 직접 사용.
+    적용 지점: 게시판 메모 목록(기존 `postsExpanded` 토글 대체), 식탁 탭 오늘 끼니 목록(`MealListSection`,
+    4개 초과 시), 월간 뷰 선택일 일정 목록(5개 초과 시), 연간 뷰 "연간 주요 일정" 목록(6개 초과 시).
+    주간 뷰(`WeekView`)는 요일별 리스트 구조상 이번 범위에서는 캡을 걸지 않고 페이지 셸의 안전장치 스크롤에만 맡김.
+
+- 2026-07-12: 식탁 탭 정리 6건 (스마트미러 원칙 유지)
+  - **오늘의 제안 풀 분리**: 식사와 무관한 "주말 활동" 카드(`WEEKEND_ACTIVITY_POOL`, "다 같이 영화 보기" 등)를
+    식탁 탭에서 완전히 제거하고, 겹치지 않는 항목("다 같이 영화 보기")만 골라 홈/일정 탭의 `ACTIVITY_SUGGESTION_POOL`
+    (`src/lib/activitySuggestions.ts`)로 이동 — 나머지는 이미 그 풀에 거의 그대로 들어있었음. 식탁 제안엔
+    이제 늘 먹던 메뉴/룰렛 돌리기/추천 레시피(준비중) 3개만 남음.
+  - **"늘 먹던 메뉴" 콜드스타트**: 새 서버 액션 `getMealTrackingDayCount(workspaceId)`(`food/actions.ts`)가
+    `meal.date`를 앱 코드에서 Set으로 중복 제거해 "서로 다른 날짜 기준 기록 일수"를 센다(count distinct를
+    SQL 레벨에서 바로 못 써서). 7일 미만이면 카드가 "식탁 기록이 7일 쌓이면 열려요 (지금 N일째)"로 잠긴 문구를
+    보여주고, 7일 이상부터 실제 자주 먹는 메뉴를 보여줌(`SuggestionSection.tsx`).
+  - **식탁 탭 하단 버튼 2개 신설**: "현재 재고 확인"/"장볼 것 입력하기"(`FoodTabActions.tsx`, 신규). 재고
+    확인 시트는 끼니 추가 화면(`AddMealScreen.tsx`)이 쓰던 것을 `FridgeStockSheet.tsx`(신규, 공용)로 추출해
+    양쪽이 완전히 같은 데이터/로직을 공유(중복 구현 없음). 이 시트 하단엔 "부족한 건 장볼 것에 적으러 가기"
+    링크를 추가해 누르면 재고 시트를 닫고 전역 `GlobalShoppingSheet`를 여는 동선을 만듦(`useShoppingSheet` 훅
+    재사용). "장볼 것 입력하기" 버튼도 같은 훅으로 `GlobalShoppingSheet`를 염(항상 "장볼 것" 탭으로 열리는
+    기존 동작 그대로 재사용).
+  - **끼니 추가 화면 한 화면 맞춤**: `AddMealScreen.tsx` 루트를 `min-h-screen`+`pb-10`에서
+    `h-[calc(100dvh-64px)] overflow-hidden`(헤더 `shrink-0`, 나머지는 `min-h-0 flex-1 overflow-y-auto`)로
+    바꾸고 섹션 간 여백을 `gap-6`→`gap-4`로 줄여 불필요한 페이지 스크롤을 없앰.
+  - **참여자 아바타 재배치**: `MealCard.tsx`에서 메뉴 아래 별도 줄에 있던 참여자 아바타 목록을 제거하고,
+    우측 참여 체크버튼 왼쪽에 겹침 스택으로 이동(각 아바타 지름의 1/5만 보이도록 `-space-x-[14.4px]`,
+    최대 4개 + 초과분 "+N" 배지).
+  - **하트 표시 제거(데드코드 정리)**: `MealCard.tsx`/`MealDetail.tsx`에서 좋아요(하트) 버튼을 제거하고,
+    이 두 곳에서만 쓰이던 `toggleMealLike` 서버 액션(`food/actions.ts`)과 `meal_like` 조회
+    (`food/page.tsx`, `food/[mealId]/page.tsx`)를 함께 삭제 — `meal_like` 테이블/RLS 자체는 스키마 변경이
+    아니라 건드리지 않음(다시 필요해지면 조회/렌더만 복원하면 됨).
 
 - 2026-07-12: 일정 탭/홈 화면/장바구니 시트 수정 6건 + 음력 표기 조건 수정 1건
   - **음력 표기**: `MonthView`의 "음 M.D" 표시 조건에서 "일정이 있는 날"(`hasEvent`)을 빼고 **그 달의 1일(달력 첫 칸) 또는 음력 1일(초하루)/15일(보름)**일 때만 보이도록 변경 — 일정이 많은 달에는 거의 매일 표시되던 문제 해결.

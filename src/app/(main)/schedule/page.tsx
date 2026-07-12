@@ -61,7 +61,20 @@ export default async function SchedulePage({
   const anchor = new Date(params.date ?? toDateStr(new Date()));
   const anchorStr = toDateStr(anchor);
 
-  const [{ data: memberRows }, weather] = await Promise.all([
+  // 월간/연간 뷰는 반복 일정(기념일·생신 등) 가상 인스턴스까지 합쳐서 조회한다
+  // (getSchedulesForRange, schedule/actions.ts). 주간 뷰는 범위가 좁아 이번 범위에서는
+  // 제외 — 기존과 동일하게 저장된 행만 그대로 조회. "하루" 뷰는 이 조회 자체가 필요 없음.
+  // range/scheduleRows는 memberRows/weather 어느 쪽에도 의존하지 않아(workspaceId·user.id·
+  // anchor만 있으면 계산 가능) 같은 Promise.all에 넣어 왕복을 하나 줄인다 — 이전엔
+  // memberRows/weather를 기다린 뒤에야 순차로 요청했음(불필요한 순차 의존이었음).
+  const range =
+    view === "month"
+      ? monthRange(anchor)
+      : view === "year"
+      ? yearRange(anchor)
+      : { start: getWeekDates(anchor)[0], end: getWeekDates(anchor)[6] };
+
+  const [{ data: memberRows }, weather, scheduleRows] = await Promise.all([
     supabase
       .from("workspace_member")
       .select(
@@ -69,6 +82,22 @@ export default async function SchedulePage({
       )
       .eq("workspace_id", workspaceId),
     getCurrentWeather(),
+    view === "day"
+      ? Promise.resolve<Schedule[]>([])
+      : view === "week"
+      ? (async () => {
+          const { data, error } = await supabase
+            .from("schedule")
+            .select("*")
+            .eq("workspace_id", workspaceId)
+            .gte("date_start", range.start)
+            .lte("date_start", range.end)
+            .or(`is_shared.eq.true,author_id.eq.${user.id}`)
+            .order("date_start", { ascending: true });
+          if (error) throw new Error(error.message);
+          return (data ?? []) as Schedule[];
+        })()
+      : getSchedulesForRange(workspaceId, user.id, range.start, range.end),
   ]);
 
   const members = mapWorkspaceMembers(memberRows ?? []);
@@ -128,32 +157,6 @@ export default async function SchedulePage({
       </div>
     );
   }
-
-  const range =
-    view === "month"
-      ? monthRange(anchor)
-      : view === "year"
-      ? yearRange(anchor)
-      : { start: getWeekDates(anchor)[0], end: getWeekDates(anchor)[6] };
-
-  // 월간/연간 뷰는 반복 일정(기념일·생신 등) 가상 인스턴스까지 합쳐서 조회한다
-  // (getSchedulesForRange, schedule/actions.ts). 주간 뷰는 범위가 좁아 이번 범위에서는
-  // 제외 — 기존과 동일하게 저장된 행만 그대로 조회.
-  const scheduleRows =
-    view === "week"
-      ? await (async () => {
-          const { data, error } = await supabase
-            .from("schedule")
-            .select("*")
-            .eq("workspace_id", workspaceId)
-            .gte("date_start", range.start)
-            .lte("date_start", range.end)
-            .or(`is_shared.eq.true,author_id.eq.${user.id}`)
-            .order("date_start", { ascending: true });
-          if (error) throw new Error(error.message);
-          return (data ?? []) as Schedule[];
-        })()
-      : await getSchedulesForRange(workspaceId, user.id, range.start, range.end);
 
   let schedules = scheduleRows;
 
