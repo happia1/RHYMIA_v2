@@ -62,7 +62,7 @@ export function HomeStickySection({
                   >
                     {s.image_url && (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={s.image_url} alt="" className="h-10 w-10 rounded object-cover" />
+                      <img src={s.image_url} alt="" className="h-10 w-full rounded object-cover" />
                     )}
                     <span className={`line-clamp-2 text-[12px] ${mirror.secondary}`}>{s.content}</span>
                     <span className={`text-[9px] ${mirror.muted}`}>

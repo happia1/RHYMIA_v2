@@ -113,7 +113,9 @@ export function MealDetail({
           </a>
         )}
 
-        {meal.memo && <p className="text-[14px] text-ink">{meal.memo}</p>}
+        {meal.memo && (
+          <p className="whitespace-pre-wrap text-[10px] text-ink">{meal.memo}</p>
+        )}
 
         {meal.video_id && (
           <a

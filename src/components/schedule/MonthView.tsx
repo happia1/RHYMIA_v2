@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { IconChevronLeft, IconChevronRight, IconCheck } from "@tabler/icons-react";
+import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
 import { getKeywordColor } from "@/lib/scheduleKeywords";
 import { toDateStr, formatYearMonth, addMonths } from "@/lib/date";
 import { getHoliday } from "@/lib/holidays";
@@ -13,6 +13,9 @@ import { isPeriodSchedule, shortRange } from "@/lib/scheduleFormat";
 import { ActivitySuggestionSection } from "@/components/schedule/ActivitySuggestionSection";
 import { AddEventSheet } from "@/components/schedule/AddEventSheet";
 import { ScheduleDetailSheet } from "@/components/schedule/ScheduleDetailSheet";
+import { TodoSheet } from "@/components/schedule/TodoSheet";
+import { TodoChecklistItem } from "@/components/schedule/TodoChecklistItem";
+import { GhostAddButton } from "@/components/schedule/GhostAddButton";
 import { KeywordLegend } from "@/components/schedule/KeywordLegend";
 import { MemberFilterRow } from "@/components/schedule/MemberFilterRow";
 import { SectionExpand } from "@/components/ui/SectionExpand";
@@ -25,6 +28,8 @@ const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
 // 기간 밴드는 겹쳐도 최대 이 줄 수까지만 쌓는다 — 넘치면 그 일정은 도트로 폴백.
 const MAX_BAND_ROWS = 2;
 
+type TodoSheetTarget = { mode: "add"; date: string } | { mode: "edit"; todo: Todo };
+
 function scheduleOverlapsDay(s: ExpandedSchedule, date: string) {
   const end = s.date_end ?? s.date_start;
   return s.date_start <= date && date <= end;
@@ -33,27 +38,6 @@ function scheduleOverlapsDay(s: ExpandedSchedule, date: string) {
 // 완료 항목은 하단으로 — Array.sort는 안정 정렬이라 같은 is_done끼리는 원래 순서(등록순)를 유지한다.
 function sortTodos(list: Todo[]) {
   return [...list].sort((a, b) => Number(a.is_done) - Number(b.is_done));
-}
-
-function TodoRow({ todo, onToggle }: { todo: Todo; onToggle: () => void }) {
-  return (
-    <button onClick={onToggle} className="flex items-center gap-2 py-1.5 text-left">
-      <span
-        className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border ${
-          todo.is_done ? "border-sage bg-sage" : "border-border-light"
-        }`}
-      >
-        {todo.is_done && <IconCheck size={9} className="text-white" stroke={3} />}
-      </span>
-      <span
-        className={`min-w-0 flex-1 truncate text-[12px] ${
-          todo.is_done ? "text-[var(--text-muted)] line-through" : "text-ink"
-        }`}
-      >
-        {todo.title}
-      </span>
-    </button>
-  );
 }
 
 export function MonthView({
@@ -86,6 +70,8 @@ export function MonthView({
   const [prefillEvent, setPrefillEvent] = useState<ExpandedSchedule | null>(null);
   const [editingSchedule, setEditingSchedule] = useState<ExpandedSchedule | null>(null);
   const [detailSchedule, setDetailSchedule] = useState<ExpandedSchedule | null>(null);
+  const [addNewOpen, setAddNewOpen] = useState(false);
+  const [todoSheetTarget, setTodoSheetTarget] = useState<TodoSheetTarget | null>(null);
   const [todos, setTodos] = useState(monthTodos);
   const [overdue, setOverdue] = useState(overdueTodos);
 
@@ -165,9 +151,14 @@ export function MonthView({
     return map;
   }, [schedules, overflowIds, monthStart, monthEnd]);
 
+  // 기간일정 중 상단 범례 바에 이미 표시된 것(legend)은 여기서 또 보여주면 중복이라 뺀다 —
+  // 밴드 자리가 모자라 범례에 못 들어간(overflow) 기간일정만 예외적으로 여기 남는다.
   const selectedSchedules = useMemo(
-    () => schedules.filter((s) => scheduleOverlapsDay(s, selectedDate)),
-    [schedules, selectedDate]
+    () =>
+      schedules.filter(
+        (s) => scheduleOverlapsDay(s, selectedDate) && !legend.some((l) => l.id === s.id)
+      ),
+    [schedules, selectedDate, legend]
   );
   const isSelectedToday = selectedDate === todayStr;
   const selectedTodos = useMemo(
@@ -175,6 +166,12 @@ export function MonthView({
     [todos, selectedDate]
   );
   const overdueSorted = useMemo(() => sortTodos(overdue), [overdue]);
+  // 지난(마감 지난) 할 일은 별도 섹션 없이 오늘 체크리스트에 그냥 섞어 보여준다 —
+  // 오늘이 아닌 다른 날짜를 보고 있을 땐 그 날짜 자신의 할 일만.
+  const checklistItems = useMemo(
+    () => (isSelectedToday ? sortTodos([...selectedTodos, ...overdueSorted]) : selectedTodos),
+    [selectedTodos, overdueSorted, isSelectedToday]
+  );
 
   const handleToggleTodo = (todo: Todo) => {
     const next = !todo.is_done;
@@ -185,11 +182,23 @@ export function MonthView({
       setOverdue((prev) => prev.map((t) => (t.id === todo.id ? { ...t, is_done: !next } : t)));
     });
   };
+
   const activitySuggestion = useMemo(
     () => pickDeterministic(ACTIVITY_SUGGESTION_POOL, selectedDate),
     [selectedDate]
   );
   const activityCandidates = useMemo(() => pickActivityCandidates(selectedDate), [selectedDate]);
+
+  // 추가/삭제처럼 목록 자체가 바뀌는 변경은 router.refresh()로 서버에서 새 monthTodos/
+  // overdueTodos를 받아오는데, useState의 초기값은 최초 마운트 때만 쓰이므로 prop이 실제로
+  // 바뀔 때마다 로컬 상태를 다시 맞춰준다(완료 토글처럼 목록 구성 자체는 안 바뀌는 변경은
+  // 이미 로컬에서 낙관적으로 처리해 여기 영향 없음).
+  useEffect(() => {
+    setTodos(monthTodos);
+  }, [monthTodos]);
+  useEffect(() => {
+    setOverdue(overdueTodos);
+  }, [overdueTodos]);
 
   useEffect(() => {
     let cancelled = false;
@@ -305,13 +314,17 @@ export function MonthView({
       {legend.length > 0 && (
         <div className="flex flex-wrap gap-x-4 gap-y-1.5 border-t border-border-light pt-3">
           {legend.map((s) => (
-            <span key={s.id} className="flex items-center gap-1.5 text-[11px] text-stone">
+            <button
+              key={s.id}
+              onClick={() => setDetailSchedule(s)}
+              className="flex items-center gap-1.5 text-[11px] text-stone"
+            >
               <span
                 className="h-[2px] w-3 rounded-full"
                 style={{ backgroundColor: getKeywordColor(s.keyword_main), opacity: 0.55 }}
               />
               {s.title} {shortRange(s)}
-            </span>
+            </button>
           ))}
         </div>
       )}
@@ -323,30 +336,28 @@ export function MonthView({
 
         <div className="grid grid-cols-5 gap-3">
           <div className="col-span-2 flex flex-col">
-            {selectedTodos.length === 0 && !(isSelectedToday && overdueSorted.length > 0) ? (
-              <p className="py-2 text-[12px] text-[var(--text-muted)]">없음</p>
+            <span className="mb-1 text-[10px] font-medium text-[var(--text-muted)]">오늘 할 일</span>
+            {checklistItems.length === 0 ? (
+              <GhostAddButton
+                onClick={() => setTodoSheetTarget({ mode: "add", date: selectedDate })}
+                label="할 일 추가"
+              />
             ) : (
-              <>
-                {selectedTodos.map((t) => (
-                  <TodoRow key={t.id} todo={t} onToggle={() => handleToggleTodo(t)} />
-                ))}
-                {isSelectedToday && overdueSorted.length > 0 && (
-                  <>
-                    <span className="pt-2 text-[10px] font-medium text-terra">
-                      지난 할 일 {overdueSorted.length}개
-                    </span>
-                    {overdueSorted.map((t) => (
-                      <TodoRow key={t.id} todo={t} onToggle={() => handleToggleTodo(t)} />
-                    ))}
-                  </>
-                )}
-              </>
+              checklistItems.map((t) => (
+                <TodoChecklistItem
+                  key={t.id}
+                  todo={t}
+                  onToggle={() => handleToggleTodo(t)}
+                  onOpenEdit={() => setTodoSheetTarget({ mode: "edit", todo: t })}
+                />
+              ))
             )}
           </div>
 
           <div className="col-span-3 flex flex-col border-l border-border-light pl-3">
+            <span className="mb-1 text-[10px] font-medium text-[var(--text-muted)]">주요 일정</span>
             {selectedSchedules.length === 0 ? (
-              <p className="py-2 text-[12px] text-[var(--text-muted)]">없음</p>
+              <GhostAddButton onClick={() => setAddNewOpen(true)} label="주요 일정 추가" />
             ) : (
               <SectionExpand
                 items={selectedSchedules}
@@ -355,18 +366,18 @@ export function MonthView({
                   <button
                     key={s.id}
                     onClick={() => setDetailSchedule(s)}
-                    className={`flex flex-col gap-0.5 py-2 text-left ${
+                    className={`flex flex-col gap-0.5 py-1.5 text-left ${
                       i > 0 ? "border-t border-border-light" : ""
                     } ${s.id === highlightId ? "-mx-2 rounded-xl bg-honey/10 px-2" : ""}`}
                   >
                     <span
-                      className={`truncate text-[13px] ${
+                      className={`truncate text-[12px] ${
                         s.is_important ? "font-medium text-terra" : "text-ink"
                       }`}
                     >
                       {s.title}
                     </span>
-                    <span className="truncate text-[10px] text-stone">
+                    <span className="truncate text-[9px] text-stone">
                       {s.time_start ? s.time_start.slice(0, 5) : "종일"} ·{" "}
                       {targetLabel(s.target_members, membersById)}
                     </span>
@@ -407,14 +418,15 @@ export function MonthView({
       )}
 
       <AddEventSheet
-        open={!!prefillEvent || !!editingSchedule}
+        open={!!prefillEvent || !!editingSchedule || addNewOpen}
         onClose={() => {
           setPrefillEvent(null);
           setEditingSchedule(null);
+          setAddNewOpen(false);
         }}
         workspaceId={workspaceId}
         members={Object.entries(membersById).map(([id, m]) => ({ id, display_name: m.display_name }))}
-        defaultDate={editingSchedule ? editingSchedule.date_start : ""}
+        defaultDate={editingSchedule ? editingSchedule.date_start : addNewOpen ? selectedDate : ""}
         prefill={
           prefillEvent
             ? {
@@ -435,6 +447,14 @@ export function MonthView({
           setDetailSchedule(null);
           setEditingSchedule(s);
         }}
+      />
+
+      <TodoSheet
+        open={!!todoSheetTarget}
+        onClose={() => setTodoSheetTarget(null)}
+        workspaceId={workspaceId}
+        existingTodo={todoSheetTarget?.mode === "edit" ? todoSheetTarget.todo : null}
+        defaultDueDate={todoSheetTarget?.mode === "add" ? todoSheetTarget.date : null}
       />
     </div>
   );

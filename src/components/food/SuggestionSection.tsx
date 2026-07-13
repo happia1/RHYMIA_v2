@@ -49,7 +49,7 @@ export function SuggestionSection({
   return (
     <section className="flex flex-col gap-label-gap">
       <SectionLabel icon={<IconSparkles size={14} />}>오늘의 제안</SectionLabel>
-      <div className="flex divide-x divide-border-light pl-section-indent">
+      <div className="flex divide-x divide-border-light">
         {cards.map((card) => (
           <button
             key={card.title}

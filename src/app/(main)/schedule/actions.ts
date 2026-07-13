@@ -427,3 +427,50 @@ export async function toggleTodoDone(todoId: string, done: boolean) {
   revalidatePath("/home");
   return { ok: true as const };
 }
+
+/** 할 일 수정(제목·마감일·설명 등 전체 필드) — 월간·주간 뷰의 할 일 수정 시트(TodoSheet)가
+ * 공유하는 단일 액션. toggleTodoDone과 같은 이유로 작성자 제한 없음(가족 전체가 편집 가능).
+ * is_done은 여기서 건드리지 않는다(완료 토글은 별도 toggleTodoDone 경로). */
+export async function updateTodo(todoId: string, input: TodoInput) {
+  const title = input.title.trim();
+  if (!title) return { ok: false as const, message: "제목을 입력해주세요." };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { error } = await supabase
+    .from("todo")
+    .update({
+      title,
+      due_date: input.due_date,
+      description: input.description,
+      notify_enabled: input.notify_enabled,
+      repeat_type: input.repeat_type,
+      tag: input.tag,
+      color: input.color,
+    })
+    .eq("id", todoId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/schedule");
+  revalidatePath("/home");
+  return { ok: true as const };
+}
+
+export async function deleteTodo(todoId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { error } = await supabase.from("todo").delete().eq("id", todoId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/schedule");
+  revalidatePath("/home");
+  return { ok: true as const };
+}

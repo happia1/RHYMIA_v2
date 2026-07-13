@@ -48,9 +48,11 @@ export default async function FoodPage({
       .eq("workspace_id", workspaceId)
       .eq("date", selectedDate)
       .order("created_at", { ascending: true }),
+    // "늘 먹던 걸로" 빈도 집계(getFrequentMenus)뿐 아니라, 빠른 등록 시 예전 기록에서
+    // 이미지·메모 등을 그대로 복사해오기 위해 필요한 컬럼까지 함께 가져온다.
     supabase
       .from("meal")
-      .select("main_menu, date")
+      .select("main_menu, date, type, sides, memo, place, image_url, video_id, recipe_title")
       .eq("workspace_id", workspaceId)
       .order("date", { ascending: false })
       .limit(200),
@@ -101,6 +103,7 @@ export default async function FoodPage({
             workspaceId={workspaceId}
             selectedDate={selectedDate}
             frequentMenus={frequentMenus}
+            recentMeals={mealHistory ?? []}
             activeVote={blockingVote}
           />
         ) : (
@@ -122,6 +125,8 @@ export default async function FoodPage({
 
         <div className="h-px w-full shrink-0 bg-border-light" />
 
+        <FoodTabActions workspaceId={workspaceId} fridgeItems={(fridgeItems as FridgeItem[]) ?? []} />
+
         <SuggestionSection
           workspaceId={workspaceId}
           selectedDate={selectedDate}
@@ -129,8 +134,6 @@ export default async function FoodPage({
           trackingDays={trackingDays}
           activeVote={blockingVote}
         />
-
-        <FoodTabActions workspaceId={workspaceId} fridgeItems={(fridgeItems as FridgeItem[]) ?? []} />
       </div>
 
       <Link

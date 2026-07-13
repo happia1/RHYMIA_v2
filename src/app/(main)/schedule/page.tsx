@@ -58,12 +58,12 @@ export default async function SchedulePage({
   const anchorStr = toDateStr(anchor);
   const todayStr = toDateStr(new Date());
 
-  // 월간/연간 뷰는 반복 일정(기념일·생신 등) 가상 인스턴스까지 합쳐서 조회한다
-  // (getSchedulesForRange, schedule/actions.ts). 주간 뷰는 범위가 좁아 이번 범위에서는
-  // 제외 — 기존과 동일하게 저장된 행만 그대로 조회. "하루" 뷰는 이 조회 자체가 필요 없음.
-  // range/scheduleRows는 memberRows 어느 쪽에도 의존하지 않아(workspaceId·user.id·anchor만
-  // 있으면 계산 가능) 같은 Promise.all에 넣어 왕복을 하나 줄인다 — 이전엔 memberRows를
-  // 기다린 뒤에야 순차로 요청했음(불필요한 순차 의존이었음).
+  // 월간/주간/연간 뷰 전부 반복 일정(기념일·생신 등) 가상 인스턴스까지 합쳐서 조회한다
+  // (getSchedulesForRange, schedule/actions.ts) — 주간 뷰만 date_start 단순 범위 쿼리를
+  // 따로 썼던 예전 방식은 이번 주 시작 전부터 걸쳐있는 기간일정을 놓치는 버그가 있어 통일함.
+  // "하루" 뷰는 이 조회 자체가 필요 없음. range/scheduleRows는 memberRows 어느 쪽에도
+  // 의존하지 않아(workspaceId·user.id·anchor만 있으면 계산 가능) 같은 Promise.all에 넣어
+  // 왕복을 하나 줄인다 — 이전엔 memberRows를 기다린 뒤에야 순차로 요청했음(불필요한 순차 의존).
   const range =
     view === "month"
       ? monthRange(anchor)
@@ -71,26 +71,17 @@ export default async function SchedulePage({
       ? yearRange(anchor)
       : { start: getWeekDates(anchor)[0], end: getWeekDates(anchor)[6] };
 
-  // 할 일(todo)은 달력 아래 선택일 패널이 있는 월간 뷰에서만 필요 — 다른 뷰는 빈 배열로 스킵.
+  // 할 일(todo)은 선택일 패널이 있는 월간·주간 뷰에서만 필요 — 다른 뷰는 빈 배열로 스킵.
+  // 주간 뷰도 예전엔 단순 date_start 범위 쿼리를 따로 써서 이번 주 시작 전부터 걸쳐있는
+  // 기간일정·반복일정 가상 인스턴스가 누락되는 버그가 있었음 — 월간/연간과 동일하게
+  // getSchedulesForRange로 통일해 겹침 범위를 정확히 계산하도록 고침.
   const [members, scheduleRows, monthTodos, overdueTodos] = await Promise.all([
     getWorkspaceMembers(workspaceId),
-    view === "day"
-      ? Promise.resolve<Schedule[]>([])
-      : view === "week"
-      ? (async () => {
-          const { data, error } = await supabase
-            .from("schedule")
-            .select("*")
-            .eq("workspace_id", workspaceId)
-            .gte("date_start", range.start)
-            .lte("date_start", range.end)
-            .order("date_start", { ascending: true });
-          if (error) throw new Error(error.message);
-          return (data ?? []) as Schedule[];
-        })()
-      : getSchedulesForRange(workspaceId, range.start, range.end),
-    view === "month" ? getTodosForRange(workspaceId, range.start, range.end) : Promise.resolve<Todo[]>([]),
-    view === "month" ? getOverdueTodos(workspaceId, todayStr) : Promise.resolve<Todo[]>([]),
+    view === "day" ? Promise.resolve<Schedule[]>([]) : getSchedulesForRange(workspaceId, range.start, range.end),
+    view === "month" || view === "week"
+      ? getTodosForRange(workspaceId, range.start, range.end)
+      : Promise.resolve<Todo[]>([]),
+    view === "month" || view === "week" ? getOverdueTodos(workspaceId, todayStr) : Promise.resolve<Todo[]>([]),
   ]);
 
   const myMember = members.find((m) => m.user_id === user.id);
@@ -165,7 +156,7 @@ export default async function SchedulePage({
 
       <div className="min-h-0 flex-1 overflow-y-auto pb-24">
         <section className="flex flex-col gap-label-gap">
-          {view !== "month" && (
+          {view === "year" && (
             <div className="flex items-center justify-between gap-3">
               <span className={mirror.label}>{VIEW_LABEL[view]}</span>
               <MemberFilterRow members={members} target={params.target ?? "all"} />
@@ -190,6 +181,10 @@ export default async function SchedulePage({
               schedules={schedules}
               membersById={membersById}
               workspaceId={workspaceId}
+              weekTodos={monthTodos}
+              overdueTodos={overdueTodos}
+              members={members}
+              target={params.target ?? "all"}
             />
           )}
           {view === "year" && (

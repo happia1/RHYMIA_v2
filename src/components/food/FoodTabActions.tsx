@@ -6,7 +6,7 @@ import { FridgeStockSheet } from "@/components/food/FridgeStockSheet";
 import { useShoppingSheet } from "@/components/shopping/ShoppingSheetContext";
 import type { FridgeItem } from "@/types";
 
-/** 식탁 탭 최하단(오늘의 제안 아래) — 현재 재고 확인(끼니 추가 화면과 동일한 FridgeStockSheet
+/** 식탁 탭 오늘의 제안 위(끼니 목록 아래) — 재고 확인(끼니 추가 화면과 동일한 FridgeStockSheet
  * 재사용, 중복 구현 금지)과 장볼 것 입력(전역 GlobalShoppingSheet, 항상 "장볼 것" 탭으로 열림)
  * 을 2단(왼쪽/오른쪽)으로 나란히 두고, 가운데 세로 구분선만으로 나눈다(박스 없음). */
 export function FoodTabActions({
@@ -27,7 +27,7 @@ export function FoodTabActions({
           className="flex items-center gap-2 py-2.5 pr-3 text-left text-[13px] text-ink"
         >
           <IconFridge size={16} className="text-honey" />
-          냉장고에 뭐있지
+          집에 뭐 있지
         </button>
         <button
           onClick={openShoppingSheet}

@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { useToast } from "@/components/ui/Toast";
 import { Input, Textarea } from "@/components/ui/Input";
-import { createTodo } from "@/app/(main)/schedule/actions";
+import { createTodo, updateTodo, deleteTodo } from "@/app/(main)/schedule/actions";
 import { toDateStr } from "@/lib/date";
 import { KEYWORD_GROUPS } from "@/lib/scheduleKeywords";
+import type { Todo } from "@/types";
 
 const COLORS = ["#E8A04A", "#3D7EAA", "#5BAD7F", "#D96B5A", "#9B8EC4", "#E8416A"];
 
@@ -19,15 +21,24 @@ function quickPickDate(pick: QuickPick): string {
   return toDateStr(d);
 }
 
+/** 할 일 등록/수정 겸용 시트 — 월간·주간 뷰에서 할 일 텍스트를 탭하면 `existingTodo`를 넘겨
+ * 수정 모드로 열리고(제목·마감일 등 전체 필드 수정 + 삭제), 빈 칸의 "+" 고스트를 탭하면
+ * `defaultDueDate`만 넘겨 그 날짜가 프리필된 등록 모드로 연다. 등록 화면의 하단 플로팅
+ * + 버튼(AddEventEntry)에서 쓸 땐 둘 다 생략해 기본값(오늘) 그대로 등록 모드. */
 export function TodoSheet({
   open,
   onClose,
   workspaceId,
+  existingTodo,
+  defaultDueDate,
 }: {
   open: boolean;
   onClose: () => void;
   workspaceId: string;
+  existingTodo?: Todo | null;
+  defaultDueDate?: string | null;
 }) {
+  const router = useRouter();
   const { showToast } = useToast();
   const [title, setTitle] = useState("");
   const [quickPick, setQuickPick] = useState<QuickPick>("today");
@@ -50,10 +61,38 @@ export function TodoSheet({
     setColor(COLORS[0]);
   };
 
+  // 시트가 열릴 때마다 필드를 다시 채운다 — existingTodo가 있으면 수정 모드로 전체 필드를
+  // 프리필하고(마감일이 오늘/내일/다음 주 칩과 정확히 일치하면 그 칩을 선택), 없으면
+  // defaultDueDate(빈 칸 "+" 고스트에서 넘어온 날짜)만 반영한 새 등록 폼으로 초기화한다.
+  useEffect(() => {
+    if (!open) return;
+    if (existingTodo) {
+      setTitle(existingTodo.title);
+      const due = existingTodo.due_date ?? toDateStr(new Date());
+      if (due === quickPickDate("today")) setQuickPick("today");
+      else if (due === quickPickDate("tomorrow")) setQuickPick("tomorrow");
+      else if (due === quickPickDate("next_week")) setQuickPick("next_week");
+      else setQuickPick("custom");
+      setCustomDate(due);
+      setDescription(existingTodo.description ?? "");
+      setNotifyEnabled(existingTodo.notify_enabled);
+      setRepeatType(existingTodo.repeat_type);
+      setTag(existingTodo.tag);
+      setColor(existingTodo.color);
+    } else {
+      reset();
+      if (defaultDueDate) {
+        setQuickPick("custom");
+        setCustomDate(defaultDueDate);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, existingTodo, defaultDueDate]);
+
   const handleSubmit = async () => {
     if (!title.trim()) return;
     setIsSubmitting(true);
-    const result = await createTodo(workspaceId, {
+    const input = {
       title,
       due_date: quickPick === "custom" ? customDate : quickPickDate(quickPick),
       description: description || null,
@@ -61,20 +100,43 @@ export function TodoSheet({
       repeat_type: repeatType,
       tag,
       color,
-    });
+    };
+    const result = existingTodo
+      ? await updateTodo(existingTodo.id, input)
+      : await createTodo(workspaceId, input);
     setIsSubmitting(false);
 
     if (result.ok) {
-      showToast("할 일이 등록되었습니다.");
+      showToast(existingTodo ? "할 일이 수정되었습니다." : "할 일이 등록되었습니다.");
       reset();
       onClose();
+      router.refresh();
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!existingTodo) return;
+    setIsSubmitting(true);
+    const result = await deleteTodo(existingTodo.id);
+    setIsSubmitting(false);
+    if (result.ok) {
+      showToast("할 일이 삭제되었습니다.");
+      onClose();
+      router.refresh();
     }
   };
 
   return (
     <BottomSheet open={open} onClose={onClose}>
       <div className="flex flex-col gap-4">
-        <h2 className="text-[17px] font-medium text-ink">할 일 등록</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-[17px] font-medium text-ink">{existingTodo ? "할 일 수정" : "할 일 등록"}</h2>
+          {existingTodo && (
+            <button onClick={handleDelete} disabled={isSubmitting} className="text-[13px] text-terra">
+              삭제
+            </button>
+          )}
+        </div>
 
         <Input
           value={title}
@@ -198,7 +260,7 @@ export function TodoSheet({
           disabled={isSubmitting}
           className="flex h-12 items-center justify-center rounded-2xl bg-ink text-[15px] font-medium text-cream"
         >
-          등록하기
+          {existingTodo ? "저장하기" : "등록하기"}
         </button>
       </div>
     </BottomSheet>

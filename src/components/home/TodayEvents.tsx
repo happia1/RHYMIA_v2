@@ -32,12 +32,14 @@ function ScheduleMarker({ schedule }: { schedule: Schedule }) {
 
 function TodoMarker({ done }: { done: boolean }) {
   return (
-    <span
-      className={`${MARKER_SLOT} rounded-full border ${
-        done ? "border-sage bg-sage" : mirror.hairline
-      }`}
-    >
-      {done && <IconCheck size={8} className="text-white" stroke={3.5} />}
+    <span className={MARKER_SLOT}>
+      <span
+        className={`flex h-3 w-3 items-center justify-center rounded-full border ${
+          done ? "border-sage bg-sage" : mirror.hairline
+        }`}
+      >
+        {done && <IconCheck size={7} className="text-white" stroke={3.5} />}
+      </span>
     </span>
   );
 }

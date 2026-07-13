@@ -11,7 +11,7 @@ export const KEYWORD_GROUPS: KeywordGroup[] = [
   {
     main: "교육",
     color: "#5BAD7F",
-    subs: ["방학", "모의고사", "중간고사", "기말고사", "현장학습", "입학", "졸업"],
+    subs: ["방학", "시험", "현장학습", "입학", "졸업"],
   },
   { main: "건강", color: "#E8416A", subs: ["병원", "검진", "예방접종"] },
   { main: "기타", color: "#888780", subs: [] },

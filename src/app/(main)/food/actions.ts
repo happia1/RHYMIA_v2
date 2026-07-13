@@ -138,6 +138,31 @@ export async function updateMeal(mealId: string, input: MealInput) {
   redirect(`/food/${mealId}`);
 }
 
+export async function deleteMeal(mealId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { data: meal, error: fetchError } = await supabase
+    .from("meal")
+    .select("author_id")
+    .eq("id", mealId)
+    .maybeSingle();
+
+  if (fetchError) throw new Error(fetchError.message);
+  if (!meal || meal.author_id !== user.id) {
+    return { ok: false as const, message: "삭제 권한이 없습니다." };
+  }
+
+  const { error } = await supabase.from("meal").delete().eq("id", mealId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/food");
+  return { ok: true as const };
+}
+
 export async function addFridgeItem(
   workspaceId: string,
   name: string,

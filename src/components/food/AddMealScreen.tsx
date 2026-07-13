@@ -348,7 +348,7 @@ export function AddMealScreen({
             onChange={(e) => setMemo(e.target.value)}
             rows={3}
             placeholder="자유롭게 적어보세요"
-            className="px-0 py-2 text-[14px]"
+            className="px-0 py-2 text-[12px]"
           />
         </section>
 
