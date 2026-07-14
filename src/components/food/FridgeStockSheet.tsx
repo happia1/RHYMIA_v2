@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { IconCheck } from "@tabler/icons-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Input } from "@/components/ui/Input";
 import { useShoppingSheet } from "@/components/shopping/ShoppingSheetContext";
@@ -15,23 +16,32 @@ const FRIDGE_CATEGORIES: { value: FridgeCategory; label: string }[] = [
 
 /** 끼니 추가 화면과 식탁 탭 홈 화면 양쪽에서 같은 재고 데이터/로직을 쓰도록 공용으로 추출.
  * 재고 보다가 부족한 걸 바로 장바구니에 적을 수 있도록 하단에 장볼 것 시트로 넘어가는 링크를 둔다
- * (이 시트를 닫고 전역 GlobalShoppingSheet를 여는 방식 — 두 바텀시트를 동시에 띄우지 않음). */
+ * (이 시트를 닫고 전역 GlobalShoppingSheet를 여는 방식 — 두 바텀시트를 동시에 띄우지 않음).
+ *
+ * `onToggleItem`을 넘기면(끼니 등록 화면 전용) 항목이 탭으로 선택/해제되는 재료 선택 모드가
+ * 된다 — 선택 상태 자체는 호출부(AddMealScreen)가 들고 있어서, 이 시트를 닫아도 그대로
+ * 유지되고 폼의 메뉴 칩으로 이어진다. 안 넘기면(식탁 탭 홈 등) 예전처럼 그냥 보기 전용. */
 export function FridgeStockSheet({
   open,
   onClose,
   workspaceId,
   items,
+  selectedNames,
+  onToggleItem,
 }: {
   open: boolean;
   onClose: () => void;
   workspaceId: string;
   items: FridgeItem[];
+  selectedNames?: string[];
+  onToggleItem?: (name: string) => void;
 }) {
   const [category, setCategory] = useState<FridgeCategory>("cold");
   const [draft, setDraft] = useState("");
   const [isPending, startTransition] = useTransition();
   const { open: openShoppingSheet } = useShoppingSheet();
 
+  const selectable = Boolean(onToggleItem);
   const filtered = items.filter((i) => i.category === category);
 
   const handleAdd = () => {
@@ -69,7 +79,7 @@ export function FridgeStockSheet({
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleAdd()}
             placeholder="재료 이름"
-            className="h-11 flex-1 rounded-xl px-3 text-[14px]"
+            className="h-11 flex-1 rounded-xl px-3 text-[12px]"
           />
           <button
             onClick={handleAdd}
@@ -84,17 +94,38 @@ export function FridgeStockSheet({
           {filtered.length === 0 && (
             <p className="text-[13px] text-stone">등록된 재료가 없어요</p>
           )}
-          {filtered.map((item) => (
-            <div key={item.id} className="flex items-center justify-between">
-              <span className="text-[14px] text-ink">{item.name}</span>
-              <button
-                onClick={() => startTransition(() => deleteFridgeItem(item.id))}
-                className="text-[12px] text-stone"
+          {filtered.map((item) => {
+            const isSelected = selectable && selectedNames?.includes(item.name);
+            return (
+              <div
+                key={item.id}
+                onClick={selectable ? () => onToggleItem!(item.name) : undefined}
+                className={`flex items-center justify-between ${selectable ? "cursor-pointer" : ""}`}
               >
-                삭제
-              </button>
-            </div>
-          ))}
+                <span className="flex items-center gap-2 text-[12px] text-ink">
+                  {selectable && (
+                    <span
+                      className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
+                        isSelected ? "border-honey bg-honey" : "border-border-light"
+                      }`}
+                    >
+                      {isSelected && <IconCheck size={10} className="text-white" stroke={3} />}
+                    </span>
+                  )}
+                  {item.name}
+                </span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    startTransition(() => deleteFridgeItem(item.id));
+                  }}
+                  className="text-[12px] text-stone"
+                >
+                  삭제
+                </button>
+              </div>
+            );
+          })}
         </div>
 
         <button

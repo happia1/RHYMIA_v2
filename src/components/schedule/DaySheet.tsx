@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { IconPlus } from "@tabler/icons-react";
 import { getHoliday } from "@/lib/holidays";
 import { solarToLunar } from "@/lib/lunar";
@@ -10,12 +10,11 @@ import { targetLabel, type MemberInfo } from "@/lib/scheduleTargets";
 import { TodoChecklistItem } from "@/components/schedule/TodoChecklistItem";
 import { ActivitySuggestionSection } from "@/components/schedule/ActivitySuggestionSection";
 import { SectionExpand } from "@/components/ui/SectionExpand";
+import { useSwipeDownToClose } from "@/components/ui/useSwipeDownToClose";
 import type { ExpandedSchedule } from "@/lib/recurrence";
 import type { Todo } from "@/types";
 
 const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
-// 이보다 많이(px) 끌어내리면 스와이프로 시트를 닫는다.
-const SWIPE_CLOSE_THRESHOLD_PX = 70;
 // 사용자 요청으로 "오늘은 이런 건 어때요" 제안 섹션을 일단 숨김 — 다시 켤 땐 이 값만 true로.
 const SHOW_ACTIVITY_SUGGESTION = false;
 
@@ -85,9 +84,7 @@ export function DaySheet({
   activityCandidates: string[];
 }) {
   const [mounted, setMounted] = useState(open);
-  const [dragY, setDragY] = useState(0);
-  const [dragging, setDragging] = useState(false);
-  const touchStartY = useRef<number | null>(null);
+  const { dragY, dragging, handlers } = useSwipeDownToClose(onClose);
   const holiday = getHoliday(date);
   const { main, lunarLabel } = formatHeaderParts(date);
   const periodSchedules = schedules.filter(isPeriodSchedule);
@@ -97,33 +94,15 @@ export function DaySheet({
     if (open) setMounted(true);
   }, [open]);
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartY.current = e.touches[0].clientY;
-    setDragging(true);
-  };
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (touchStartY.current == null) return;
-    const delta = e.touches[0].clientY - touchStartY.current;
-    if (delta > 0) setDragY(delta);
-  };
-  const handleTouchEnd = () => {
-    touchStartY.current = null;
-    setDragging(false);
-    if (dragY > SWIPE_CLOSE_THRESHOLD_PX) onClose();
-    setDragY(0);
-  };
-
   if (!mounted) return null;
 
   return (
     <div
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
+      {...handlers}
       onTransitionEnd={() => {
         if (!open) setMounted(false);
       }}
-      className={`fixed inset-x-0 bottom-0 z-50 flex max-h-[52dvh] flex-col overflow-y-auto rounded-t-3xl bg-surface p-5 shadow-[0_-8px_24px_rgba(0,0,0,0.08)] ${
+      className={`fixed inset-x-0 bottom-0 z-50 flex h-[62dvh] flex-col overflow-y-auto rounded-t-3xl bg-surface p-5 shadow-[0_-8px_24px_rgba(0,0,0,0.08)] ${
         dragging ? "" : "transition-transform duration-200"
       } ${open ? "translate-y-0" : "translate-y-full"}`}
       style={dragY ? { transform: `translateY(${dragY}px)` } : undefined}

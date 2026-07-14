@@ -137,6 +137,8 @@ export interface Meal {
   /** 블로그 레시피 검색 결과에서 저장한 글 링크 — video_id(유튜브)와 공존 가능,
    * 본문은 저장하지 않고(저작권) 링크만 보관한다 */
   recipe_url: string | null;
+  /** "집에 뭐 있지"에서 골라 담은 재료명 스냅샷 — fridge_item 참조가 아니라 문자열 배열 */
+  ingredients: string[];
   emoji: string;
   color: string;
   created_at: string;

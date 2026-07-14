@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSwipeDownToClose } from "@/components/ui/useSwipeDownToClose";
 
 export function BottomSheet({
   open,
@@ -15,6 +16,7 @@ export function BottomSheet({
   tall?: boolean;
 }) {
   const [mounted, setMounted] = useState(open);
+  const { dragY, dragging, handlers } = useSwipeDownToClose(onClose);
 
   useEffect(() => {
     if (open) setMounted(true);
@@ -35,9 +37,11 @@ export function BottomSheet({
       <div className="absolute inset-0 bg-black/30" />
       <div
         onClick={(e) => e.stopPropagation()}
-        className={`relative z-10 flex w-full flex-col overflow-y-auto rounded-t-3xl bg-surface p-6 transition-transform duration-200 ${
-          tall ? "max-h-[92dvh]" : "max-h-[85vh]"
-        } ${open ? "translate-y-0" : "translate-y-full"}`}
+        {...handlers}
+        className={`relative z-10 flex w-full flex-col overflow-y-auto rounded-t-3xl bg-surface p-6 ${
+          dragging ? "" : "transition-transform duration-200"
+        } ${tall ? "max-h-[92dvh]" : "max-h-[85vh]"} ${open ? "translate-y-0" : "translate-y-full"}`}
+        style={dragY ? { transform: `translateY(${dragY}px)` } : undefined}
       >
         <div className="mx-auto mb-4 h-1 w-9 shrink-0 rounded-full bg-[#E8E6E0]" />
         {children}

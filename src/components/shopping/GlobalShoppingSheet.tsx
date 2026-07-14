@@ -248,7 +248,7 @@ export function GlobalShoppingSheet({
   return (
     <BottomSheet open={open} onClose={onClose} tall>
       <div className="flex flex-col gap-4">
-        <div className="flex gap-4 border-b border-border-light">
+        <div className="flex shrink-0 gap-4 border-b border-border-light">
           {(["list", "history"] as const).map((t) => (
             <button
               key={t}
@@ -262,7 +262,11 @@ export function GlobalShoppingSheet({
           ))}
         </div>
 
-        {tab === "list" ? (
+        {/* 탭 콘텐츠를 고정 높이(기록 탭 기준 — 달력+목록이 있어 두 탭 중 더 크다) 안에 두고
+            그 안에서만 스크롤되게 한다 — 안 그러면 "장볼 것"(짧음)과 "기록"(김) 사이를
+            오갈 때마다 시트 전체 높이가 출렁였다. */}
+        <div className="flex h-[65dvh] flex-col overflow-y-auto">
+          {tab === "list" ? (
           <>
             <div className="flex items-center gap-2">
               <Input
@@ -357,9 +361,10 @@ export function GlobalShoppingSheet({
               )}
             </div>
           </>
-        ) : (
-          <GroceryHistoryTab workspaceId={workspaceId} />
-        )}
+          ) : (
+            <GroceryHistoryTab workspaceId={workspaceId} />
+          )}
+        </div>
       </div>
     </BottomSheet>
   );

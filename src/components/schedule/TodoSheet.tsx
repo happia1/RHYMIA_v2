@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BottomSheet } from "@/components/ui/BottomSheet";
+import { SheetHeader, SheetHeaderAction } from "@/components/ui/SheetHeader";
 import { useToast } from "@/components/ui/Toast";
 import { Input, Textarea } from "@/components/ui/Input";
 import { createTodo, updateTodo, deleteTodo } from "@/app/(main)/schedule/actions";
@@ -129,14 +130,16 @@ export function TodoSheet({
   return (
     <BottomSheet open={open} onClose={onClose}>
       <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-[17px] font-medium text-ink">{existingTodo ? "할 일 수정" : "할 일 등록"}</h2>
+        <SheetHeader title={existingTodo ? "할 일 수정" : "할 일 등록"}>
           {existingTodo && (
-            <button onClick={handleDelete} disabled={isSubmitting} className="text-[13px] text-terra">
-              삭제
-            </button>
+            <SheetHeaderAction label="삭제" tone="terra" onClick={handleDelete} disabled={isSubmitting} />
           )}
-        </div>
+          <SheetHeaderAction
+            label={existingTodo ? "저장" : "등록"}
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+          />
+        </SheetHeader>
 
         <Input
           value={title}
@@ -254,14 +257,6 @@ export function TodoSheet({
             ))}
           </div>
         </div>
-
-        <button
-          onClick={handleSubmit}
-          disabled={isSubmitting}
-          className="flex h-12 items-center justify-center rounded-2xl bg-ink text-[15px] font-medium text-cream"
-        >
-          {existingTodo ? "저장하기" : "등록하기"}
-        </button>
       </div>
     </BottomSheet>
   );

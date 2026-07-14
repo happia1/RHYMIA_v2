@@ -7,10 +7,10 @@ import {
   IconPhotoScan,
   IconLoader2,
   IconX,
-  IconPencil,
   IconPin,
 } from "@tabler/icons-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
+import { SheetHeader, SheetHeaderAction } from "@/components/ui/SheetHeader";
 import { Avatar } from "@/components/ui/Avatar";
 import { Input, Textarea } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
@@ -140,6 +140,19 @@ export function BoardSection({
     startTransition(() => addNoticeComment(detail.id, value));
   };
 
+  // 스티커는 색상/사진까지 편집해야 해서 이 시트 안에서 인라인으로 다루지 않고, 기존에
+  // 색상·사진 편집을 전부 갖춘 AddPostSheet(수정 모드)로 넘긴다 — 논스티키(메모)만 이
+  // 시트 안에서 제목/내용을 바로 편집.
+  const handleStartEdit = () => {
+    if (!detail) return;
+    if (detail.type === "sticky") {
+      setEditingNotice(detail);
+      setDetail(null);
+    } else {
+      setIsEditingDetail(true);
+    }
+  };
+
   const handleSaveDetailEdit = () => {
     if (!detail || !editContent.trim()) return;
     startTransition(async () => {
@@ -182,26 +195,12 @@ export function BoardSection({
                   className="relative flex h-36 w-28 cursor-pointer flex-col p-2.5 text-left"
                   style={{ backgroundColor: s.color }}
                 >
-                  <div className="flex items-center justify-between gap-1">
-                    <span
-                      className="truncate text-[9px] opacity-60"
-                      style={{ color: STICKER_TEXT_COLOR }}
-                    >
-                      {formatPostTimestamp(s.created_at)}
-                    </span>
-                    {s.created_by === currentUserId && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingNotice(s);
-                        }}
-                        aria-label="수정"
-                        className="shrink-0 opacity-60"
-                      >
-                        <IconPencil size={12} style={{ color: STICKER_TEXT_COLOR }} />
-                      </button>
-                    )}
-                  </div>
+                  <span
+                    className="truncate text-[9px] opacity-60"
+                    style={{ color: STICKER_TEXT_COLOR }}
+                  >
+                    {formatPostTimestamp(s.created_at)}
+                  </span>
                   {s.image_url && (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -281,17 +280,25 @@ export function BoardSection({
       >
         {detail && (
           <div className="flex flex-col gap-3">
-            {detail.type !== "sticky" && detail.created_by === currentUserId && !deleteConfirmOpen && (
-              <div className="flex justify-end">
-                <button
-                  onClick={() => setIsEditingDetail((v) => !v)}
-                  aria-label="수정"
-                  className={isEditingDetail ? "text-honey" : "text-[var(--text-muted)]"}
-                >
-                  <IconPencil size={16} />
-                </button>
-              </div>
-            )}
+            <SheetHeader title={detail.type === "sticky" ? "" : detail.title ?? ""}>
+              {!deleteConfirmOpen && !isEditingDetail && detail.created_by === currentUserId && (
+                <>
+                  <SheetHeaderAction label="수정" onClick={handleStartEdit} />
+                  <SheetHeaderAction
+                    label="삭제"
+                    tone="terra"
+                    onClick={() => setDeleteConfirmOpen(true)}
+                  />
+                </>
+              )}
+              {!deleteConfirmOpen && isEditingDetail && (
+                <SheetHeaderAction
+                  label="저장"
+                  onClick={handleSaveDetailEdit}
+                  disabled={isPending || !editContent.trim()}
+                />
+              )}
+            </SheetHeader>
 
             {deleteConfirmOpen ? (
               <div className="flex flex-col gap-3">
@@ -312,7 +319,9 @@ export function BoardSection({
                   </button>
                 </div>
               </div>
-            ) : detail.type !== "sticky" && isEditingDetail ? (
+            ) : /* 스티커는 handleStartEdit에서 별도 AddPostSheet(수정 모드)로 보내므로
+                   이 인라인 편집 분기는 항상 non-sticky용이다. */
+            isEditingDetail ? (
               <>
                 <Input
                   value={editTitle}
@@ -332,21 +341,6 @@ export function BoardSection({
                   </span>
                   <span>· {formatPostTimestamp(detail.created_at)}</span>
                 </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setDeleteConfirmOpen(true)}
-                    className="flex-1 rounded-xl bg-cream py-2.5 text-[13px] font-medium text-terra"
-                  >
-                    삭제
-                  </button>
-                  <button
-                    onClick={handleSaveDetailEdit}
-                    disabled={isPending || !editContent.trim()}
-                    className="flex flex-1 items-center justify-center rounded-xl bg-ink py-2.5 text-[13px] font-medium text-cream disabled:opacity-50"
-                  >
-                    저장
-                  </button>
-                </div>
               </>
             ) : (
               <>
@@ -355,9 +349,6 @@ export function BoardSection({
                     <IconPin size={12} />
                     고정
                   </div>
-                )}
-                {detail.title && (
-                  <h2 className="text-[17px] font-medium text-ink">{detail.title}</h2>
                 )}
                 {detail.image_url && (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -393,25 +384,6 @@ export function BoardSection({
                     </span>
                     <span>· {formatPostTimestamp(detail.created_at)}</span>
                   </div>
-                )}
-
-                {detail.type === "sticky" && detail.created_by === currentUserId && (
-                  <button
-                    onClick={() =>
-                      startTransition(async () => {
-                        const result = await deleteNotice(detail.id);
-                        if (!result.ok) {
-                          showToast(result.message);
-                          return;
-                        }
-                        setDetail(null);
-                      })
-                    }
-                    disabled={isPending}
-                    className="self-start text-[13px] text-terra"
-                  >
-                    삭제하기
-                  </button>
                 )}
               </>
             )}
@@ -633,9 +605,25 @@ export function AddPostSheet({
     });
   };
 
+  const sheetTitle = existingNotice
+    ? type === "sticky"
+      ? "하고싶은 말 수정"
+      : "메모 수정"
+    : type === "sticky"
+    ? "하고싶은 말 작성"
+    : "메모 작성";
+
   return (
     <BottomSheet open={open} onClose={onClose}>
       <div className="flex flex-col gap-4">
+        <SheetHeader title={sheetTitle}>
+          <SheetHeaderAction
+            label={existingNotice ? "저장" : "등록"}
+            onClick={handleSubmit}
+            disabled={isPending || !content.trim()}
+          />
+        </SheetHeader>
+
         {type === "sticky" ? (
           <>
             <div className="flex gap-2">
@@ -781,14 +769,6 @@ export function AddPostSheet({
         />
 
         {attachError && <p className="text-[12px] text-terra">{attachError}</p>}
-
-        <button
-          onClick={handleSubmit}
-          disabled={isPending}
-          className="flex h-11 items-center justify-center rounded-2xl bg-ink text-[14px] font-medium text-cream"
-        >
-          {existingNotice ? "저장하기" : "등록하기"}
-        </button>
       </div>
     </BottomSheet>
   );

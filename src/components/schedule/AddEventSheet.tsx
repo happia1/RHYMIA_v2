@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { IconChevronDown } from "@tabler/icons-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
+import { SheetHeader, SheetHeaderAction } from "@/components/ui/SheetHeader";
 import { useToast } from "@/components/ui/Toast";
 import { Input, Textarea } from "@/components/ui/Input";
 import { PlaceInput } from "@/components/schedule/PlaceInput";
@@ -84,6 +85,7 @@ export function AddEventSheet({
   const [notifyCustomAt, setNotifyCustomAt] = useState("");
   const [recurType, setRecurType] = useState<RecurType>("none");
   const [recurCalendar, setRecurCalendar] = useState<RecurCalendar>("solar");
+  const [recurUntil, setRecurUntil] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -123,6 +125,7 @@ export function AddEventSheet({
     setNotifyCustomAt("");
     setRecurType("none");
     setRecurCalendar("solar");
+    setRecurUntil("");
     setDetailsOpen(false);
   };
 
@@ -152,6 +155,7 @@ export function AddEventSheet({
       setNotifyCustomAt(existingSchedule.notify_custom_at ?? "");
       setRecurType(existingSchedule.recur_type);
       setRecurCalendar(existingSchedule.recur_calendar);
+      setRecurUntil(existingSchedule.recur_until ?? "");
       // 수정 모드는 기존에 채워둔 값을 바로 보여주는 게 자연스러우니 자세한 설정도 펼쳐둔다.
       setDetailsOpen(true);
     } else {
@@ -182,6 +186,7 @@ export function AddEventSheet({
       notify_custom_at: notifyOffset === "custom" ? notifyCustomAt || null : null,
       recur_type: recurType,
       recur_calendar: recurType === "yearly" ? recurCalendar : ("solar" as RecurCalendar),
+      recur_until: recurType !== "none" ? recurUntil || null : null,
     };
     const result = targetId
       ? await updateSchedule(targetId, input)
@@ -213,9 +218,44 @@ export function AddEventSheet({
   return (
     <BottomSheet open={open} onClose={onClose}>
       <div className="flex flex-col gap-4">
-        <h2 className="text-[17px] font-medium text-ink">
-          {existingSchedule ? "일정 수정" : "일정 등록"}
-        </h2>
+        <SheetHeader title={existingSchedule ? "일정 수정" : "일정 등록"}>
+          {existingSchedule && !deleteConfirmOpen && (
+            <SheetHeaderAction
+              label="삭제"
+              tone="terra"
+              onClick={() => setDeleteConfirmOpen(true)}
+              disabled={isSubmitting}
+            />
+          )}
+          {!deleteConfirmOpen && (
+            <SheetHeaderAction
+              label={existingSchedule ? "저장" : "등록"}
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+            />
+          )}
+        </SheetHeader>
+
+        {deleteConfirmOpen && (
+          <div className="flex flex-col gap-2">
+            <p className="text-[13px] text-ink">정말 삭제하시겠어요?</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setDeleteConfirmOpen(false)}
+                className="flex-1 rounded-2xl bg-cream py-3 text-[14px] font-medium text-stone"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={isSubmitting}
+                className="flex flex-1 items-center justify-center rounded-2xl bg-terra py-3 text-[14px] font-medium text-white disabled:opacity-50"
+              >
+                삭제하기
+              </button>
+            </div>
+          </div>
+        )}
 
         {existingSchedule?.isVirtual && (
           <p className="rounded-xl bg-cream px-3 py-2.5 text-[12px] text-stone">
@@ -316,6 +356,25 @@ export function AddEventSheet({
                   {label}
                 </button>
               ))}
+            </div>
+          )}
+          {recurType !== "none" && (
+            <div className="flex items-center gap-2">
+              <span className="shrink-0 text-[12px] text-stone">종료일</span>
+              <Input
+                type="date"
+                value={recurUntil}
+                onChange={(e) => setRecurUntil(e.target.value)}
+                className="h-10 flex-1 rounded-xl px-3 text-[13px]"
+              />
+              {recurUntil && (
+                <button
+                  onClick={() => setRecurUntil("")}
+                  className="shrink-0 text-[12px] text-stone"
+                >
+                  지우기
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -453,46 +512,6 @@ export function AddEventSheet({
                 onChange={(e) => setShowInShareLink(e.target.checked)}
               />
             </label>
-          </div>
-        )}
-
-        {deleteConfirmOpen ? (
-          <div className="flex flex-col gap-2">
-            <p className="text-[13px] text-ink">정말 삭제하시겠어요?</p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setDeleteConfirmOpen(false)}
-                className="flex-1 rounded-2xl bg-cream py-3 text-[14px] font-medium text-stone"
-              >
-                취소
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={isSubmitting}
-                className="flex flex-1 items-center justify-center rounded-2xl bg-terra py-3 text-[14px] font-medium text-white disabled:opacity-50"
-              >
-                삭제하기
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="flex gap-2">
-            {existingSchedule && (
-              <button
-                onClick={() => setDeleteConfirmOpen(true)}
-                disabled={isSubmitting}
-                className="flex h-12 items-center justify-center rounded-2xl bg-cream px-5 text-[15px] font-medium text-terra"
-              >
-                삭제
-              </button>
-            )}
-            <button
-              onClick={handleSubmit}
-              disabled={isSubmitting}
-              className="flex h-12 flex-1 items-center justify-center rounded-2xl bg-ink text-[15px] font-medium text-cream"
-            >
-              {existingSchedule ? "저장하기" : "등록하기"}
-            </button>
           </div>
         )}
       </div>

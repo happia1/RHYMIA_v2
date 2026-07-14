@@ -176,7 +176,7 @@ export default async function HomePage() {
 
   // 홈 위젯 4개 — 2026-07-11부터 각각 독립 단위(예전엔 끼니+오늘/하고싶은말+장바구니 2개로 묶여있었음)
   const mealTodaySection = (
-    <HomeMealSection meals={mealsToShow} workspaceId={workspaceId} defaultDate={todayStr} />
+    <HomeMealSection meals={mealsToShow} defaultDate={todayStr} />
   );
   const scheduleTodaySection = (
     <HomeTodaySection

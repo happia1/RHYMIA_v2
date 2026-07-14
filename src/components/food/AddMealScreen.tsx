@@ -28,11 +28,8 @@ import type { FridgeItem, Meal, MealType } from "@/types";
 
 const MEAL_TYPES: MealType[] = ["집밥", "외식", "배달"];
 
-const SUGGESTIONS: Record<MealType, string[]> = {
-  집밥: ["된장찌개", "김치볶음밥", "계란말이", "제육볶음"],
-  외식: ["돈까스", "파스타", "초밥", "고기구이"],
-  배달: ["치킨", "피자", "짜장면", "떡볶이"],
-};
+// 섹션(끼니/식사 유형/메뉴/메모) 사이 구분선 — 0.5px 헤어라인.
+const SECTION_DIVIDER = "border-t-[0.5px] border-border-light pt-4";
 
 function TextToggle({
   label,
@@ -88,6 +85,9 @@ export function AddMealScreen({
   const [videoId, setVideoId] = useState<string | null>(existingMeal?.video_id ?? null);
   const [recipeTitle, setRecipeTitle] = useState<string | null>(existingMeal?.recipe_title ?? null);
   const [recipeUrl, setRecipeUrl] = useState<string | null>(existingMeal?.recipe_url ?? null);
+  const [selectedIngredients, setSelectedIngredients] = useState<string[]>(
+    existingMeal?.ingredients ?? []
+  );
   const [thumbnailError, setThumbnailError] = useState(false);
   const [photoOptionsOpen, setPhotoOptionsOpen] = useState(false);
   const [recipeLinkOpen, setRecipeLinkOpen] = useState(false);
@@ -162,15 +162,10 @@ export function AddMealScreen({
     }
   };
 
-  const appendMenu = (item: string) => {
-    setMainMenu((prev) => {
-      const parts = prev
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean);
-      if (parts.includes(item)) return prev;
-      return [...parts, item].join(", ");
-    });
+  const toggleIngredient = (name: string) => {
+    setSelectedIngredients((prev) =>
+      prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]
+    );
   };
 
   const handleSubmit = () => {
@@ -189,6 +184,7 @@ export function AddMealScreen({
       video_id: videoId,
       recipe_title: recipeTitle,
       recipe_url: recipeUrl,
+      ingredients: selectedIngredients,
     };
     startTransition(async () => {
       if (existingMeal) {
@@ -214,7 +210,13 @@ export function AddMealScreen({
         <h1 className="text-[15px] font-medium text-ink">
           {existingMeal ? "끼니 수정" : "끼니 추가"}
         </h1>
-        <div className="w-[22px]" />
+        <button
+          onClick={handleSubmit}
+          disabled={isPending}
+          className="text-[14px] font-medium text-honey disabled:opacity-40"
+        >
+          저장
+        </button>
       </header>
 
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
@@ -227,7 +229,7 @@ export function AddMealScreen({
           </div>
         </section>
 
-        <section className="flex flex-col gap-2">
+        <section className={`flex flex-col gap-2 ${SECTION_DIVIDER}`}>
           <span className={mirror.label}>식사 유형</span>
           <div className="flex gap-4">
             {MEAL_TYPES.map((t) => (
@@ -254,7 +256,7 @@ export function AddMealScreen({
           )}
         </section>
 
-        <section className="flex flex-col gap-2">
+        <section className={`flex flex-col gap-2 ${SECTION_DIVIDER}`}>
           <span className={mirror.label}>메뉴 (쉼표로 여러 개)</span>
           <div className="flex items-center gap-2">
             <button
@@ -347,30 +349,31 @@ export function AddMealScreen({
               </button>
             </div>
           )}
-          <div className="flex flex-wrap gap-3">
-            {SUGGESTIONS[type].map((item) => (
-              <button
-                key={item}
-                onClick={() => appendMenu(item)}
-                className="text-[12px] font-medium text-[var(--text-muted)]"
-              >
-                {item}
-              </button>
-            ))}
-          </div>
-        </section>
-
-        <section>
+          {selectedIngredients.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {selectedIngredients.map((name) => (
+                <span
+                  key={name}
+                  className="flex items-center gap-1 rounded-full bg-cream px-2.5 py-1 text-[12px] text-ink"
+                >
+                  {name}
+                  <button onClick={() => toggleIngredient(name)} aria-label={`${name} 제거`}>
+                    <IconX size={11} className="text-[var(--text-muted)]" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
           <button
             onClick={() => setFridgeOpen(true)}
-            className="flex items-center gap-1.5 text-[13px] font-medium text-honey"
+            className="flex items-center gap-1.5 self-start text-[13px] font-medium text-honey"
           >
             <IconFridge size={18} />
-            현재 재고 확인
+            집에 뭐 있지
           </button>
         </section>
 
-        <section className="flex flex-col gap-2">
+        <section className={`flex flex-col gap-2 ${SECTION_DIVIDER}`}>
           <span className={mirror.label}>메모 (선택)</span>
           <Textarea
             variant="underline"
@@ -381,14 +384,6 @@ export function AddMealScreen({
             className="px-0 py-2 text-[12px]"
           />
         </section>
-
-        <button
-          onClick={handleSubmit}
-          disabled={isPending}
-          className="flex h-12 items-center justify-center rounded-2xl bg-btn-surface text-[15px] font-medium text-btn-surface-text"
-        >
-          {existingMeal ? "수정하기" : "등록하기"}
-        </button>
       </div>
 
       <FridgeStockSheet
@@ -396,6 +391,8 @@ export function AddMealScreen({
         onClose={() => setFridgeOpen(false)}
         workspaceId={workspaceId}
         items={fridgeItems}
+        selectedNames={selectedIngredients}
+        onToggleItem={toggleIngredient}
       />
 
       <BottomSheet open={photoOptionsOpen} onClose={() => setPhotoOptionsOpen(false)}>

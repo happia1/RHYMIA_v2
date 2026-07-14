@@ -21,18 +21,21 @@ import { pickDeterministic } from "@/lib/randomPick";
 import type { Todo } from "@/types";
 
 const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
-// 기간 밴드는 겹쳐도 최대 이 줄 수까지만 쌓는다 — 넘치면 마지막 줄에 "+N"으로 뭉뚱그려 표기.
+// 기간 밴드는 겹쳐도 최대 이 줄 수까지만 쌓는다 — 넘치는 일정은 라인은 없지만 조합 라벨
+// 텍스트(예: "생리/여름특강/유치원방학")에는 이름이 포함된다(아래 참고).
 const MAX_BAND_ROWS = 2;
-// 아래 상수들은 밴드 라인 자체의 실제 렌더 크기(h-[2px], gap-[1.5px])와 반드시 일치해야
-// 라벨이 "라인 바로 위"에 정확히 앉는다 — 라인 스타일을 바꾸면 같이 바꿀 것.
+// 라인 두께·줄 간격 — 실제 렌더 크기(h-[2px], gap 2px)와 반드시 일치해야 라벨/라인 스택
+// 높이 계산이 어긋나지 않는다. 이전엔 줄 간격이 1.5px(소수)라 일부 기기에서 두 줄이
+// 시각적으로 붙어 하나의 두꺼운 선처럼 보이는 문제가 있었음 — 정수 2px로 고정.
 const BAND_LINE_H = 2;
-const BAND_LINE_GAP = 1.5;
-// 라인과 라벨 사이 간격(요구사항: 2~3px).
+const BAND_LINE_GAP = 2;
+const LINE_STACK_H = MAX_BAND_ROWS * BAND_LINE_H + (MAX_BAND_ROWS - 1) * BAND_LINE_GAP;
+// 라인 스택과 라벨 사이 간격.
 const BAND_LABEL_GAP = 2.5;
-// 8px 텍스트(leading-none) 한 줄의 대략적인 렌더 높이 — 실측과 정확히 같을 필요는 없고,
-// 밴드가 2줄로 쌓였을 때 row1 라벨을 row0 라벨 위로 한 슬롯 더 띄우는 간격 계산에만 쓴다
-// (두 밴드가 같은 날 나란히 시작해 라벨이 둘 다 뜨는 드문 경우에도 서로 겹치지 않도록).
-const BAND_LABEL_H = 9;
+// 라벨 한 줄을 위해 항상 미리 예약해두는 세로 공간(라벨이 없는 날에도 동일하게 예약) —
+// 이래야 라벨 유무와 무관하게 모든 셀의 행 높이가 완전히 똑같이 유지된다(레이어 분리).
+// 시트가 열려 압축 모드일 땐 이 공간 자체를 0으로 접어 "도트+라인만" 남긴다.
+const BAND_LABEL_ZONE_H = 11;
 
 type TodoSheetTarget = { mode: "add"; date: string } | { mode: "edit"; todo: Todo };
 
@@ -76,17 +79,6 @@ function daysBetween(a: string, b: string) {
   const da = new Date(`${a}T00:00:00.000Z`).getTime();
   const db = new Date(`${b}T00:00:00.000Z`).getTime();
   return Math.round((db - da) / 86400000);
-}
-
-// 밴드 라벨의 세로 위치 — 줄 인덱스(row)만으로 고정 계산(그날 실제로 뭐가 있는지와 무관),
-// 라인 컨테이너 바닥에서부터의 거리(px)로 반환해 `bottom`에 그대로 쓴다. row0 라벨은 전체
-// 라인 묶음 바로 위(간격 BAND_LABEL_GAP)에 앉고, row1 라벨은 row0 라인 사이 1.5px짜리 틈에
-// 끼워 넣는 대신(그러면 폭이 좁아 겹침) row0 라벨 자리 위로 한 슬롯 더 쌓아 올린다 — 두
-// 밴드가 같은 날 나란히 시작해도 두 라벨이 서로 겹치지 않게. 어느 쪽이든 그날 실제로 밴드가
-// row0/row1에 있는지와 무관하게 항상 같은 값이 나오는 고정 오프셋이다.
-function bandLabelBottomPx(row: number) {
-  const totalLinesH = MAX_BAND_ROWS * BAND_LINE_H + (MAX_BAND_ROWS - 1) * BAND_LINE_GAP;
-  return totalLinesH + BAND_LABEL_GAP + row * (BAND_LABEL_H + BAND_LABEL_GAP);
 }
 
 // 완료 항목은 하단으로 — Array.sort는 안정 정렬이라 같은 is_done끼리는 원래 순서(등록순)를 유지한다.
@@ -156,10 +148,9 @@ export function MonthView({
 
   // 기간 일정(date_start !== date_end, 반복 일정의 가상 인스턴스 포함 — schedules 자체가
   // getSchedulesForRange에서 이미 원본+가상 인스턴스를 합쳐서 내려온다)을 이 달 그리드 안에서
-  // 겹치지 않게 최대 MAX_BAND_ROWS줄로 배정한다. 다 못 들어가는(overflow) 일정은 더 이상
-  // 도트로 폴백하지 않고, 그 일정이 걸치는 날짜마다 마지막 줄에 "+N"(그날의 overflow 건수)으로
-  // 뭉뚱그려 표기한다 — 전체 목록은 데이 시트에서 확인 가능하므로 달력엔 개수만.
-  const { bandsByDate, overflowCountByDate } = useMemo(() => {
+  // 겹치지 않게 최대 MAX_BAND_ROWS줄로 배정한다. 다 못 들어가는(overflow) 일정은 라인은 못
+  // 그리지만 이름은 잃지 않는다 — 조합 라벨(겹치는 날 표기)에 자기 색으로 함께 나열된다.
+  const { bandsByDate, overflowByDate } = useMemo(() => {
     const candidates = schedules
       .filter(isPeriodSchedule)
       .map((s) => ({
@@ -204,14 +195,15 @@ export function MonthView({
       }
     }
 
-    const overflowCount: Record<string, number> = {};
+    const overflow: Record<string, { title: string; color: string }[]> = {};
     for (const cand of overflowCandidates) {
+      const color = getKeywordColor(cand.schedule.keyword_main);
       for (let d = cand.start; d <= cand.end; d = addDaysToDateStr(d, 1)) {
-        overflowCount[d] = (overflowCount[d] ?? 0) + 1;
+        (overflow[d] ??= []).push({ title: cand.schedule.title, color });
       }
     }
 
-    return { bandsByDate: byDate, overflowCountByDate: overflowCount };
+    return { bandsByDate: byDate, overflowByDate: overflow };
   }, [schedules, monthStart, monthEnd]);
 
   // 도트는 하루짜리(기간이 아닌) 일정만 — 기간 일정은 이제 전부 밴드 쪽(놓였든 +N 초과분이든)
@@ -336,12 +328,52 @@ export function MonthView({
             if (!date) return <div key={`empty-${i}`} />;
             const dotSchedules = dotsByDate[date] ?? [];
             const cellBands = bandsByDate[date] ?? [];
-            const overflowCount = overflowCountByDate[date] ?? 0;
+            const overflowEntries = overflowByDate[date] ?? [];
+            const activeCount = cellBands.length + overflowEntries.length;
             const grocery = dotSchedules.find((s) => s.is_grocery && s.amount);
             const isToday = date === todayStr;
             const isSelected = sheetOpen && date === selectedDate;
             const holiday = getHoliday(date);
-            const lastRow = MAX_BAND_ROWS - 1;
+
+            // 겹침 없는 날(활성 1개) — 그 밴드가 시작일일 때만 자기 이름 하나. 겹치는 날
+            // (활성 2개 이상) — 라인에 못 들어간 overflow까지 포함해 전부 "이름/이름/이름"
+            // 한 줄로(각자 자기 색), 시작일 여부와 무관하게 겹치는 모든 날 표기(구성이
+            // 날마다 바뀔 수 있어서). 어느 쪽이든 라벨은 최대 1개 — 줄별 개별 라벨 없음.
+            let labelNode: React.ReactNode = null;
+            if (activeCount === 1 && cellBands[0]?.isStart) {
+              const band = cellBands[0];
+              labelNode = (
+                <span
+                  className="pointer-events-none absolute left-0 truncate text-[8px] leading-none"
+                  style={{
+                    bottom: LINE_STACK_H + BAND_LABEL_GAP,
+                    width: `${band.spanCells * 100}%`,
+                    color: band.color,
+                    opacity: 0.55,
+                  }}
+                >
+                  {band.title}
+                </span>
+              );
+            } else if (activeCount >= 2) {
+              const items = [
+                ...cellBands.map((b) => ({ title: b.title, color: b.color })),
+                ...overflowEntries,
+              ];
+              labelNode = (
+                <span
+                  className="pointer-events-none absolute left-0 w-full truncate text-[8px] leading-none"
+                  style={{ bottom: LINE_STACK_H + BAND_LABEL_GAP }}
+                >
+                  {items.map((item, i) => (
+                    <span key={i}>
+                      {i > 0 && <span className="text-stone">/</span>}
+                      <span style={{ color: item.color, opacity: 0.55 }}>{item.title}</span>
+                    </span>
+                  ))}
+                </span>
+              );
+            }
 
             return (
               <button
@@ -355,12 +387,11 @@ export function MonthView({
                     setSheetOpen(true);
                   }
                 }}
-                className={`flex flex-col items-center justify-center gap-0.5 ${sheetOpen ? "py-0.5" : "py-1"}`}
+                className={`flex flex-col items-center justify-center gap-0.5 ${sheetOpen ? "py-0" : "py-1"}`}
               >
+                {/* 날짜 숫자 크기는 압축 여부와 무관하게 항상 동일 — 압축은 아래 부가 영역만 줄인다. */}
                 <span
-                  className={`flex items-center justify-center rounded-full ${
-                    sheetOpen ? "h-5 w-5 text-[11px]" : "h-6 w-6 text-[13px]"
-                  } ${
+                  className={`flex h-6 w-6 items-center justify-center rounded-full text-[13px] ${
                     isToday
                       ? "bg-honey/15 font-medium text-honey"
                       : isSelected
@@ -372,7 +403,7 @@ export function MonthView({
                 >
                   {Number(date.slice(-2))}
                 </span>
-                <div className="flex gap-1" style={{ minHeight: sheetOpen ? 5 : 6 }}>
+                <div className="flex gap-1" style={{ minHeight: sheetOpen ? 4 : 6 }}>
                   {dotSchedules.slice(0, 3).map((s) => (
                     <span
                       key={s.id}
@@ -381,62 +412,38 @@ export function MonthView({
                     />
                   ))}
                 </div>
-                {grocery && (
+                {grocery && !sheetOpen && (
                   <span className="text-[9px] text-[var(--text-muted)]">
                     {grocery.amount!.toLocaleString()}
                   </span>
                 )}
-                {/* 라인은 텍스트 유무와 무관하게 항상 같은 두께·같은 줄 순서로 렌더(레이어
-                    분리) — 라벨(제목/+N)은 별도로 position:absolute 오버레이로 얹어서 이
-                    컨테이너의 문서 흐름(높이 계산)에는 전혀 관여하지 않는다. 시트가 열려
-                    달력이 압축된 상태에선 라벨을 아예 숨기고 라인만 남긴다(요구사항 5) —
-                    압축 상태에서 텍스트까지 같이 구겨지며 깨져 보이는 문제를 피하기 위해서다. */}
-                <span className="relative flex w-full flex-col gap-[1.5px]">
-                  {Array.from({ length: MAX_BAND_ROWS }, (_, row) => {
-                    const band = cellBands.find((b) => b.row === row);
-                    return (
-                      <span
-                        key={row}
-                        className={`h-[2px] ${band?.isStart ? "rounded-l-full" : ""} ${
-                          band?.isEnd ? "rounded-r-full" : ""
-                        }`}
-                        style={{
-                          backgroundColor: band ? band.color : "transparent",
-                          opacity: band ? 0.55 : undefined,
-                        }}
-                      />
-                    );
-                  })}
-                  {!sheetOpen &&
-                    Array.from({ length: MAX_BAND_ROWS }, (_, row) => {
-                      if (row === lastRow && overflowCount > 0) {
-                        return (
-                          <span
-                            key={`label-${row}`}
-                            className="pointer-events-none absolute left-0 text-[8px] leading-none text-[var(--text-muted)]"
-                            style={{ bottom: bandLabelBottomPx(row) }}
-                          >
-                            +{overflowCount}
-                          </span>
-                        );
-                      }
-                      const band = cellBands.find((b) => b.row === row);
-                      if (!band?.isStart) return null;
-                      return (
-                        <span
-                          key={`label-${row}`}
-                          className="pointer-events-none absolute left-0 truncate text-[8px] leading-none"
-                          style={{
-                            bottom: bandLabelBottomPx(row),
-                            width: `${band.spanCells * 100}%`,
-                            color: band.color,
-                            opacity: 0.55,
-                          }}
-                        >
-                          {band.title}
-                        </span>
-                      );
-                    })}
+                {/* 라인은 텍스트 유무와 무관하게 항상 같은 두께·같은 자리에 렌더(레이어 분리) —
+                    라벨은 별도 position:absolute 오버레이라 이 컨테이너의 문서 흐름(높이
+                    계산)에는 전혀 관여하지 않는다. 라벨 한 줄분 공간(BAND_LABEL_ZONE_H)은
+                    라벨이 실제로 있든 없든 항상 동일하게 예약해둬 — 그래야 셀마다 행 높이가
+                    달라지지 않는다. 시트가 열려 달력이 압축되면 이 예약 공간을 0으로 접어
+                    라벨을 완전히 숨기고 도트+라인만 남긴다(요구사항 6). 라인은 justify-end로
+                    항상 셀(정확히는 이 영역) 최하단에 붙고, 겹치는 날엔 최하단에서 위로
+                    2px 간격으로 촘촘히 쌓인다 — 도트 영역과는 별도 존이라 어떤 경우에도
+                    서로 겹치지 않는다. */}
+                <span
+                  className="relative flex w-full flex-col justify-end"
+                  style={{
+                    height: (sheetOpen ? 0 : BAND_LABEL_ZONE_H) + LINE_STACK_H,
+                    paddingTop: sheetOpen ? 0 : BAND_LABEL_ZONE_H,
+                    gap: BAND_LINE_GAP,
+                  }}
+                >
+                  {cellBands.map((band) => (
+                    <span
+                      key={band.row}
+                      className={`h-[2px] ${band.isStart ? "rounded-l-full" : ""} ${
+                        band.isEnd ? "rounded-r-full" : ""
+                      }`}
+                      style={{ backgroundColor: band.color, opacity: 0.55 }}
+                    />
+                  ))}
+                  {!sheetOpen && labelNode}
                 </span>
               </button>
             );

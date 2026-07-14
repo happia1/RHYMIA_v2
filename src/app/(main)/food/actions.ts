@@ -21,6 +21,8 @@ export interface MealInput {
   recipe_title?: string | null;
   /** 블로그 레시피 검색에서 저장한 글 링크 — video_id(유튜브)와 공존 가능 */
   recipe_url?: string | null;
+  /** "집에 뭐 있지"에서 고른 재료명 스냅샷 */
+  ingredients?: string[];
 }
 
 /** 끼니 저장 직후 호출부가 await 없이(fire-and-forget) 부르는 백그라운드 영양 추정 — 절대
@@ -81,6 +83,7 @@ export async function createMeal(workspaceId: string, input: MealInput) {
       video_id: input.video_id ?? null,
       recipe_title: input.recipe_title ?? null,
       recipe_url: input.recipe_url ?? null,
+      ingredients: input.ingredients ?? [],
       author_id: user!.id,
     })
     .select("id")
@@ -129,6 +132,7 @@ export async function updateMeal(mealId: string, input: MealInput) {
       video_id: input.video_id ?? null,
       recipe_title: input.recipe_title ?? null,
       recipe_url: input.recipe_url ?? null,
+      ingredients: input.ingredients ?? [],
     })
     .eq("id", mealId);
 
