@@ -19,6 +19,8 @@ export interface MealInput {
   image_url?: string | null;
   video_id?: string | null;
   recipe_title?: string | null;
+  /** 블로그 레시피 검색에서 저장한 글 링크 — video_id(유튜브)와 공존 가능 */
+  recipe_url?: string | null;
 }
 
 /** 끼니 저장 직후 호출부가 await 없이(fire-and-forget) 부르는 백그라운드 영양 추정 — 절대
@@ -78,6 +80,7 @@ export async function createMeal(workspaceId: string, input: MealInput) {
       image_url: input.image_url ?? null,
       video_id: input.video_id ?? null,
       recipe_title: input.recipe_title ?? null,
+      recipe_url: input.recipe_url ?? null,
       author_id: user!.id,
     })
     .select("id")
@@ -125,6 +128,7 @@ export async function updateMeal(mealId: string, input: MealInput) {
       image_url: input.image_url ?? null,
       video_id: input.video_id ?? null,
       recipe_title: input.recipe_title ?? null,
+      recipe_url: input.recipe_url ?? null,
     })
     .eq("id", mealId);
 
@@ -206,6 +210,32 @@ export async function getMealTrackingDayCount(workspaceId: string): Promise<numb
   if (error) throw new Error(error.message);
 
   return new Set((data ?? []).map((m) => m.date)).size;
+}
+
+/** "자주 찾는 메뉴" 마퀴용 — 워크스페이스 전체 meal 기록에서 메뉴명(콤마로 여러 개면 토큰
+ * 단위) 기준 등장 횟수를 집계해 상위 `limit`개를 빈도순으로 반환한다. `getFrequentMenus`
+ * (mealUtils.ts)는 최근 200건 샘플로만 계산하는 가벼운 버전이라 이 위젯처럼 "그동안 등록된
+ * 메뉴 전체" 기준이 필요할 땐 대신 이 서버 액션을 쓴다. */
+export async function getTopFrequentMenus(workspaceId: string, limit = 20): Promise<string[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("meal")
+    .select("main_menu")
+    .eq("workspace_id", workspaceId);
+
+  if (error) throw new Error(error.message);
+
+  const counts = new Map<string, number>();
+  for (const row of (data ?? []) as { main_menu: string }[]) {
+    for (const menu of row.main_menu.split(",").map((s: string) => s.trim()).filter(Boolean)) {
+      counts.set(menu, (counts.get(menu) ?? 0) + 1);
+    }
+  }
+
+  return Array.from(counts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([menu]) => menu);
 }
 
 export async function createMealVote(workspaceId: string, date: string, candidates: string[]) {

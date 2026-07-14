@@ -154,8 +154,8 @@ export default async function SchedulePage({
         <ScheduleTabs anchorDate={anchorStr} view={view} />
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto pb-24">
-        <section className="flex flex-col gap-label-gap">
+      <div className={`min-h-0 flex-1 ${view === "month" ? "overflow-hidden" : "overflow-y-auto pb-24"}`}>
+        <section className={`flex flex-col ${view === "month" ? "h-full gap-label-gap" : "gap-label-gap"}`}>
           {view === "year" && (
             <div className="flex items-center justify-between gap-3">
               <span className={mirror.label}>{VIEW_LABEL[view]}</span>

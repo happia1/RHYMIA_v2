@@ -134,3 +134,14 @@ input[type="radio"] {
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+/* 자주 찾는 메뉴 마퀴 — 콘텐츠를 두 벌 이어 붙인 트랙을 -50%까지 옮기면 이음매 없이
+   반복되는 것처럼 보인다(식탁 탭 FrequentMenuSection.tsx). */
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}

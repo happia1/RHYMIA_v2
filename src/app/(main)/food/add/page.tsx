@@ -1,14 +1,15 @@
 import { requireWorkspaceContext } from "@/lib/workspace";
 import { toDateStr } from "@/lib/date";
+import { isRecipeSearchEnabled } from "@/lib/recipeSearch";
 import { AddMealScreen } from "@/components/food/AddMealScreen";
 import type { FridgeItem } from "@/types";
 
 export default async function AddMealPage({
   searchParams,
 }: {
-  searchParams: Promise<{ date?: string }>;
+  searchParams: Promise<{ date?: string; menu?: string }>;
 }) {
-  const { date } = await searchParams;
+  const { date, menu } = await searchParams;
   const { supabase, workspaceId } = await requireWorkspaceContext();
 
   const { data: fridgeItems } = await supabase
@@ -21,7 +22,9 @@ export default async function AddMealPage({
     <AddMealScreen
       workspaceId={workspaceId}
       defaultDate={date ?? toDateStr(new Date())}
+      defaultMenu={menu}
       fridgeItems={(fridgeItems as FridgeItem[]) ?? []}
+      recipeSearchEnabled={isRecipeSearchEnabled()}
     />
   );
 }

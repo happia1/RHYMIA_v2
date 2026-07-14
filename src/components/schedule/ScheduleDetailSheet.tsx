@@ -23,7 +23,7 @@ function timeLabel(s: ExpandedSchedule) {
 
 function recurLabel(s: ExpandedSchedule) {
   if (s.recur_type === "none") return null;
-  const type = s.recur_type === "monthly" ? "매월" : "매년";
+  const type = s.recur_type === "weekly" ? "매주" : s.recur_type === "monthly" ? "매월" : "매년";
   return s.recur_type === "yearly" && s.recur_calendar === "lunar" ? `${type}·음력` : type;
 }
 

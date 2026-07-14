@@ -9,6 +9,7 @@ import {
   IconPhoto,
   IconBrandYoutube,
   IconLink,
+  IconSearch,
   IconLoader2,
   IconX,
 } from "@tabler/icons-react";
@@ -22,6 +23,7 @@ import { fetchYoutubeOembed, youtubeThumbnailUrl } from "@/lib/youtube";
 import { createMeal, updateMeal } from "@/app/(main)/food/actions";
 import { MEAL_TAGS } from "@/lib/mealUtils";
 import { FridgeStockSheet } from "@/components/food/FridgeStockSheet";
+import { RecipeSearchSheet } from "@/components/food/RecipeSearchSheet";
 import type { FridgeItem, Meal, MealType } from "@/types";
 
 const MEAL_TYPES: MealType[] = ["집밥", "외식", "배달"];
@@ -56,18 +58,26 @@ function TextToggle({
 export function AddMealScreen({
   workspaceId,
   defaultDate,
+  defaultMenu,
   fridgeItems,
   existingMeal,
+  recipeSearchEnabled = false,
 }: {
   workspaceId: string;
   defaultDate: string;
+  /** "자주 찾는 메뉴" 마퀴에서 메뉴를 탭해 들어왔을 때 프리필할 이름 — 수정 모드(existingMeal)
+   * 에선 무시된다. */
+  defaultMenu?: string;
   fridgeItems: FridgeItem[];
   existingMeal?: Meal;
+  /** NAVER_CLIENT_ID/SECRET 설정 여부(isRecipeSearchEnabled) — 꺼져 있으면 "블로그에서
+   * 레시피 찾기" 메뉴 자체를 노출하지 않는다. */
+  recipeSearchEnabled?: boolean;
 }) {
   const { showToast } = useToast();
   const [tag, setTag] = useState(existingMeal?.tag ?? MEAL_TAGS[0]);
   const [type, setType] = useState<MealType>(existingMeal?.type ?? "집밥");
-  const [mainMenu, setMainMenu] = useState(existingMeal?.main_menu ?? "");
+  const [mainMenu, setMainMenu] = useState(existingMeal?.main_menu ?? defaultMenu ?? "");
   const [place, setPlace] = useState(existingMeal?.place ?? "");
   const [reservationTime, setReservationTime] = useState(
     existingMeal?.reservation_time ?? ""
@@ -77,11 +87,13 @@ export function AddMealScreen({
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [videoId, setVideoId] = useState<string | null>(existingMeal?.video_id ?? null);
   const [recipeTitle, setRecipeTitle] = useState<string | null>(existingMeal?.recipe_title ?? null);
+  const [recipeUrl, setRecipeUrl] = useState<string | null>(existingMeal?.recipe_url ?? null);
   const [thumbnailError, setThumbnailError] = useState(false);
   const [photoOptionsOpen, setPhotoOptionsOpen] = useState(false);
   const [recipeLinkOpen, setRecipeLinkOpen] = useState(false);
   const [recipeLinkDraft, setRecipeLinkDraft] = useState("");
   const [isFetchingRecipe, setIsFetchingRecipe] = useState(false);
+  const [recipeSearchOpen, setRecipeSearchOpen] = useState(false);
   const [fridgeOpen, setFridgeOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const cameraFileInputRef = useRef<HTMLInputElement>(null);
@@ -176,6 +188,7 @@ export function AddMealScreen({
       image_url: imageUrl,
       video_id: videoId,
       recipe_title: recipeTitle,
+      recipe_url: recipeUrl,
     };
     startTransition(async () => {
       if (existingMeal) {
@@ -317,6 +330,23 @@ export function AddMealScreen({
               </button>
             </div>
           )}
+          {recipeUrl && (
+            <div className="flex items-center gap-2">
+              <div className="flex h-10 w-16 shrink-0 items-center justify-center rounded-lg bg-cream">
+                <IconLink size={18} className="text-[var(--text-muted)]" />
+              </div>
+              <span className="min-w-0 flex-1 truncate text-[12px] text-[var(--text-muted)]">
+                레시피 블로그 저장됨
+              </span>
+              <button
+                onClick={() => setRecipeUrl(null)}
+                aria-label="레시피 블로그 링크 제거"
+                className="shrink-0"
+              >
+                <IconX size={16} className="text-[var(--text-muted)]" />
+              </button>
+            </div>
+          )}
           <div className="flex flex-wrap gap-3">
             {SUGGESTIONS[type].map((item) => (
               <button
@@ -400,6 +430,18 @@ export function AddMealScreen({
             <IconBrandYoutube size={18} className="text-honey" />
             유튜브에서 레시피 찾기
           </button>
+          {recipeSearchEnabled && (
+            <button
+              onClick={() => {
+                setPhotoOptionsOpen(false);
+                setRecipeSearchOpen(true);
+              }}
+              className="flex items-center gap-3 border-t border-border-light py-3 text-left text-[14px] text-ink"
+            >
+              <IconSearch size={18} className="text-honey" />
+              블로그에서 레시피 찾기
+            </button>
+          )}
           <button
             onClick={() => {
               setPhotoOptionsOpen(false);
@@ -433,6 +475,21 @@ export function AddMealScreen({
           </button>
         </div>
       </BottomSheet>
+
+      {recipeSearchEnabled && (
+        <RecipeSearchSheet
+          open={recipeSearchOpen}
+          onClose={() => setRecipeSearchOpen(false)}
+          defaultQuery={mainMenu}
+          memo={memo}
+          onMemoChange={setMemo}
+          onSave={(url) => {
+            setRecipeUrl(url);
+            setRecipeSearchOpen(false);
+            showToast("레시피 링크를 저장했어요.");
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { requireWorkspaceContext } from "@/lib/workspace";
+import { isRecipeSearchEnabled } from "@/lib/recipeSearch";
 import { AddMealScreen } from "@/components/food/AddMealScreen";
 import type { FridgeItem, Meal } from "@/types";
 
@@ -33,6 +34,7 @@ export default async function EditMealPage({
       defaultDate={meal.date}
       fridgeItems={(fridgeItems as FridgeItem[]) ?? []}
       existingMeal={meal as Meal}
+      recipeSearchEnabled={isRecipeSearchEnabled()}
     />
   );
 }

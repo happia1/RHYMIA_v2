@@ -1,6 +1,5 @@
-/** 반복 일정(monthly/yearly) 가상 전개 유틸 — DB에는 원본 한 행만 저장하고,
- * 화면에 보여줄 범위([rangeStart, rangeEnd])만큼만 그때그때 인스턴스를 계산해 만든다.
- * weekly는 다루지 않는다(루틴 담당) — RecurType 자체에 값이 없음. */
+/** 반복 일정(weekly/monthly/yearly) 가상 전개 유틸 — DB에는 원본 한 행만 저장하고,
+ * 화면에 보여줄 범위([rangeStart, rangeEnd])만큼만 그때그때 인스턴스를 계산해 만든다. */
 
 import { solarToLunar, lunarToSolarInYear } from "@/lib/lunar";
 import type { Schedule } from "@/types";
@@ -77,6 +76,31 @@ function isEligible(
   if (candidate < rangeStart || candidate > rangeEnd) return false;
   if (schedule.recur_until && candidate > schedule.recur_until) return false;
   return true;
+}
+
+function expandWeekly(
+  schedule: Schedule,
+  rangeStart: string,
+  rangeEnd: string,
+  hasRange: boolean,
+  durationDays: number
+): ExpandedSchedule[] {
+  const results: ExpandedSchedule[] = [];
+
+  // 원본이 범위보다 훨씬 이전이면 매일 7일씩 더해가며 훑는 대신, 범위 시작에 도달하는
+  // 첫 후보로 바로 건너뛴다(오래된 반복 일정일수록 루프 횟수가 커지는 것을 방지).
+  const daysSinceAnchor = dateDiffInDays(schedule.date_start, rangeStart);
+  const weeksToSkip = daysSinceAnchor > 0 ? Math.ceil(daysSinceAnchor / 7) : 0;
+  let candidate = addDaysToDateStr(schedule.date_start, weeksToSkip * 7);
+
+  while (candidate <= rangeEnd) {
+    if (isEligible(candidate, schedule, rangeStart, rangeEnd)) {
+      results.push(makeVirtualInstance(schedule, candidate, hasRange, durationDays));
+    }
+    candidate = addDaysToDateStr(candidate, 7);
+  }
+
+  return results;
 }
 
 function expandMonthly(
@@ -165,8 +189,8 @@ function expandYearlyLunar(
   return results;
 }
 
-/** schedules 중 recur_type이 monthly/yearly인 것들만 골라 [rangeStart, rangeEnd] 구간에
- * 해당하는 가상 인스턴스를 만들어 반환한다. recur_type='none'인 일정은 무시(원본이
+/** schedules 중 recur_type이 weekly/monthly/yearly인 것들만 골라 [rangeStart, rangeEnd]
+ * 구간에 해당하는 가상 인스턴스를 만들어 반환한다. recur_type='none'인 일정은 무시(원본이
  * 이미 일반 조회에 포함되므로). 원본 자체가 이 범위에 들어와도 중복 생성하지 않는다 —
  * 호출부가 "기존 범위 조회 결과"와 이 함수의 반환값을 합쳐야 원본+반복 인스턴스가 모두 나온다. */
 export function expandRecurring(
@@ -182,7 +206,9 @@ export function expandRecurring(
     const hasRange = !!schedule.date_end;
     const durationDays = hasRange ? dateDiffInDays(schedule.date_start, schedule.date_end!) : 0;
 
-    if (schedule.recur_type === "monthly") {
+    if (schedule.recur_type === "weekly") {
+      results.push(...expandWeekly(schedule, rangeStart, rangeEnd, hasRange, durationDays));
+    } else if (schedule.recur_type === "monthly") {
       results.push(...expandMonthly(schedule, rangeStart, rangeEnd, hasRange, durationDays));
     } else if (schedule.recur_type === "yearly") {
       if (schedule.recur_calendar === "lunar") {

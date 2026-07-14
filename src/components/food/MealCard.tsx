@@ -11,6 +11,7 @@ import { toggleMealParticipation } from "@/app/(main)/home/actions";
 import { deleteMeal } from "@/app/(main)/food/actions";
 import { AVATAR_SIZE } from "@/lib/uiTokens";
 import { mealKcalMedian } from "@/lib/mealUtils";
+import { MealThumbnail } from "@/components/food/MealThumbnail";
 import type { Meal } from "@/types";
 
 export interface MealCardParticipant {
@@ -62,21 +63,7 @@ export function MealCard({
       onClick={() => router.push(`/food/${meal.id}`)}
       className="flex cursor-pointer items-start gap-3 py-3"
     >
-      <div
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg"
-        style={{ backgroundColor: meal.color }}
-      >
-        {meal.image_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={meal.image_url}
-            alt={meal.main_menu}
-            className="h-full w-full rounded-xl object-cover"
-          />
-        ) : (
-          meal.emoji
-        )}
-      </div>
+      <MealThumbnail meal={meal} className="h-10 w-10" />
 
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <div className="flex items-center gap-1.5">

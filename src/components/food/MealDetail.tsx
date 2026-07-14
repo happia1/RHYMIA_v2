@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { IconArrowLeft, IconMapPin, IconBrandYoutube } from "@tabler/icons-react";
+import { IconArrowLeft, IconMapPin, IconBrandYoutube, IconLink } from "@tabler/icons-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { CheckToggle } from "@/components/ui/CheckToggle";
 import { Input } from "@/components/ui/Input";
@@ -10,6 +10,7 @@ import { addMealComment } from "@/app/(main)/food/actions";
 import { toggleMealParticipation } from "@/app/(main)/home/actions";
 import { AVATAR_SIZE } from "@/lib/uiTokens";
 import { youtubeThumbnailUrl, youtubeWatchUrl } from "@/lib/youtube";
+import { MealThumbnail } from "@/components/food/MealThumbnail";
 import type { Meal, MealComment } from "@/types";
 
 interface MemberInfo {
@@ -73,21 +74,12 @@ export function MealDetail({
       </header>
 
       <div className="flex flex-col gap-5 px-4">
-        <div
-          className="relative flex h-48 w-full items-center justify-center rounded-2xl text-6xl"
-          style={{ backgroundColor: meal.color }}
-        >
-          {meal.image_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={meal.image_url}
-              alt={meal.main_menu}
-              className="h-full w-full rounded-2xl object-cover"
-            />
-          ) : (
-            meal.emoji
-          )}
-        </div>
+        <MealThumbnail
+          meal={meal}
+          className="h-48 w-full"
+          roundedClassName="rounded-2xl"
+          emojiClassName="text-6xl"
+        />
 
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center gap-1.5">
@@ -140,6 +132,20 @@ export function MealDetail({
             <span className="min-w-0 flex-1 truncate text-[13px] text-ink">
               {meal.recipe_title ?? "레시피 영상 보기"}
             </span>
+          </a>
+        )}
+
+        {meal.recipe_url && (
+          <a
+            href={meal.recipe_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2"
+          >
+            <div className="flex h-16 w-28 shrink-0 items-center justify-center rounded-xl bg-cream">
+              <IconLink size={22} className="text-[var(--text-muted)]" />
+            </div>
+            <span className="min-w-0 flex-1 truncate text-[13px] text-ink">레시피 블로그 보기</span>
           </a>
         )}
 

@@ -4,35 +4,89 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
 import { getKeywordColor } from "@/lib/scheduleKeywords";
-import { toDateStr, formatYearMonth, addMonths } from "@/lib/date";
+import { formatYearMonth, addMonths } from "@/lib/date";
 import { getHoliday } from "@/lib/holidays";
-import { solarToLunar } from "@/lib/lunar";
 import { addDaysToDateStr, type ExpandedSchedule } from "@/lib/recurrence";
-import { targetLabel, type MemberInfo } from "@/lib/scheduleTargets";
-import { isPeriodSchedule, shortRange } from "@/lib/scheduleFormat";
-import { ActivitySuggestionSection } from "@/components/schedule/ActivitySuggestionSection";
+import { type MemberInfo } from "@/lib/scheduleTargets";
+import { isPeriodSchedule } from "@/lib/scheduleFormat";
 import { AddEventSheet } from "@/components/schedule/AddEventSheet";
 import { ScheduleDetailSheet } from "@/components/schedule/ScheduleDetailSheet";
 import { TodoSheet } from "@/components/schedule/TodoSheet";
-import { TodoChecklistItem } from "@/components/schedule/TodoChecklistItem";
-import { GhostAddButton } from "@/components/schedule/GhostAddButton";
+import { DaySheet } from "@/components/schedule/DaySheet";
 import { KeywordLegend } from "@/components/schedule/KeywordLegend";
 import { MemberFilterRow } from "@/components/schedule/MemberFilterRow";
-import { SectionExpand } from "@/components/ui/SectionExpand";
 import { getLastYearHighlights, toggleTodoDone } from "@/app/(main)/schedule/actions";
 import { ACTIVITY_SUGGESTION_POOL, pickActivityCandidates } from "@/lib/activitySuggestions";
 import { pickDeterministic } from "@/lib/randomPick";
 import type { Todo } from "@/types";
 
 const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
-// 기간 밴드는 겹쳐도 최대 이 줄 수까지만 쌓는다 — 넘치면 그 일정은 도트로 폴백.
+// 기간 밴드는 겹쳐도 최대 이 줄 수까지만 쌓는다 — 넘치면 마지막 줄에 "+N"으로 뭉뚱그려 표기.
 const MAX_BAND_ROWS = 2;
+// 아래 상수들은 밴드 라인 자체의 실제 렌더 크기(h-[2px], gap-[1.5px])와 반드시 일치해야
+// 라벨이 "라인 바로 위"에 정확히 앉는다 — 라인 스타일을 바꾸면 같이 바꿀 것.
+const BAND_LINE_H = 2;
+const BAND_LINE_GAP = 1.5;
+// 라인과 라벨 사이 간격(요구사항: 2~3px).
+const BAND_LABEL_GAP = 2.5;
+// 8px 텍스트(leading-none) 한 줄의 대략적인 렌더 높이 — 실측과 정확히 같을 필요는 없고,
+// 밴드가 2줄로 쌓였을 때 row1 라벨을 row0 라벨 위로 한 슬롯 더 띄우는 간격 계산에만 쓴다
+// (두 밴드가 같은 날 나란히 시작해 라벨이 둘 다 뜨는 드문 경우에도 서로 겹치지 않도록).
+const BAND_LABEL_H = 9;
 
 type TodoSheetTarget = { mode: "add"; date: string } | { mode: "edit"; todo: Todo };
+
+type BandEntry = {
+  color: string;
+  row: number;
+  isStart: boolean;
+  isEnd: boolean;
+  title: string;
+  spanCells: number;
+};
 
 function scheduleOverlapsDay(s: ExpandedSchedule, date: string) {
   const end = s.date_end ?? s.date_start;
   return s.date_start <= date && date <= end;
+}
+
+function pad2(n: number) {
+  return String(n).padStart(2, "0");
+}
+
+// year/month(0-indexed)/day를 바로 문자열로 조립한다 — `toDateStr(new Date(y, m, d))`처럼
+// Date를 거쳐 toISOString()으로 변환하면, UTC보다 앞선 시간대(한국 등)에서는 로컬 자정이
+// 전날 UTC로 밀려 날짜가 하루 당겨지는 버그가 있었다(예: 7월 1일 셀이 "30"으로 표시 —
+// 전월 마지막 날짜가 첫 주에 나타나는 버그의 실제 원인). 이미 알고 있는 y/m/d 숫자에서
+// 곧장 문자열을 만들면 그 변환 자체가 없어 안전하다.
+function ymd(year: number, month: number, day: number) {
+  return `${year}-${pad2(month + 1)}-${pad2(day)}`;
+}
+
+// 월요일 시작 기준, 이 날짜가 속한 달력 그리드 주의 마지막 날짜(일요일)를 구한다 —
+// 기간 밴드 시작 셀의 라벨 폭을 "그 주 안에서" 몇 칸까지 뻗을 수 있는지 계산할 때 씀.
+function endOfGridWeek(dateStr: string) {
+  const d = new Date(`${dateStr}T00:00:00.000Z`);
+  const dow = (d.getUTCDay() + 6) % 7; // 0=월 ... 6=일
+  d.setUTCDate(d.getUTCDate() + (6 - dow));
+  return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;
+}
+
+function daysBetween(a: string, b: string) {
+  const da = new Date(`${a}T00:00:00.000Z`).getTime();
+  const db = new Date(`${b}T00:00:00.000Z`).getTime();
+  return Math.round((db - da) / 86400000);
+}
+
+// 밴드 라벨의 세로 위치 — 줄 인덱스(row)만으로 고정 계산(그날 실제로 뭐가 있는지와 무관),
+// 라인 컨테이너 바닥에서부터의 거리(px)로 반환해 `bottom`에 그대로 쓴다. row0 라벨은 전체
+// 라인 묶음 바로 위(간격 BAND_LABEL_GAP)에 앉고, row1 라벨은 row0 라인 사이 1.5px짜리 틈에
+// 끼워 넣는 대신(그러면 폭이 좁아 겹침) row0 라벨 자리 위로 한 슬롯 더 쌓아 올린다 — 두
+// 밴드가 같은 날 나란히 시작해도 두 라벨이 서로 겹치지 않게. 어느 쪽이든 그날 실제로 밴드가
+// row0/row1에 있는지와 무관하게 항상 같은 값이 나오는 고정 오프셋이다.
+function bandLabelBottomPx(row: number) {
+  const totalLinesH = MAX_BAND_ROWS * BAND_LINE_H + (MAX_BAND_ROWS - 1) * BAND_LINE_GAP;
+  return totalLinesH + BAND_LABEL_GAP + row * (BAND_LABEL_H + BAND_LABEL_GAP);
 }
 
 // 완료 항목은 하단으로 — Array.sort는 안정 정렬이라 같은 is_done끼리는 원래 순서(등록순)를 유지한다.
@@ -55,9 +109,9 @@ export function MonthView({
   schedules: ExpandedSchedule[];
   membersById: Record<string, MemberInfo>;
   workspaceId: string;
-  /** 홈 "오늘 뭐하지"에서 특정 일정을 탭해 들어왔을 때 그 일정을 시각적으로 강조 */
+  /** 홈 "오늘 뭐하지"에서 특정 일정을 탭해 들어왔을 때 그 일정의 날짜로 데이 시트를 연 채 착지 */
   highlightId?: string;
-  /** 이 달 범위 안, due_date 기준 할 일 — 선택일 패널에서 due_date === selectedDate로 필터링 */
+  /** 이 달 범위 안, due_date 기준 할 일 — 데이 시트에서 due_date === selectedDate로 필터링 */
   monthTodos: Todo[];
   /** 마감일이 지났는데 아직 완료 안 한 할 일 — 오늘 날짜를 볼 때만 "지난 할 일"로 함께 표시 */
   overdueTodos: Todo[];
@@ -65,7 +119,9 @@ export function MonthView({
   members: { id: string; display_name: string; avatar_color: string }[];
   target: string;
 }) {
-  const [selectedDate, setSelectedDate] = useState(anchorDate);
+  const initialHighlightMatch = highlightId ? schedules.find((s) => s.id === highlightId) : undefined;
+  const [selectedDate, setSelectedDate] = useState(initialHighlightMatch?.date_start ?? anchorDate);
+  const [sheetOpen, setSheetOpen] = useState(Boolean(initialHighlightMatch));
   const [highlights, setHighlights] = useState<ExpandedSchedule[]>([]);
   const [prefillEvent, setPrefillEvent] = useState<ExpandedSchedule | null>(null);
   const [editingSchedule, setEditingSchedule] = useState<ExpandedSchedule | null>(null);
@@ -78,9 +134,10 @@ export function MonthView({
   const anchor = new Date(anchorDate);
   const year = anchor.getFullYear();
   const month = anchor.getMonth();
-  const todayStr = toDateStr(new Date());
-  const monthStart = toDateStr(new Date(year, month, 1));
-  const monthEnd = toDateStr(new Date(year, month + 1, 0));
+  const now = new Date();
+  const todayStr = ymd(now.getFullYear(), now.getMonth(), now.getDate());
+  const monthStart = ymd(year, month, 1);
+  const monthEnd = ymd(year, month, new Date(year, month + 1, 0).getDate());
 
   const cells = useMemo(() => {
     const firstDay = new Date(year, month, 1);
@@ -89,16 +146,20 @@ export function MonthView({
 
     const result: (string | null)[] = Array.from({ length: leading }, () => null);
     for (let d = 1; d <= daysInMonth; d++) {
-      result.push(toDateStr(new Date(year, month, d)));
+      result.push(ymd(year, month, d));
     }
     return result;
   }, [year, month]);
+  // 가용 높이를 주(행) 수로 나눠 화면을 꽉 채운다(요구사항: 세로 스크롤바 제거) — grid-template-rows
+  // 를 이 값 기준 repeat(N, 1fr)로 줘서 브라우저가 알아서 남는 높이를 균등 분배하게 한다.
+  const weekRows = Math.ceil(cells.length / 7);
 
   // 기간 일정(date_start !== date_end, 반복 일정의 가상 인스턴스 포함 — schedules 자체가
   // getSchedulesForRange에서 이미 원본+가상 인스턴스를 합쳐서 내려온다)을 이 달 그리드 안에서
-  // 겹치지 않게 최대 MAX_BAND_ROWS줄로 배정한다. 겹쳐서 못 들어가는 일정은 overflowIds에 담아
-  // 도트로 폴백한다.
-  const { bandsByDate, overflowIds, legend } = useMemo(() => {
+  // 겹치지 않게 최대 MAX_BAND_ROWS줄로 배정한다. 다 못 들어가는(overflow) 일정은 더 이상
+  // 도트로 폴백하지 않고, 그 일정이 걸치는 날짜마다 마지막 줄에 "+N"(그날의 overflow 건수)으로
+  // 뭉뚱그려 표기한다 — 전체 목록은 데이 시트에서 확인 가능하므로 달력엔 개수만.
+  const { bandsByDate, overflowCountByDate } = useMemo(() => {
     const candidates = schedules
       .filter(isPeriodSchedule)
       .map((s) => ({
@@ -109,9 +170,8 @@ export function MonthView({
       .sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0));
 
     const rowEnd: (string | null)[] = Array(MAX_BAND_ROWS).fill(null);
-    const overflow = new Set<string>();
-    const byDate: Record<string, { color: string; row: number; isStart: boolean; isEnd: boolean }[]> = {};
-    const placed: ExpandedSchedule[] = [];
+    const overflowCandidates: typeof candidates = [];
+    const byDate: Record<string, BandEntry[]> = {};
 
     for (const cand of candidates) {
       let row = -1;
@@ -122,43 +182,52 @@ export function MonthView({
         }
       }
       if (row === -1) {
-        overflow.add(cand.schedule.id);
+        overflowCandidates.push(cand);
         continue;
       }
       rowEnd[row] = cand.end;
       const color = getKeywordColor(cand.schedule.keyword_main);
+      // 라벨은 시작 셀에서 그 주(일요일까지)가 끝나는 지점까지만 뻗는다 — 다음 주로
+      // 넘어가는 칸은 그리드 상 다른 행이라 라벨을 이어 그릴 수 없기 때문.
+      const weekEnd = endOfGridWeek(cand.start);
+      const labelEnd = cand.end < weekEnd ? cand.end : weekEnd;
+      const spanCells = daysBetween(cand.start, labelEnd) + 1;
       for (let d = cand.start; d <= cand.end; d = addDaysToDateStr(d, 1)) {
-        (byDate[d] ??= []).push({ color, row, isStart: d === cand.start, isEnd: d === cand.end });
+        (byDate[d] ??= []).push({
+          color,
+          row,
+          isStart: d === cand.start,
+          isEnd: d === cand.end,
+          title: cand.schedule.title,
+          spanCells,
+        });
       }
-      placed.push(cand.schedule);
     }
 
-    return { bandsByDate: byDate, overflowIds: overflow, legend: placed };
+    const overflowCount: Record<string, number> = {};
+    for (const cand of overflowCandidates) {
+      for (let d = cand.start; d <= cand.end; d = addDaysToDateStr(d, 1)) {
+        overflowCount[d] = (overflowCount[d] ?? 0) + 1;
+      }
+    }
+
+    return { bandsByDate: byDate, overflowCountByDate: overflowCount };
   }, [schedules, monthStart, monthEnd]);
 
-  // 도트로 보여줄 일정 — 하루짜리 일정 전부 + 기간 일정 중 2줄에 못 들어간 것(걸치는 날마다).
+  // 도트는 하루짜리(기간이 아닌) 일정만 — 기간 일정은 이제 전부 밴드 쪽(놓였든 +N 초과분이든)
+  // 에서만 표현하므로 여기서 완전히 제외한다(중복 표기 방지).
   const dotsByDate = useMemo(() => {
     const map: Record<string, ExpandedSchedule[]> = {};
     for (const s of schedules) {
-      const period = isPeriodSchedule(s);
-      if (period && !overflowIds.has(s.id)) continue; // 밴드로 이미 표현됨
-      const start = period ? (s.date_start < monthStart ? monthStart : s.date_start) : s.date_start;
-      const end = period ? (s.date_end! > monthEnd ? monthEnd : s.date_end!) : s.date_start;
-      for (let d = start; d <= end; d = addDaysToDateStr(d, 1)) {
-        (map[d] ??= []).push(s);
-      }
+      if (isPeriodSchedule(s)) continue;
+      (map[s.date_start] ??= []).push(s);
     }
     return map;
-  }, [schedules, overflowIds, monthStart, monthEnd]);
+  }, [schedules]);
 
-  // 기간일정 중 상단 범례 바에 이미 표시된 것(legend)은 여기서 또 보여주면 중복이라 뺀다 —
-  // 밴드 자리가 모자라 범례에 못 들어간(overflow) 기간일정만 예외적으로 여기 남는다.
   const selectedSchedules = useMemo(
-    () =>
-      schedules.filter(
-        (s) => scheduleOverlapsDay(s, selectedDate) && !legend.some((l) => l.id === s.id)
-      ),
-    [schedules, selectedDate, legend]
+    () => schedules.filter((s) => scheduleOverlapsDay(s, selectedDate)),
+    [schedules, selectedDate]
   );
   const isSelectedToday = selectedDate === todayStr;
   const selectedTodos = useMemo(
@@ -171,6 +240,12 @@ export function MonthView({
   const checklistItems = useMemo(
     () => (isSelectedToday ? sortTodos([...selectedTodos, ...overdueSorted]) : selectedTodos),
     [selectedTodos, overdueSorted, isSelectedToday]
+  );
+  // "작년 이맘때" — 지난달 전체 하이라이트(highlights, 달 단위로 조회) 중 선택일과
+  // 일(day-of-month)이 같은 것만 시트 하단에 노출한다.
+  const lastYearForSelectedDate = useMemo(
+    () => highlights.filter((h) => h.date_start.slice(-2) === selectedDate.slice(-2)),
+    [highlights, selectedDate]
   );
 
   const handleToggleTodo = (todo: Todo) => {
@@ -210,18 +285,26 @@ export function MonthView({
     };
   }, [workspaceId, year, month]);
 
-  // 홈 "오늘 뭐하지"에서 특정 일정을 탭해 들어온 딥링크의 최종 착지 — 해당 일정의
-  // 상세 팝업이 열린 상태로 보여준다.
+  // 홈 "오늘 뭐하지"에서 특정 일정을 탭해 들어온 딥링크의 최종 착지 — 해당 일정의 날짜로
+  // 데이 시트가 열린 상태로 보여준다(초기 렌더는 위 useState 초기값에서 이미 반영, 이 효과는
+  // highlightId가 마운트 후 바뀌는 경우를 대비).
   useEffect(() => {
     if (!highlightId) return;
     const match = schedules.find((s) => s.id === highlightId);
-    if (match) setDetailSchedule(match);
+    if (match) {
+      setSelectedDate(match.date_start);
+      setSheetOpen(true);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [highlightId]);
 
+  const handleCalendarAreaTap = () => {
+    if (sheetOpen) setSheetOpen(false);
+  };
+
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+    <div className="flex h-full flex-col gap-4 overflow-x-hidden pb-16">
+      <div className="flex shrink-0 items-center justify-between">
         <KeywordLegend />
         <div className="flex items-center gap-4">
           <Link href={`/schedule?view=month&date=${addMonths(anchorDate, -1)}`} aria-label="이전 달">
@@ -235,187 +318,151 @@ export function MonthView({
         <MemberFilterRow members={members} target={target} />
       </div>
 
-      <div className="grid grid-cols-7 gap-y-1 text-center">
-        {WEEKDAY_LABELS.map((wd) => (
-          <span key={wd} className="text-[11px] text-[var(--text-muted)]">
-            {wd}
-          </span>
-        ))}
-        {cells.map((date, i) => {
-          if (!date) return <div key={`empty-${i}`} />;
-          const dotSchedules = dotsByDate[date] ?? [];
-          const cellBands = bandsByDate[date] ?? [];
-          const grocery = dotSchedules.find((s) => s.is_grocery && s.amount);
-          const isToday = date === todayStr;
-          const isSelected = date === selectedDate;
-          const holiday = getHoliday(date);
-
-          const lunar = solarToLunar(new Date(`${date}T00:00:00.000Z`));
-          const showLunar = Boolean(lunar && (date === monthStart || lunar.day === 1 || lunar.day === 15));
-
-          return (
-            <button
-              key={date}
-              onClick={() => setSelectedDate(date)}
-              className="flex flex-col items-center gap-0.5 py-1"
-            >
-              <span
-                className={`flex h-6 w-6 items-center justify-center rounded-full text-[13px] ${
-                  isToday
-                    ? "bg-honey/15 font-medium text-honey"
-                    : isSelected
-                    ? "font-medium text-honey ring-1 ring-honey/40"
-                    : holiday
-                    ? "font-medium text-terra"
-                    : "text-ink"
-                }`}
-              >
-                {Number(date.slice(-2))}
-              </span>
-              <span className="text-[8.5px] leading-none text-[var(--text-muted)]" style={{ minHeight: 9 }}>
-                {showLunar && lunar ? `음 ${lunar.month}.${lunar.day}` : ""}
-              </span>
-              <div className="flex gap-1" style={{ minHeight: 6 }}>
-                {dotSchedules.slice(0, 3).map((s) => (
-                  <span
-                    key={s.id}
-                    className="h-[4px] w-[4px] rounded-full"
-                    style={{ backgroundColor: getKeywordColor(s.keyword_main) }}
-                  />
-                ))}
-              </div>
-              {grocery && (
-                <span className="text-[9px] text-[var(--text-muted)]">
-                  {grocery.amount!.toLocaleString()}
-                </span>
-              )}
-              <span className="flex w-full flex-col gap-[1.5px]">
-                {Array.from({ length: MAX_BAND_ROWS }, (_, row) => {
-                  const band = cellBands.find((b) => b.row === row);
-                  return (
-                    <span
-                      key={row}
-                      className={`h-[2px] ${band?.isStart ? "rounded-l-full" : ""} ${
-                        band?.isEnd ? "rounded-r-full" : ""
-                      }`}
-                      style={{
-                        backgroundColor: band ? band.color : "transparent",
-                        opacity: band ? 0.55 : undefined,
-                      }}
-                    />
-                  );
-                })}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
-      {legend.length > 0 && (
-        <div className="flex flex-wrap gap-x-4 gap-y-1.5 border-t border-border-light pt-3">
-          {legend.map((s) => (
-            <button
-              key={s.id}
-              onClick={() => setDetailSchedule(s)}
-              className="flex items-center gap-1.5 text-[11px] text-stone"
-            >
-              <span
-                className="h-[2px] w-3 rounded-full"
-                style={{ backgroundColor: getKeywordColor(s.keyword_main), opacity: 0.55 }}
-              />
-              {s.title} {shortRange(s)}
-            </button>
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div className="grid shrink-0 grid-cols-7 pb-1 text-center">
+          {WEEKDAY_LABELS.map((wd) => (
+            <span key={wd} className="text-[11px] text-[var(--text-muted)]">
+              {wd}
+            </span>
           ))}
         </div>
-      )}
 
-      <div className="flex flex-col gap-3">
-        {getHoliday(selectedDate) && (
-          <p className="text-[12px] font-medium text-terra">{getHoliday(selectedDate)}</p>
-        )}
+        <div
+          className="grid flex-1 grid-cols-7 gap-y-1 text-center"
+          style={{ gridTemplateRows: `repeat(${weekRows}, minmax(0, 1fr))` }}
+          onClick={handleCalendarAreaTap}
+        >
+          {cells.map((date, i) => {
+            if (!date) return <div key={`empty-${i}`} />;
+            const dotSchedules = dotsByDate[date] ?? [];
+            const cellBands = bandsByDate[date] ?? [];
+            const overflowCount = overflowCountByDate[date] ?? 0;
+            const grocery = dotSchedules.find((s) => s.is_grocery && s.amount);
+            const isToday = date === todayStr;
+            const isSelected = sheetOpen && date === selectedDate;
+            const holiday = getHoliday(date);
+            const lastRow = MAX_BAND_ROWS - 1;
 
-        <div className="grid grid-cols-5 gap-3">
-          <div className="col-span-2 flex flex-col">
-            <span className="mb-1 text-[10px] font-medium text-[var(--text-muted)]">오늘 할 일</span>
-            {checklistItems.length === 0 ? (
-              <GhostAddButton
-                onClick={() => setTodoSheetTarget({ mode: "add", date: selectedDate })}
-                label="할 일 추가"
-              />
-            ) : (
-              checklistItems.map((t) => (
-                <TodoChecklistItem
-                  key={t.id}
-                  todo={t}
-                  onToggle={() => handleToggleTodo(t)}
-                  onOpenEdit={() => setTodoSheetTarget({ mode: "edit", todo: t })}
-                />
-              ))
-            )}
-          </div>
-
-          <div className="col-span-3 flex flex-col border-l border-border-light pl-3">
-            <span className="mb-1 text-[10px] font-medium text-[var(--text-muted)]">주요 일정</span>
-            {selectedSchedules.length === 0 ? (
-              <GhostAddButton onClick={() => setAddNewOpen(true)} label="주요 일정 추가" />
-            ) : (
-              <SectionExpand
-                items={selectedSchedules}
-                pageSize={4}
-                renderItem={(s, i) => (
-                  <button
-                    key={s.id}
-                    onClick={() => setDetailSchedule(s)}
-                    className={`flex flex-col gap-0.5 py-1.5 text-left ${
-                      i > 0 ? "border-t border-border-light" : ""
-                    } ${s.id === highlightId ? "-mx-2 rounded-xl bg-honey/10 px-2" : ""}`}
-                  >
+            return (
+              <button
+                key={date}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (date === selectedDate && sheetOpen) {
+                    setSheetOpen(false);
+                  } else {
+                    setSelectedDate(date);
+                    setSheetOpen(true);
+                  }
+                }}
+                className={`flex flex-col items-center justify-center gap-0.5 ${sheetOpen ? "py-0.5" : "py-1"}`}
+              >
+                <span
+                  className={`flex items-center justify-center rounded-full ${
+                    sheetOpen ? "h-5 w-5 text-[11px]" : "h-6 w-6 text-[13px]"
+                  } ${
+                    isToday
+                      ? "bg-honey/15 font-medium text-honey"
+                      : isSelected
+                      ? "font-medium text-honey ring-1 ring-honey/40"
+                      : holiday
+                      ? "font-medium text-terra"
+                      : "text-ink"
+                  }`}
+                >
+                  {Number(date.slice(-2))}
+                </span>
+                <div className="flex gap-1" style={{ minHeight: sheetOpen ? 5 : 6 }}>
+                  {dotSchedules.slice(0, 3).map((s) => (
                     <span
-                      className={`truncate text-[12px] ${
-                        s.is_important ? "font-medium text-terra" : "text-ink"
-                      }`}
-                    >
-                      {s.title}
-                    </span>
-                    <span className="truncate text-[9px] text-stone">
-                      {s.time_start ? s.time_start.slice(0, 5) : "종일"} ·{" "}
-                      {targetLabel(s.target_members, membersById)}
-                    </span>
-                  </button>
+                      key={s.id}
+                      className="h-[4px] w-[4px] rounded-full"
+                      style={{ backgroundColor: getKeywordColor(s.keyword_main) }}
+                    />
+                  ))}
+                </div>
+                {grocery && (
+                  <span className="text-[9px] text-[var(--text-muted)]">
+                    {grocery.amount!.toLocaleString()}
+                  </span>
                 )}
-              />
-            )}
-          </div>
+                {/* 라인은 텍스트 유무와 무관하게 항상 같은 두께·같은 줄 순서로 렌더(레이어
+                    분리) — 라벨(제목/+N)은 별도로 position:absolute 오버레이로 얹어서 이
+                    컨테이너의 문서 흐름(높이 계산)에는 전혀 관여하지 않는다. 시트가 열려
+                    달력이 압축된 상태에선 라벨을 아예 숨기고 라인만 남긴다(요구사항 5) —
+                    압축 상태에서 텍스트까지 같이 구겨지며 깨져 보이는 문제를 피하기 위해서다. */}
+                <span className="relative flex w-full flex-col gap-[1.5px]">
+                  {Array.from({ length: MAX_BAND_ROWS }, (_, row) => {
+                    const band = cellBands.find((b) => b.row === row);
+                    return (
+                      <span
+                        key={row}
+                        className={`h-[2px] ${band?.isStart ? "rounded-l-full" : ""} ${
+                          band?.isEnd ? "rounded-r-full" : ""
+                        }`}
+                        style={{
+                          backgroundColor: band ? band.color : "transparent",
+                          opacity: band ? 0.55 : undefined,
+                        }}
+                      />
+                    );
+                  })}
+                  {!sheetOpen &&
+                    Array.from({ length: MAX_BAND_ROWS }, (_, row) => {
+                      if (row === lastRow && overflowCount > 0) {
+                        return (
+                          <span
+                            key={`label-${row}`}
+                            className="pointer-events-none absolute left-0 text-[8px] leading-none text-[var(--text-muted)]"
+                            style={{ bottom: bandLabelBottomPx(row) }}
+                          >
+                            +{overflowCount}
+                          </span>
+                        );
+                      }
+                      const band = cellBands.find((b) => b.row === row);
+                      if (!band?.isStart) return null;
+                      return (
+                        <span
+                          key={`label-${row}`}
+                          className="pointer-events-none absolute left-0 truncate text-[8px] leading-none"
+                          style={{
+                            bottom: bandLabelBottomPx(row),
+                            width: `${band.spanCells * 100}%`,
+                            color: band.color,
+                            opacity: 0.55,
+                          }}
+                        >
+                          {band.title}
+                        </span>
+                      );
+                    })}
+                </span>
+              </button>
+            );
+          })}
         </div>
-
-        {selectedSchedules.length === 0 && (
-          <ActivitySuggestionSection
-            workspaceId={workspaceId}
-            selectedDate={selectedDate}
-            suggestion={activitySuggestion}
-            candidatePool={activityCandidates}
-          />
-        )}
       </div>
 
-      {highlights.length > 0 && (
-        <div className="flex flex-col gap-1.5 border-t border-border-light pt-3">
-          <span className="text-[10px] tracking-[0.1em] text-[var(--text-muted)]">작년 이맘때</span>
-          <p className="text-[12.5px] leading-relaxed text-[var(--text-muted)]">
-            {highlights.map((h, i) => (
-              <span key={h.id}>
-                {i > 0 && " · "}
-                <button
-                  onClick={() => setPrefillEvent(h)}
-                  className="text-ink underline-offset-2 hover:underline"
-                >
-                  {h.title} {shortRange(h)}
-                </button>
-              </span>
-            ))}
-          </p>
-        </div>
-      )}
+      <DaySheet
+        open={sheetOpen}
+        date={selectedDate}
+        onClose={() => setSheetOpen(false)}
+        schedules={selectedSchedules}
+        membersById={membersById}
+        highlightId={highlightId}
+        onOpenSchedule={setDetailSchedule}
+        onAddSchedule={() => setAddNewOpen(true)}
+        todos={checklistItems}
+        onToggleTodo={handleToggleTodo}
+        onOpenTodoEdit={(t) => setTodoSheetTarget({ mode: "edit", todo: t })}
+        onAddTodo={() => setTodoSheetTarget({ mode: "add", date: selectedDate })}
+        lastYearHighlights={lastYearForSelectedDate}
+        onOpenLastYear={setPrefillEvent}
+        workspaceId={workspaceId}
+        activitySuggestion={activitySuggestion}
+        activityCandidates={activityCandidates}
+      />
 
       <AddEventSheet
         open={!!prefillEvent || !!editingSchedule || addNewOpen}

@@ -25,6 +25,7 @@ const NOTIFY_OPTIONS: { value: NotifyOffset; label: string }[] = [
 
 const RECUR_OPTIONS: { value: RecurType; label: string }[] = [
   { value: "none", label: "없음" },
+  { value: "weekly", label: "매주" },
   { value: "monthly", label: "매월" },
   { value: "yearly", label: "매년" },
 ];

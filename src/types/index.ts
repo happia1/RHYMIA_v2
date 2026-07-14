@@ -1,8 +1,7 @@
 export type MealType = "집밥" | "외식" | "배달";
 export type NoticeType = "sticky" | "memo" | "notice";
 export type FridgeCategory = "cold" | "frozen" | "room";
-/** weekly는 의도적으로 없음 — 매주 반복은 routine(내 루틴)이 전담하는 영역 */
-export type RecurType = "none" | "monthly" | "yearly";
+export type RecurType = "none" | "weekly" | "monthly" | "yearly";
 export type RecurCalendar = "solar" | "lunar";
 
 export interface FamilyWorkspace {
@@ -135,6 +134,9 @@ export interface Meal {
   /** 붙여넣은 유튜브 레시피 링크의 영상 id — 썸네일은 저장하지 않고 youtubeThumbnailUrl()로 참조만 함 */
   video_id: string | null;
   recipe_title: string | null;
+  /** 블로그 레시피 검색 결과에서 저장한 글 링크 — video_id(유튜브)와 공존 가능,
+   * 본문은 저장하지 않고(저작권) 링크만 보관한다 */
+  recipe_url: string | null;
   emoji: string;
   color: string;
   created_at: string;

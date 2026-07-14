@@ -104,7 +104,7 @@ function ShoppingItemRow({
         {item.is_purchased && <IconCheck size={SHOPPING_DOT_SIZE * 0.6} stroke={2.5} />}
       </span>
       <span
-        className={`min-w-0 flex-1 truncate text-[8px] ${
+        className={`min-w-0 flex-1 truncate text-[12px] ${
           item.is_purchased ? "text-[var(--text-muted)] line-through" : "text-ink"
         }`}
       >
@@ -271,7 +271,7 @@ export function GlobalShoppingSheet({
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleAdd()}
                 placeholder={speechSupported ? "살 것을 입력하거나 음성으로 등록하세요" : "살 것을 입력하세요"}
-                className="h-11 flex-1 px-0 text-[8px]"
+                className="h-11 flex-1 px-0 text-[12px]"
               />
               {speechSupported && (
                 <button

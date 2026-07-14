@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { IconPlus } from "@tabler/icons-react";
 import { requireWorkspaceContext, getNutritionDisplayEnabled } from "@/lib/workspace";
 import { getWeekDates, toDateStr } from "@/lib/date";
 import { getFrequentMenus } from "@/lib/mealUtils";
@@ -48,11 +47,10 @@ export default async function FoodPage({
       .eq("workspace_id", workspaceId)
       .eq("date", selectedDate)
       .order("created_at", { ascending: true }),
-    // "늘 먹던 걸로" 빈도 집계(getFrequentMenus)뿐 아니라, 빠른 등록 시 예전 기록에서
-    // 이미지·메모 등을 그대로 복사해오기 위해 필요한 컬럼까지 함께 가져온다.
+    // 오늘의 제안 카드("늘 먹던 메뉴")·룰렛 후보 풀에 쓰는 최근 200건 빈도 집계용(getFrequentMenus).
     supabase
       .from("meal")
-      .select("main_menu, date, type, sides, memo, place, image_url, video_id, recipe_title")
+      .select("main_menu, date")
       .eq("workspace_id", workspaceId)
       .order("date", { ascending: false })
       .limit(200),
@@ -77,11 +75,6 @@ export default async function FoodPage({
   const todayVote = voteRows?.[0] ?? null;
   // 진행 중인 투표가 있으면 같은 날짜에 새 투표를 또 만들 수 없게 막는 용도 (결과 카드는 마감 여부와 무관하게 표시)
   const blockingVote = todayVote && !todayVote.is_closed ? todayVote : null;
-  const todayStr = toDateStr(new Date());
-  const nutritionDateLabel =
-    selectedDate === todayStr
-      ? "오늘"
-      : `${Number(selectedDate.slice(5, 7))}.${Number(selectedDate.slice(8, 10))}`;
 
   return (
     <div className="flex h-[calc(100dvh-64px)] flex-col gap-4 overflow-hidden px-4 pt-6">
@@ -103,7 +96,6 @@ export default async function FoodPage({
             workspaceId={workspaceId}
             selectedDate={selectedDate}
             frequentMenus={frequentMenus}
-            recentMeals={mealHistory ?? []}
             activeVote={blockingVote}
           />
         ) : (
@@ -114,12 +106,15 @@ export default async function FoodPage({
               currentUserId={user.id}
               nutritionEnabled={nutritionEnabled}
             />
-            {nutritionEnabled && (
-              <MealNutritionSummary
-                dateLabel={nutritionDateLabel}
-                meals={(dayMeals ?? []) as MealRow[]}
-              />
-            )}
+            <div className="flex items-center gap-2 border-t border-border-light pt-2.5">
+              {nutritionEnabled && <MealNutritionSummary meals={(dayMeals ?? []) as MealRow[]} />}
+              <Link
+                href={`/food/add?date=${selectedDate}`}
+                className="ml-auto shrink-0 text-[13px] font-medium text-honey"
+              >
+                + 끼니 추가
+              </Link>
+            </div>
           </>
         )}
 
@@ -135,14 +130,6 @@ export default async function FoodPage({
           activeVote={blockingVote}
         />
       </div>
-
-      <Link
-        href={`/food/add?date=${selectedDate}`}
-        className="fixed bottom-[84px] right-6 flex h-14 w-14 items-center justify-center rounded-full bg-ink text-cream"
-        aria-label="끼니 추가"
-      >
-        <IconPlus size={26} />
-      </Link>
     </div>
   );
 }

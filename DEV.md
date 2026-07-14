@@ -1,6 +1,345 @@
 # 개발 참조 문서
 
-## 마지막 업데이트: 2026-07-13 (주간 뷰 기간일정을 상단 범례 대신 날짜별 칸에 인라인 표기)
+## 마지막 업데이트: 2026-07-14 (식탁 탭 끼니 목록 하단 — 칼로리·"+ 끼니 추가" 한 줄 정리)
+
+- 2026-07-14: 식탁 탭 끼니 목록 하단 — 칼로리·"+ 끼니 추가" 한 줄로 합치고 구분선 추가
+  - **변경 전**: `food/page.tsx`가 "+ 끼니 추가"(왼쪽 정렬)와 `MealNutritionSummary`(자체
+    `border-t` + 오른쪽 정렬)를 각각 별도 줄로 렌더 — 구분선이 칼로리 줄에만 붙어 있었고
+    "+ 끼니 추가"는 그 위에 따로 떠 있었음.
+  - **변경 후**: 두 요소를 `food/page.tsx`의 `<div className="flex items-center gap-2
+    border-t border-border-light pt-2.5">` 한 줄로 묶음 — 구분선은 이 줄 하나에만(끼니
+    목록 바로 아래), 칼로리 정보가 왼쪽, "+ 끼니 추가"가 `ml-auto`로 오른쪽. `ml-auto`를
+    쓴 이유: `justify-between`은 형제가 하나뿐일 때(영양 정보 표시가 꺼져 있거나 추정치가
+    하나도 없어 `MealNutritionSummary`가 null을 반환하는 경우) "+ 끼니 추가"가 왼쪽으로
+    붙어버리는 문제가 있어, 항상 오른쪽에 고정되도록 함.
+  - **`MealNutritionSummary.tsx` 단순화**: 자체 `border-t`/`pt-2.5`/`text-right`를 없애고
+    `<p>`→`<span>`으로 바꿔 순수 텍스트만 반환 — 정렬/구분선은 이제 호출부 책임.
+  - 검증: `tsc --noEmit`/`next lint` 클린(기존 무관 `RoutineWheel.tsx` 경고 1건 제외),
+    `/food` 라우트 컴파일 확인.
+
+- 2026-07-14: 끼니 레시피 검색(네이버 블로그) + 카드 썸네일 통일
+
+- 2026-07-14: 끼니 레시피 검색(네이버 블로그) + 카드 썸네일 통일 4건
+  - **1) `/api/search/recipe-blog` 신규 라우트**: 네이버 검색 API(블로그, `GET
+    https://openapi.naver.com/v1/search/blog.json`) 프록시 —
+    `X-Naver-Client-Id`/`X-Naver-Client-Secret` 헤더로 인증(공식 문서 기준, OAuth 아님).
+    `requireAuthOrRespond()`(`lib/agentServer.ts`, 기존 헬퍼 재사용)로 로그인 확인 후, 응답의
+    `<b>` 하이라이트 태그·HTML 엔티티를 걷어내(`stripNaverMarkup`) `title`/`summary`/`link`/
+    `blogName`만 정리해 내려준다. **`NAVER_CLIENT_ID`/`SECRET` 둘 다 없으면 503**(기존
+    `weather.ts`의 "키 없으면 기능 자체 숨김" 패턴과 동일 사상) — 이 게이트를 클라이언트에서도
+    쓸 수 있게 `lib/recipeSearch.ts`에 `isRecipeSearchEnabled()`(순수 env 체크, 서버
+    컴포넌트 전용)를 분리해뒀다.
+    **알아둘 것**: 네이버 블로그 검색 API 응답에는 썸네일 이미지 필드가 없다(공식 문서
+    기준) — 검색 결과 목록에 실제 게시글 썸네일 대신 자리표시 아이콘(`IconArticle`)을 쓴
+    이유. 실제 썸네일이 꼭 필요하면 각 블로그 URL의 og:image를 서버에서 별도로 긁어와야
+    하는데, 검색 결과 수만큼 추가 요청이 필요해 API 연동 범위를 벗어난다고 판단해 보류함.
+  - **2) 끼니 등록/수정 "블로그에서 레시피 찾기"**: `AddMealScreen.tsx`의 "사진/레시피 추가"
+    메뉴에 새 항목 추가(`recipeSearchEnabled` prop이 true일 때만 노출) — 신규
+    `RecipeSearchSheet.tsx`가 메뉴명을 프리필해 시트가 열리자마자 한 번 자동 검색하고,
+    결과를 탭하면 블로그 글이 새 창으로 열리며, "이 레시피 저장" 버튼을 눌러야 비로소
+    `recipeUrl` state에 반영된다(본문 자동 추출 없음 — 저작권). **메모 입력란을 검색 시트
+    안에 그대로 노출**해 결과를 보면서 바로 적을 수 있게 했고, 이 메모는 `AddMealScreen`의
+    `memo` state를 그대로 공유(별도 동기화 로직 없이 같은 값).
+  - **3) `meal.recipe_url` 컬럼**: 신규 `supabase/add_meal_recipe_url.sql`(`ALTER TABLE meal
+    ADD COLUMN IF NOT EXISTS recipe_url TEXT`) — **Supabase SQL Editor에서 직접 실행
+    필요**(이 환경엔 DB에 DDL을 실행할 방법이 없음). 기존 `video_id`(유튜브)와 완전히
+    독립적으로 공존 — `MealDetail.tsx`에 `IconLink` 아이콘의 별도 "레시피 블로그 보기" 행을
+    추가해, 유튜브 링크와 블로그 링크가 각자 있으면 둘 다 보임(라벨은 고정 텍스트 —
+    블로그 글 제목까지 저장하는 컬럼은 이번 스코프에 없음, "recipe_url 컬럼 하나만
+    추가"라는 요청 범위를 그대로 지킴). `MealInput`/`createMeal`/`updateMeal`
+    (`food/actions.ts`)과 `Meal` 타입(`types/index.ts`)에 필드 추가.
+  - **4) 끼니 카드 썸네일 통일**: 신규 `MealThumbnail.tsx` — `image_url(촬영/앨범)` →
+    `video_id`(유튜브 썸네일) → `emoji`(기본 아이콘) 우선순위를 한 곳에만 구현하고, 유튜브
+    썸네일 로드 실패(영상 삭제 등) 시 이모지로 자동 폴백. 크기/모양은 `className`
+    prop으로 호출부가 결정(정사각 리스트용 `h-10 w-10` vs 상세 배너용 `h-48 w-full` 등) —
+    "같은 해상 규칙, 다른 크기"를 이렇게 분리했다. `MealCard.tsx`·`MealDetail.tsx`의 기존
+    인라인 썸네일 마크업을 이걸로 교체하고, 썸네일이 아예 없던 `MealSummaryCard.tsx`(홈
+    "오늘 뭐먹지")에도 같은 컴포넌트로 새로 추가(세로 텍스트 나열 → 왼쪽 썸네일 + 오른쪽
+    텍스트 열로 레이아웃 변경).
+  - **환경변수**: 이 저장소에 없던 `.env.example`을 신규 작성(기존 `.env.local`에 있던
+    Supabase/날씨/에이전트 키 + 이번에 추가한 `NAVER_CLIENT_ID`/`NAVER_CLIENT_SECRET` 전부
+    포함, 발급 경로 주석). 네이버 키 발급: developers.naver.com → Application 등록 → 사용
+    API에서 "검색" 선택 → Client ID/Secret 확인.
+  - 검증: `tsc --noEmit`/`next lint` 클린(기존 무관 `RoutineWheel.tsx` 경고 1건 제외),
+    `/food`·`/food/add`·`/home` 라우트 컴파일 확인. **다음에 반드시 필요**: ①
+    `add_meal_recipe_url.sql`을 Supabase SQL Editor에서 실행, ② `NAVER_CLIENT_ID`/
+    `NAVER_CLIENT_SECRET`을 `.env.local`에 실제 값으로 채우고 로그인된 브라우저로 검색이
+    실제로 동작하는지(응답 필드명이 문서와 실제로 일치하는지 포함) 확인 — 이 환경엔 네이버
+    키가 없어 실제 API 호출은 검증하지 못했고 공식 문서 기준으로만 구현함.
+
+- 2026-07-14: 장바구니 시트 "장볼 것" 텍스트 8px→12px(홈 날짜 텍스트와 통일)
+
+- 2026-07-14: 장바구니 시트 "장볼 것" 텍스트 8px→12px(홈 날짜 텍스트와 통일)
+  - **배경**: 이전 항목("장바구니 시트 텍스트 절반 축소")에서 입력창 placeholder와 항목
+    리스트 텍스트를 15px→8px로 줄였는데, 사용자가 스크린샷으로 다시 지적 — 너무 작아
+    보여서 홈 화면 날짜 텍스트 크기에 맞추기를 요청.
+  - **기준값**: `HomeHeader.tsx`의 시간 아래 날짜(`formatDate(now)`, "7월 14일 화요일")가
+    `text-[12px]` — 이 값을 기준으로 삼음.
+  - **수정**: `GlobalShoppingSheet.tsx` 두 곳 — 입력창 placeholder(`text-[8px]`→`text-[12px]`),
+    `ShoppingItemRow`의 품목명 텍스트(`text-[8px]`→`text-[12px]`). "기록" 탭 등 다른 텍스트는
+    이번 요청 대상이 아니라 그대로 둠.
+  - 검증: `tsc --noEmit`/`next lint` 클린(기존 무관 `RoutineWheel.tsx` 경고 1건 제외),
+    `/home` 라우트 컴파일 확인.
+
+
+- 2026-07-14: 일정 반복 주기에 "매주" 추가 — schedule 테이블 확장(기존 "루틴 전담" 결정 번복)
+  - **배경**: `add_schedule_recurrence.sql`이 애초에 "매주 반복은 routine(내 루틴)이 전담하는
+    영역"이라며 weekly를 의도적으로 뺐었는데, 사용자가 명시적으로 일정 탭 반복 옵션에도
+    매주를 요청 — 그 설계 결정을 뒤집는 변경.
+  - **DB**: 신규 `supabase/add_schedule_weekly_recurrence.sql` — `schedule_recur_type_check`
+    CHECK 제약을 `('none','monthly','yearly')`→`('none','weekly','monthly','yearly')`로
+    재생성(기존 제약 있으면 DROP 후 재추가, 재실행해도 안전). **Supabase SQL Editor에서
+    직접 실행 필요** — 이 환경에서 DB에 직접 DDL을 실행할 방법이 없어 파일만 준비함.
+  - **타입**: `types/index.ts`의 `RecurType`에 `"weekly"` 추가(기존에 있던 "weekly는 의도적으로
+    없음" 주석 제거).
+  - **전개 로직**: `recurrence.ts`에 `expandWeekly()` 신규 — 원본 시작일에서 7일씩 더해가며
+    범위 안 후보를 만들되, 원본이 조회 범위보다 훨씬 과거면 7일 단위로 하나씩 훑는 대신
+    범위 시작에 도달하는 첫 후보로 바로 점프(오래된 반복일수록 루프가 커지는 것 방지) —
+    monthly/yearly 전개 함수들과 동일한 `isEligible`/`makeVirtualInstance` 공통 유틸 재사용.
+    `expandRecurring()`의 분기에 `weekly` 케이스 추가, 상단 모듈 설명에서도 "weekly는 다루지
+    않는다" 문구 제거.
+  - **UI**: `AddEventSheet.tsx`의 `RECUR_OPTIONS`에 `{ value: "weekly", label: "매주" }`를
+    "없음"과 "매월" 사이에 추가. `ScheduleDetailSheet.tsx`의 `recurLabel()`도 `weekly` →
+    "매주" 매핑 추가(기존 매월/매년 3항 조건문에서 매주까지 3중 분기로 확장).
+  - 검증: `tsc --noEmit`/`next lint` 클린(기존 무관 `RoutineWheel.tsx` 경고 1건 제외),
+    `/schedule?view=month` 라우트 컴파일 확인. SQL 마이그레이션은 실행 후 실제로 "매주"
+    반복 일정을 등록해 다음 달·다다음 달까지 가상 인스턴스가 제대로 나오는지 직접 확인 필요.
+
+- 2026-07-14: 식탁 탭 색상/문구 재조정 3건 (바로 전 턴 변경분에 대한 사용자 피드백)
+  - **재고/장보기 아이콘 원복**: `FoodTabActions.tsx` — 아이콘 색만 `text-stone`→`text-honey`로
+    되돌림(텍스트는 그레이 유지, 아이콘만 주황).
+  - **하루 칼로리 합계 재포맷**: `MealNutritionSummary.tsx` — "오늘 약 Nkcal (추정)"에서 날짜
+    단어("오늘")를 없애고 "총 약 Nkcal[+] 추정"(괄호 없이)로, `text-right`로 우측 정렬.
+  - **오늘의 제안 카드 재구성**: `SuggestionSection.tsx` — ①"늘 먹던 메뉴"→"자주 찾는 메뉴"로
+    개명. ②2번 카드 제목/본문을 맞바꿈 — 제목이 게임명("룰렛 돌리기")이던 것을 고정 액션명
+    "메뉴 고르기"로, 게임명은 본문(아래)으로 이동(나중에 다른 게임이 추가돼도 제목은 안 바뀜).
+    ③3번 카드 본문 "서비스 준비중"→"준비중". ④색상 통일 — 클릭 가능한 카드만 honey 필이던
+    제목 색을 전부 `text-stone`으로 통일하고, 본문(아래 텍스트)은 그보다 밝은
+    `text-[var(--text-muted)]`로(제목 11px < 본문 12px 크기 관계는 기존 값 그대로 유지 —
+    "위는 작게 아래는 약간 크게" 요구사항과 이미 일치했음). `mirror` import는 더 이상 안 써서 제거.
+  - 검증: `tsc --noEmit`/`next lint` 클린, `/food` 라우트 컴파일 확인.
+
+- 2026-07-13: 식탁 탭 UI 정리 6건
+  - **1) "늘 먹던 걸로" → "자주 찾는 메뉴" 마퀴로 교체**: 신규 `FrequentMenuSection.tsx` —
+    기본은 "자주 찾는 메뉴 ▸" 라벨만 있는 접힘 상태, 탭하면 그동안 등록된 메뉴 전체를
+    빈도순 상위 20개(신규 서버 액션 `getTopFrequentMenus`, `food/actions.ts` — 워크스페이스
+    전체 `meal.main_menu`를 콤마 토큰 단위로 집계, 최근 200건만 보는 기존
+    `getFrequentMenus`와 달리 전체 기록 기준) 2줄로 나눠(홀/짝 인덱스 교차 배분) 보여준다.
+    각 줄은 콘텐츠를 두 벌 이어 붙인 트랙을 `@keyframes marquee`(`globals.css`에 신규 추가)로
+    -50%까지 옮겨 이음매 없이 도는 것처럼 보이게 하고, `animationPlayState`를 React state로
+    토글해 사용자가 터치하는 순간 그 자리에서 멈춘 뒤(트랙 위치 점프 없음) 그대로
+    `overflow-x-auto`(`scrollbar-hide`) 스와이프로 넘어간다. 메뉴를 탭하면 즉시 등록하던 기존
+    동작 대신 `/food/add?date=…&menu=…`로 이동해 폼에 프리필(사용자가 확인 후 등록) —
+    `AddMealScreen.tsx`에 `defaultMenu` prop 추가, `food/add/page.tsx`가 `menu` 쿼리를
+    읽어 전달. 이 교체로 `MealEmptyState.tsx`의 즉시 등록 경로(메뉴별 이미지/반찬 등을
+    과거 기록에서 복사하던 `quickRegister`/`findLatestMealForMenu`/`MealHistoryRow`)가 전부
+    죽은 코드가 되어 함께 제거 — `food/page.tsx`의 `mealHistory` 쿼리도 그 복사용으로만
+    필요했던 여분 컬럼(`type`/`sides`/`memo`/`place`/`image_url`/`video_id`/`recipe_title`)을
+    빼고 `main_menu, date`만 남김(오늘의 제안 카드·룰렛 후보 풀에 쓰는 `getFrequentMenus`는
+    그대로 유지).
+  - **2) 재고/장보기 버튼 스타일**: `FoodTabActions.tsx` 두 버튼을 `text-left`→
+    `justify-center`(아이콘+텍스트 블록 중앙 정렬), 아이콘·텍스트 색을 `text-honey`/`text-ink`
+    →`text-stone`(그레이)로.
+  - **3) "룰렛 돌리기" 알약 제거**: `SuggestionSection.tsx`에서 `onClick`이 있는 카드만
+    `rounded-full bg-honey px-2 py-0.5 text-white`로 감싸던 분기를 없애고, 세 카드 전부
+    같은 구조(`text-[11px] font-medium`)로 통일 — 클릭 가능 카드는 `text-honey`, 나머지는
+    기존 `mirror.muted`.
+  - **4) 제안 보조 텍스트 확대**: 세 카드의 `body` 텍스트를 `text-[7px]`→`text-[12px]
+    text-stone`으로(세 항목 동일).
+  - **5) 식탁 탭 FAB 제거 + 리스트 하단 텍스트 버튼**: `food/page.tsx`의 우하단 고정 `+` FAB을
+    삭제. 오늘 끼니가 1개 이상이면 `MealListSection` 바로 아래에 `+ 끼니 추가`
+    (`text-[13px] font-medium text-honey`) 텍스트 링크를 추가 — 끼니가 0개일 땐
+    `MealEmptyState`의 "직접 등록" 버튼이 이미 그 역할을 하므로 추가 진입점 없음.
+  - **6) 하루 칼로리 합계 단순화**: `MealNutritionSummary.tsx`에서 `dateLabel` prop과
+    끼니별(아침/점심/저녁) 분해 표기를 전부 제거하고 "오늘 약 {합계.toLocaleString()}kcal[+]
+    (추정)" 한 줄만 남김(추정 안 된 끼니가 섞여 있으면 숫자 뒤 "+" 유지). `food/page.tsx`의
+    `nutritionDateLabel`/`todayStr` 계산도 이제 안 쓰여 함께 제거.
+  - **검증**: 이번 항목 작성 당시엔 Bash/PowerShell 도구가 모델 분류기 장애로 일시 차단돼
+    수동 리딩으로만 점검했었는데, 다음 턴에 도구가 복구된 뒤 `tsc --noEmit`/`next lint`
+    클린(기존 무관 `RoutineWheel.tsx` 경고 1건 제외) 확인 완료. 마퀴 애니메이션의 실제 동작
+    (자동 흐름 속도감, 터치 시 자연스러운 정지)은 로그인된 브라우저로 직접 확인 필요.
+
+- 2026-07-13: 데이 시트 섹션 간격 통일 + 제안 섹션 임시 숨김
+
+- 2026-07-13: 데이 시트 섹션 간격 통일 + "오늘은 이런 건 어때요" 임시 숨김
+  - **버그**: 스크린샷 지적 — "주요 일정" 아래엔 공백이 있는데 "할 일" 아래엔 없음. 원인은
+    섹션마다 개별로 `mt-4`(다음 섹션이 위 섹션과의 거리를 스스로 책임지는 방식)를 달아놔서,
+    그 다음에 오는 섹션이 비어있는지/`mt-4`가 있는지에 따라 간격이 들쭉날쭉했던 것 —
+    "할 일" 다음의 `ActivitySuggestionSection`엔 `mt-4`가 없어 붙어 보였음.
+  - **수정**: `DaySheet.tsx`에서 기간 바/주요 일정/할 일/작년 이맘때/제안 다섯 섹션을 전부
+    하나의 `flex flex-col gap-4` 컨테이너로 묶고, 섹션 개별 `mt-4`는 제거 — 간격은 이제
+    부모의 `gap-4` 하나가 일괄 담당하고, 각 섹션은 필요하면 자기 앞에 `border-t pt-3`만
+    갖는다(어느 섹션이 비어 있든 간격이 항상 동일).
+  - **제안 섹션 임시 숨김**: `SHOW_ACTIVITY_SUGGESTION = false` 상수로 게이트 — 사용자가
+    "일단 숨김 처리"를 요청(완전 삭제가 아니라 나중에 다시 켤 수 있게), 값을 `true`로
+    되돌리면 바로 복원됨. `activitySuggestion`/`activityCandidates`/`workspaceId` prop과
+    `MonthView.tsx` 쪽 계산은 그대로 둬서(재활성화 시 추가 배선 불필요) 껐다 켜기만 하면 됨.
+  - 검증: `tsc --noEmit`/`next lint` 클린(기존 무관 `RoutineWheel.tsx` 경고 1건 제외), 이미
+    떠 있던 포트 3000 dev 서버로 `/schedule?view=month` 307 확인.
+
+- 2026-07-13: 월간 달력·데이 시트 다듬기 — 스크린샷 피드백 기반 7건
+  - **1) 전월 마지막 날짜가 첫 주에 표시되는 버그 — 실제 원인은 타임존**: 이전에(2026-07-13
+    앞선 항목) "cells 로직을 봤는데 이미 맞게 되어 있다"고 코드 변경 없이 넘어갔던 게
+    오진단이었음. 진짜 원인은 `MonthView.tsx`가 셀 날짜 문자열을
+    `toDateStr(new Date(year, month, d))`(내부적으로 `toISOString()` 사용)로 만들던 것 —
+    **UTC보다 앞선 시간대(한국 등 +9)에서는 로컬 자정이 전날 UTC로 밀려 문자열이 하루
+    당겨진다.** 이 샌드박스가 `Asia/Seoul`로 확인되어 실측: `new Date(2026,6,1)`(7월 1일 자리,
+    d=1) → `toISOString()` → `"2026-06-30"` — 첫 실제 셀에 "30"이 찍힘(정확히 보고된 증상).
+    **수정**: `toDateStr(new Date(y,m,d))` 패턴을 전부 `ymd(year, month, day)`(Date/UTC 변환
+    없이 `${year}-${pad2(month+1)}-${pad2(day)}`로 바로 문자열 조립)로 교체 —
+    `cells` 루프, `monthStart`, `monthEnd`, `todayStr`(오늘도 `new Date()` 로컬 getter로 직접
+    조립, 같은 왕복 버그가 새벽 시간대 "오늘" 판정에도 영향을 줄 뻔했음) 전부. `toDateStr` import
+    자체가 이 파일에서 더 이상 필요 없어져 제거. **주의**: `lib/date.ts`의 `toDateStr(new
+    Date())` 패턴은 `food/page.tsx`·`WeekView.tsx`·`TodoSheet.tsx` 등 앱 전역에 더 있음 — 이번
+    작업 범위(월간 달력)만 고쳤고, 다른 화면들도 잠재적으로 같은 버그를 안고 있을 수 있음
+    (별도 확인 필요).
+  - **2) 음력을 달력 셀에서 완전히 제거**: `MonthView.tsx`의 셀별 `showLunar`(1일/15일/월초 규칙)
+    span과 `solarToLunar` import를 통째로 삭제 — 달력은 이제 날짜 숫자·도트·밴드만. 음력은
+    `DaySheet.tsx` 헤더로만 이동 — `formatHeaderParts()`가 메인 텍스트("8. 13. 목")와
+    `lunarLabel`("음력 7.1")을 분리해서 반환하고, 헤더에서 `text-[11px] text-stone`(본문
+    15px보다 작고 회색)으로 별도 `<span>`에 렌더.
+  - **3) 기간 밴드 겹침 — 세트 단위 스택 + 초과분 "+N"**: `bandsByDate` 계산에서 최대
+    `MAX_BAND_ROWS`(2)줄에 못 들어간 일정을 이제 도트로 폴백하지 않고 `overflowCountByDate`
+    (일자별 초과 건수)로 집계 — 마지막 줄(row1) 라벨 자리에 그 날짜의 제목 대신 `+N`을
+    표기(일반 시작일 라벨보다 우선). 이에 맞춰 `dotsByDate`도 하루짜리(비기간) 일정만 담도록
+    단순화(기간 일정은 이제 전부 밴드 쪽에서만, 배치됐든 +N 초과분이든 표현). 라벨 Y좌표
+    고정 오프셋(`bandLabelBottomPx`, 지난 항목에서 도입)은 그대로 재사용 — row1 자리가 "+N"
+    이든 원래 제목이든 같은 자리에 앉아 라인 연속성에 영향 없음.
+  - **4) 모바일 세로/가로 스크롤바 제거 — 동적 행 높이**: `schedule/page.tsx`의 스크롤 래퍼를
+    `view === "month"`일 때만 `overflow-hidden` + `h-full`로 바꾸고(주간/연간은 기존
+    `overflow-y-auto pb-24` 유지), `MonthView.tsx` 루트를 `h-full flex-col`로 전환. 요일
+    헤더와 날짜 그리드를 하나의 7열 grid(요일 라벨까지 셀로 흘려 넣던 방식)에서 **두 개의
+    별도 grid로 분리** — 요일 헤더는 `shrink-0`, 날짜 그리드는 `flex-1` +
+    `gridTemplateRows: repeat(weekRows, minmax(0, 1fr))`(`weekRows = Math.ceil(cells.length/7)`)
+    로 가용 높이를 주 수만큼 균등 분배(JS 측정 없이 grid/flex만으로 "가용 높이 ÷ 주 수"를
+    선언적으로 달성). 각 날짜 셀에 `justify-center` 추가해 늘어난 행 높이 안에서 콘텐츠가
+    상단에 쏠리지 않고 중앙 정렬되게 함. FAB(`AddEventEntry`, `bottom-[84px]`)가 이제 화면
+    전체를 채우는 마지막 주 행과 겹치지 않도록 루트에 `pb-16` 여유를 둠(스크롤 없이도 여전히
+    100dvh 안에 들어옴). 가로 스크롤바 방지용 `overflow-x-hidden`도 루트에 추가(밴드 라벨
+    오버레이 등 어떤 요소도 그리드 폭을 벗어나 가로 스크롤을 유발하지 않도록 하는 안전장치).
+  - **5) 시트 열림(압축) 상태에서 기간 텍스트 숨김**: 라벨(제목/+N) 렌더 블록 전체를
+    `{!sheetOpen && (...)}`로 감싸 — 시트가 뜨고 달력이 압축되면 라인만 남고 라벨은 사라지며,
+    시트를 닫아 원래 크기로 돌아오면 다시 나타남. 라인 자체는 항상(압축 여부 무관) 렌더되는
+    별도 루프라 이 토글이 라인 연속성에 전혀 영향을 주지 않음.
+  - **6) 데이 시트 내부 재배치**: `DaySheet.tsx`
+    - 신규 `SectionHeader` 컴포넌트 — "주요 일정"/"할 일" 라벨과 `+`(`IconPlus`, 12px) 버튼을
+      한 줄에 항상 함께 표시(빈 상태에서만 보이던 기존 `GhostAddButton` 패턴을 이 두 섹션에서
+      대체 — `GhostAddButton` 자체는 `WeekView.tsx`가 계속 써서 그대로 둠).
+    - 일반(하루짜리) 일정 행: 2줄(제목/시간·대상)에서 **한 줄**로 — `justify-between`으로 왼쪽
+      제목(truncate)·오른쪽 시간·대상(9px stone, shrink-0). 탭하면 기존과 동일하게
+      `ScheduleDetailSheet`(수정/삭제는 그 안에서, 행엔 상주 아이콘 없음).
+    - 할 일 행: 기존 `TodoChecklistItem`(원=토글/텍스트=수정) 그대로 — 이미 한 줄 구조라
+      변경 없음.
+    - **기간 일정 분리**: `schedules` prop을 `isPeriodSchedule`로 갈라 `periodSchedules`는
+      날짜 헤더 바로 아래 컴팩트 바(`[2px 색 바] 일정명 · 7.22–8.14`, 한 줄, 여러 개면
+      세로로 나열)로, `singleDaySchedules`만 "주요 일정" 목록에.
+    - **순서 변경**: 기간 바 → 주요 일정 → 할 일 → 작년 이맘때(있을 때만) → 오늘은 이런 건
+      어때요(`ActivitySuggestionSection`). 마지막 제안 섹션은 이제 `schedules.length === 0`
+      조건 없이 **항상** 렌더(일정 유무와 무관하게 맨 아래 고정) — 기존엔 일정이 있으면 아예
+      안 보이던 것에서 변경.
+  - **검증**: `tsc --noEmit`/`next lint` 클린(기존 무관 `RoutineWheel.tsx` 경고 1건 제외),
+    이미 떠 있던(내가 새로 띄우지 않은) 포트 3000 dev 서버로 `/schedule?view=month` 307 확인
+    (지난 항목의 동시 실행 `.next` 캐시 손상 교훈 — 이번엔 기존 서버 하나만 그대로 사용).
+    타임존 버그는 Node로 실제 재현·수정 전후 비교(위 1번 수치). 밴드 겹침 3케이스(단독/2개
+    겹침/3개 이상+N)와 시트 열림·닫힘 시 라벨만 사라지고 라인은 그대로인지는, 실제 CSS
+    수치(`BAND_LINE_H`/`BAND_LINE_GAP`/`BAND_LABEL_GAP`/`BAND_LABEL_H`)를 그대로 재현한 정적
+    HTML을 만들어 아티팩트로 확인 가능하게 게시함(로그인 세션이 없어 실제 앱 스크린샷은
+    불가) — 시트 열림 스위치를 눌러 세 케이스 모두 라인이 흔들리지 않는지 직접 확인 가능.
+
+- 2026-07-13: 월간 뷰 기간 밴드 라인 끊김 수정 — 시작일 라벨을 문서 흐름에서 완전히 분리
+  - **원인**: 바로 앞 항목에서 추가한 기간 시작일 라벨(8px 일정명)이 밴드 라인과 같은
+    `flex-col` 흐름 안에 있어서, 라벨이 있는 셀만 그 줄(row) 슬롯의 높이가 커지고 → 셀
+    전체 높이가 늘어나 그리드 행이 라벨 있는 셀 기준으로 늘어나며 → 같은 밴드의 다른 셀들과
+    라인의 세로 위치가 미묘하게 어긋나 보이는 문제(사용자가 "라인 끊김"으로 지적).
+  - **레이어 분리**: `MonthView.tsx`의 밴드 렌더링을 두 단계로 나눔 — ① 라인은 텍스트 유무와
+    무관하게 `Array.from({length:MAX_BAND_ROWS})`로 항상 같은 두께(`h-[2px]`)·같은 순서로
+    렌더(변경 없음, 이제 라벨과 완전히 독립된 루프), ② 라벨은 같은 컨테이너
+    안에서 `cellBands.filter(isStart)`를 별도로 순회하며 `position: absolute` + `pointer-events:
+    none`으로 얹는다. 컨테이너에 `relative`를 추가해 라벨의 좌표 기준으로 삼음 — 라벨이
+    문서 흐름에서 완전히 빠지므로 셀 높이·라인 배치에 어떤 영향도 주지 않는다(요구사항 1·2).
+  - **텍스트 폭 = 기간 길이만큼**: 밴드 배치 계산(`bandsByDate` useMemo) 시 후보(candidate)별로
+    `spanCells`를 미리 구해 그 밴드의 모든 날짜 항목에 함께 저장 — 시작일에서 그 주(그리드
+    상 같은 행)가 끝나는 날(`endOfGridWeek`, 월요일 시작 기준 일요일)과 실제 종료일 중
+    빠른 쪽까지의 일수. 라벨은 `width: {spanCells*100}%`로 렌더돼 시작 셀 하나의 폭이 아니라
+    기간이 걸치는 셀 수만큼 옆으로 뻗어 그 공간을 말줄임 없이 최대한 쓴다(요구사항 3) —
+    그리드에 열 간격(`gap-x`)이 없어 셀들이 서로 붙어 있으므로 `spanCells * 100%` 계산이
+    정확히 인접 셀들의 폭과 맞아떨어짐. 다음 주로 넘어가는 칸은 별도 그리드 행이라 폭 계산에
+    포함하지 않음(어차피 그 칸들은 `isStart`가 아니라 라벨 자체를 렌더하지 않음 — 기존
+    로직이 이미 "각 주 첫 셀에 이름 반복 안 함"을 보장하고 있었음).
+  - **줄 인덱스 기반 고정 오프셋**: `bandLabelBottomPx(row)` 함수가 라벨의 `bottom` 값을
+    row(0 또는 1)만으로 계산 — 그날 실제로 무엇이 있는지와 무관하게 항상 같은 값. row0
+    라벨은 라인 묶음 바로 위(간격 `BAND_LABEL_GAP` 2.5px)에 앉고, row1 라벨은 row0·row1
+    라인 사이의 1.5px짜리 틈에 욱여넣는 대신(폭이 좁아 겹침) row0 라벨 자리보다 한 슬롯
+    더(`BAND_LABEL_H` 9px 가정 + 간격) 위로 쌓아 올려, 밴드 2개가 같은 날 나란히 시작해
+    라벨이 둘 다 뜨는 드문 경우에도 두 라벨이 서로 겹치지 않게 함(요구사항 4).
+  - **검증(코드 리딩, 3케이스)**: ① 시작일에 라벨이 있는 단일 주 밴드 — 라인은 라벨과
+    무관한 별도 루프라 모든 셀에서 동일 위치, 라벨만 그 위에 겹쳐 보임. ② 주를 넘어가는
+    밴드(예: 금요일 시작 → 다음 주 화요일 종료) — 밴드 배치는 요일별 `row`가 두 주 모두
+    동일하게 유지되므로 그리드 행이 바뀌어도 같은 세로 위치에서 라인이 이어지고, 라벨은
+    시작 주(일요일까지)에서만 렌더되고 다음 주 칸엔 `isStart`가 없어 반복되지 않음. ③ 같은
+    주에 밴드 2개가 겹쳐 각각 row0/row1을 차지하는 경우 — 두 라인 모두 라벨과 독립적으로
+    렌더되므로 서로의 라벨 유무와 무관하게 완전한 직선을 유지하고, 두 밴드가 같은 날 함께
+    시작해도 `bandLabelBottomPx`의 row별 고정 오프셋 덕에 라벨끼리 겹치지 않음.
+  - **검증 인프라 이슈**: 이번 확인 과정에서 이미 떠 있던 로컬 dev 서버(포트 3000)와 별도로
+    확인용 `next dev` 인스턴스를 동시에 띄웠다가, 같은 프로젝트의 `.next` 빌드 캐시를
+    두 프로세스가 동시에 써서 기존 서버가 깨짐(`Cannot find module .next/server/pages/
+    _document.js`) — 코드 버그가 아니라 동시 실행이 원인. `.next`를 지우고 프로세스 하나만
+    다시 띄워 정상 상태(`/schedule?view=month` 307)로 복구 확인 후 종료함. **같은 프로젝트에
+    대해 `next dev`는 항상 하나만 띄울 것** — 이후 검증 시 기존 서버가 떠 있는지 먼저 확인.
+  - 검증: `tsc --noEmit`/`next lint` 클린(기존 무관 `RoutineWheel.tsx` 경고 1건 제외),
+    `/schedule?view=month` 라우트 컴파일 및 정상 307 확인(단일 인스턴스로 재확인). 로그인된
+    브라우저가 없어 실제 렌더 스크린샷 비교는 못 했고, 위 3케이스는 좌표 계산을 코드
+    리딩으로 추적해 검증함 — 실제 폰트 렌더 높이가 가정치(`BAND_LABEL_H` 9px)와 크게
+    다르면 2줄 스택 케이스의 라벨 간격이 조금 좁거나 넓어 보일 수 있어 실물 확인 권장.
+
+- 2026-07-13: 월간 뷰를 "달력 주인공 + 호출형 하단 시트" 구조로 재편 — 신규 `DaySheet.tsx` + 4건
+  - **목표/원칙**: 항상 화면 하단을 차지하던 선택일 2단 패널(체크리스트/일정)과 "작년 이맘때"
+    섹션을 없애 달력이 화면을 넓게 쓰고, 날짜를 탭했을 때만 하단에서 그날 정보를 담은 시트가
+    올라오는 구조로 변경(네이버식 일정 칩 나열을 하지 않는 스마트미러 원칙 유지). 사용자 요청:
+    "달력 주인공 + 호출형 하단 시트".
+  - **신규 `DaySheet.tsx`**: 기존 `BottomSheet`(전체 화면 어두운 배경 오버레이 모달)를 그대로
+    쓸 수 없었다 — 압축된 달력이 시트 "뒤"가 아니라 시트와 함께 화면 위쪽에 계속 보이고 계속
+    탭 가능해야 하기 때문(다른 날짜 탭 → 시트 유지, 내용만 교체). 그래서 어두운 backdrop 없이
+    `fixed inset-x-0 bottom-0 z-50 max-h-[52dvh]`로 화면 하단 일부만 차지하는 독자 시트를 새로
+    만듦. 내용 순서는 폭이 좁은 시트 특성상 세로 순차(2단 아님) — 헤더("M. D. 요일 · 음력
+    M.D", `solarToLunar` 재사용 + 공휴일명), 주요 일정(두 줄 포맷, `SectionExpand` 재사용,
+    비어있으면 `GhostAddButton` + `ActivitySuggestionSection`), 할 일 체크리스트(`GhostAddButton`/
+    `TodoChecklistItem` 재사용, 라벨을 "오늘 할 일"→"할 일"로 고쳐 오늘이 아닌 날짜에서도 맞게
+    표기 — 기존 하드코딩 버그), 맨 아래 "작년 이맘때"(있을 때만) 순.
+  - **닫힘 3경로**: ① 같은 날짜 재탭(`MonthView`의 날짜 버튼 onClick에서 `date === selectedDate
+    && sheetOpen`이면 `setSheetOpen(false)`), ② 시트 자체를 아래로 스와이프(`DaySheet` 내부
+    터치 핸들러 — `dragY`가 70px 넘으면 `onClose`, 아니면 0으로 스냅백, 드래그 중엔 transition
+    끄고 손가락을 1:1로 따라가다 놓으면 다시 `transition-transform` 복귀), ③ 시트 밖 달력
+    영역 탭(요일 라벨 행 + 날짜 셀 그리드를 감싼 wrapper의 `onClick`이 시트를 닫되, 날짜 셀
+    버튼은 자체 `onClick`에서 `e.stopPropagation()`으로 이 버블링을 막아 셀 탭은 독립적으로
+    처리). 다른 날짜 탭 시 시트가 유지된 채 `selectedDate`만 바뀌어 `DaySheet`의 모든 파생
+    데이터(그날 일정/할 일/"작년 이맘때")가 다시 계산돼 내용만 교체된다.
+  - **압축 달력**: `sheetOpen`이 true면 날짜 셀 세로 패딩(`py-1`→`py-0.5`), 날짜 원(`h-6 w-6
+    text-[13px]`→`h-5 w-5 text-[11px]`), 음력 줄/도트 줄 `minHeight`(9→8, 6→5)를 축소해 행
+    높이를 줄인다. 선택 표시(honey 링)도 `sheetOpen && date === selectedDate`일 때만 보이도록
+    바꿔 시트가 닫힌 뒤에는 잔상처럼 남지 않게 함. 셀 내부는 전부 `flex-col`(절대 위치 요소
+    없음) 순차 배치라 압축해도 도트·기간 밴드·음력 표기가 겹칠 수 없는 구조 — 압축 전/후 모두
+    같은 순서로 쌓이고 크기만 줄기 때문에(코드 리딩으로 확인). 로그인 세션이 없어 실제 터치로
+    보는 확인은 못 했고, 이 구조적 보장(겹침 없는 flow 레이아웃)으로 대체함.
+  - **기간 일정 표기 개선**: 달력 하단 범례 나열(`legend` 바)을 완전히 제거. 밴드 라인은 그대로
+    두되, 각 기간 밴드 항목에 `title`을 추가로 들고 있다가 시작일 셀(`isStart`)에서만 밴드 라인
+    바로 위에 8px 말줄임 텍스트로 일정명을 표기(키워드 색 그대로, `opacity: 0.55`로 은은하게).
+    `isStart`는 일정당 실제 시작일 하루에서만 true인 기존 계산을 그대로 재사용하므로, 여러 주에
+    걸치는 기간이라도 각 주 첫 셀마다 반복되지 않고 진짜 시작일에만 한 번 표기됨(추가 로직
+    불필요 — 기존 밴드 배치 알고리즘이 이미 이 성질을 보장하고 있었음). 범례 제거로 시트의
+    "주요 일정" 목록에서도 더 이상 기간일정을 따로 빼서 중복 방지할 필요가 없어져
+    `selectedSchedules` 필터에서 `legend` 제외 조건을 없앰(그날 걸치는 기간일정도 이제 시트
+    목록에 정상적으로 포함).
+  - **홈 딥링크 착지 변경**: `highlightId`로 들어왔을 때 기존엔 `ScheduleDetailSheet`(전체 상세
+    모달)를 바로 띄웠는데, 이제는 그 일정의 날짜로 `selectedDate`를 맞추고 `sheetOpen`을 true로
+    시작해 데이 시트가 열린 채로 착지(그 안의 일정 목록에서 해당 항목은 기존과 동일하게 honey
+    배경으로 강조). 마운트 시점부터 열려 있어야 깜빡임이 없어 `useState` 초기값 자체를
+    `highlightId` 매칭 결과로 설정(첫 렌더부터 반영), 이후 `highlightId`가 바뀌는 경우를 대비한
+    `useEffect`도 유지.
+  - 검증: `tsc --noEmit` 클린, `next lint` 클린(기존 무관 `RoutineWheel.tsx` 경고 1건 제외),
+    `/schedule?view=month` 라우트 컴파일 성공 확인(968 모듈, 이후 미로그인 307 리다이렉트는
+    정상). 로그인된 브라우저가 없어 실제 터치로 스와이프 닫힘 감도, 압축 셀 크기의 실물
+    가독성, 시트-달력 동시 노출 시 시각적 균형은 직접 확인 필요.
 
 - 2026-07-13: 주간 뷰 기간일정 표기 방식 변경 — 상단 범례 바 제거, 날짜별 칸에 인라인
   - `WeekView.tsx`에서 기간일정(여러 날짜에 걸친 일정)을 상단 별도 범례 바로 한 번만
