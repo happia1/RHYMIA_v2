@@ -6,13 +6,14 @@ import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
 import { toDateStr } from "@/lib/date";
 import { getHoliday } from "@/lib/holidays";
 import { getKeywordColor } from "@/lib/scheduleKeywords";
-import { isPeriodSchedule } from "@/lib/scheduleFormat";
+import { isPeriodSchedule, longRangeWithWeekday } from "@/lib/scheduleFormat";
 import { targetLabel, type MemberInfo } from "@/lib/scheduleTargets";
 import { addDaysToDateStr, type ExpandedSchedule } from "@/lib/recurrence";
 import { AddEventSheet } from "@/components/schedule/AddEventSheet";
 import { ScheduleDetailSheet } from "@/components/schedule/ScheduleDetailSheet";
 import { TodoSheet } from "@/components/schedule/TodoSheet";
 import { TodoChecklistItem } from "@/components/schedule/TodoChecklistItem";
+import { EventMarker } from "@/components/schedule/EventMarker";
 import { GhostAddButton } from "@/components/schedule/GhostAddButton";
 import { MemberFilterRow } from "@/components/schedule/MemberFilterRow";
 import { toggleTodoDone } from "@/app/(main)/schedule/actions";
@@ -21,9 +22,12 @@ import type { Todo } from "@/types";
 const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
 // 이보다 짧게 움직인 터치는 스크롤로 간주하고 주 이동을 트리거하지 않는다.
 const SWIPE_THRESHOLD_PX = 40;
-// 날짜(좁은 고정폭) + 할 일(2) + 주요 일정(3) — 헤더 행과 본문 행이 같은 폭으로 렌더돼야
-// 열 경계가 정확히 겹쳐서 세로 헤어라인이 끊기지 않고 이어져 보인다.
-const TABLE_COLUMNS = "36px repeat(5, minmax(0, 1fr))";
+// 날짜(고정폭) + 주요 일정(3) + 할 일(2) — 헤더 행과 본문 행이 같은 폭으로 렌더돼야 열
+// 경계가 정확히 겹쳐서 세로 헤어라인이 끊기지 않고 이어져 보인다. 날짜 열은 "대체공휴일"
+// (5자)이 줄바꿈 없이 들어가도록 54px로 — repeat(5, 1fr)의 다섯 단위가 전부 동일하게
+// fr이라 이 값을 올리면 두 콘텐츠 열(주요 일정 3fr : 할 일 2fr)에서 단위당 균등하게
+// 차감되는 효과가 자동으로 난다(별도 비율 계산 불필요).
+const TABLE_COLUMNS = "54px repeat(5, minmax(0, 1fr))";
 
 type TodoSheetTarget = { mode: "add"; date: string } | { mode: "edit"; todo: Todo };
 
@@ -47,21 +51,23 @@ function formatWeekRange(dates: string[]) {
 
 /** 최상단은 좌우 스와이프(또는 화살표)로 주 단위 이동하는 네비게이터 — 월간 뷰의 월 이동과
  * 같은 자리에 있지만 여긴 터치 스와이프가 기본 인터랙션. 기간일정(여러 날짜에 걸친 일정)은
- * 상단에 별도 범례 바를 두지 않고, 그 일정이 걸치는 모든 날짜의 "주요 일정" 칸 맨 아래에
- * 아주 작은 글씨(8px, 흐린 톤)로 각자 표기한다 — 범례를 따로 두면 이미 모든 날짜 칸에
- * 나오는 내용과 중복이라 없앴다.
+ * 상단에 별도 범례 바를 두지 않고, 그 일정이 걸치는 모든 날짜의 "주요 일정" 칸에 [색 바
+ * 마커] + 이름만 한 줄로 표기한다(날짜 범위는 시작일 행에만 병기, 탭하면 상세 시트에서
+ * 전체 범위 확인) — 범례를 따로 두면 이미 모든 날짜 칸에 나오는 내용과 중복이라 없앴다.
  *
- * 표 본문은 [날짜][할 일(2)][주요 일정(3)] 3열 — 요일마다 반복되는 행이 아니라, 모든
- * 날짜의 세 칸을 하나의 flat CSS grid(TABLE_COLUMNS)에 직접 자식으로 흘려 넣어서(날짜당
- * 1행씩 자동 줄바꿈) 열 경계가 모든 행에서 픽셀 단위로 정확히 겹치게 한다 — 그래서 칼럼
- * 사이 세로 헤어라인(border-l)이 한 줄로 이어져 보이고, 행 사이 가로 헤어라인(border-t)도
- * 세 칸이 동시에 끊김 없이 이어진다. 헤더 라벨("할 일"/"주요 일정")은 같은 열 템플릿을 쓰는
- * 별도의 작은 grid로 한 번만 렌더(요일마다 반복 안 함).
+ * 표 본문은 [날짜][주요 일정(3)][할 일(2)] 3열(일정이 뼈대라 왼쪽, 할 일은 오른쪽) —
+ * 요일마다 반복되는 행이 아니라, 모든 날짜의 세 칸을 하나의 flat CSS grid(TABLE_COLUMNS)에
+ * 직접 자식으로 흘려 넣어서(날짜당 1행씩 자동 줄바꿈) 열 경계가 모든 행에서 픽셀 단위로
+ * 정확히 겹치게 한다 — 그래서 칼럼 사이 세로 헤어라인(border-l)이 한 줄로 이어져 보이고,
+ * 행 사이 가로 헤어라인(border-t)도 세 칸이 동시에 끊김 없이 이어진다. 헤더 라벨("주요
+ * 일정"/"할 일")은 같은 열 템플릿을 쓰는 별도의 작은 grid로 한 번만 렌더(요일마다 반복
+ * 안 함).
  *
  * 조작 문법은 월간 뷰와 동일하게 통일 — 상주 아이콘(연필) 없음:
  * 체크 원 탭 = 완료 토글, 텍스트 탭 = 수정 시트(TodoSheet), 일정 항목 탭 = 상세 시트
  * (ScheduleDetailSheet, 월간과 같은 경로), 빈 칸엔 흐린 "+" 고스트만(내용 있는 칸엔 없음 —
- * 추가는 고스트 아니면 하단 FAB). */
+ * 추가는 고스트 아니면 하단 FAB). 일정 텍스트 앞엔 키워드 색 도트(시점)/바(기간) 마커,
+ * 할 일 앞엔 체크 원 — 전 화면 공통 EventMarker로 통일. */
 export function WeekView({
   weekDates,
   schedules,
@@ -160,9 +166,9 @@ export function WeekView({
 
       <div className="grid gap-3" style={{ gridTemplateColumns: TABLE_COLUMNS }}>
         <div />
-        <span className="col-span-2 text-[10px] font-medium text-[var(--text-muted)]">할 일</span>
-        <span className="col-span-3 border-l border-border-light pl-3 text-[10px] font-medium text-[var(--text-muted)]">
-          주요 일정
+        <span className="col-span-3 text-[10px] font-medium text-[var(--text-muted)]">주요 일정</span>
+        <span className="col-span-2 border-l border-border-light pl-3 text-[10px] font-medium text-[var(--text-muted)]">
+          할 일
         </span>
       </div>
 
@@ -176,6 +182,10 @@ export function WeekView({
           const day = new Date(date).getDate();
           const holiday = getHoliday(date);
           const isToday = date === todayStr;
+          // i는 WEEKDAY_LABELS(월화수목금토일)와 같은 순서라 요일 인덱스로 바로 토/일 판별 —
+          // 다크 배경에서 눈에 편한 저채도 톤(ocean/terra, 월간 달력과 동일 규칙).
+          const isSaturday = i === 5;
+          const isSunday = i === 6;
           const dayTodos = sortTodos(
             isToday ? [...todosByDate[date], ...overdueSorted] : todosByDate[date]
           );
@@ -183,36 +193,26 @@ export function WeekView({
 
           return (
             <Fragment key={date}>
-              <div className={`py-1.5 ${rowBorder}`}>
+              <div className={`min-w-0 py-1.5 ${rowBorder}`}>
                 <span
                   className={`block text-[11px] font-medium ${
-                    holiday ? "text-terra" : isToday ? "text-honey" : "text-ink"
+                    isToday
+                      ? "text-honey"
+                      : holiday || isSunday
+                      ? "text-terra"
+                      : isSaturday
+                      ? "text-ocean"
+                      : "text-ink"
                   }`}
                 >
                   {WEEKDAY_LABELS[i]} {day}
                 </span>
-                {holiday && <span className="block text-[9px] text-terra">{holiday}</span>}
-              </div>
-
-              <div className={`col-span-2 flex flex-col py-1.5 ${rowBorder}`}>
-                {dayTodos.length === 0 ? (
-                  <GhostAddButton
-                    onClick={() => setTodoSheetTarget({ mode: "add", date })}
-                    label="할 일 추가"
-                  />
-                ) : (
-                  dayTodos.map((t) => (
-                    <TodoChecklistItem
-                      key={t.id}
-                      todo={t}
-                      onToggle={() => handleToggleTodo(t)}
-                      onOpenEdit={() => setTodoSheetTarget({ mode: "edit", todo: t })}
-                    />
-                  ))
+                {holiday && (
+                  <span className="block truncate text-[10px] text-terra">{holiday}</span>
                 )}
               </div>
 
-              <div className={`col-span-3 flex flex-col border-l border-border-light py-1.5 pl-3 ${rowBorder}`}>
+              <div className={`col-span-3 flex flex-col py-1.5 ${rowBorder}`}>
                 {daySchedules.length === 0 ? (
                   <GhostAddButton
                     onClick={() => setAddingScheduleDate(date)}
@@ -227,12 +227,15 @@ export function WeekView({
                         si > 0 ? "border-t border-border-light" : ""
                       }`}
                     >
-                      <span
-                        className={`truncate text-[11px] ${
-                          s.is_important ? "font-medium text-terra" : "text-ink"
-                        }`}
-                      >
-                        {s.title}
+                      <span className="flex items-center gap-1.5">
+                        <EventMarker type="dot" color={getKeywordColor(s.keyword_main)} />
+                        <span
+                          className={`min-w-0 flex-1 truncate text-[11px] ${
+                            s.is_important ? "font-medium text-terra" : "text-ink"
+                          }`}
+                        >
+                          {s.title}
+                        </span>
                       </span>
                       <span className="truncate text-[9px] text-stone">
                         {s.time_start ? s.time_start.slice(0, 5) : "종일"} ·{" "}
@@ -242,23 +245,41 @@ export function WeekView({
                   ))
                 )}
                 {dayPeriods.length > 0 && (
-                  <div className="mt-auto flex flex-col gap-0.5 pt-1">
+                  <div className="mt-auto flex flex-col gap-1 pt-1">
                     {dayPeriods.map((s) => (
                       <button
                         key={s.id}
                         onClick={() => setDetailSchedule(s)}
-                        className="flex min-w-0 items-center gap-1 text-left"
+                        className="flex min-w-0 items-center gap-1.5 text-left"
                       >
-                        <span
-                          className="h-[2px] w-2 shrink-0 rounded-full"
-                          style={{ backgroundColor: getKeywordColor(s.keyword_main), opacity: 0.55 }}
-                        />
-                        <span className="min-w-0 truncate text-[8px] text-[var(--text-muted)]">
-                          {s.title}
-                        </span>
+                        <EventMarker type="bar" color={getKeywordColor(s.keyword_main)} />
+                        <span className="min-w-0 flex-1 truncate text-[10px] text-ink">{s.title}</span>
+                        {s.date_start === date && (
+                          <span className="shrink-0 text-[8px] text-stone">
+                            {longRangeWithWeekday(s)}
+                          </span>
+                        )}
                       </button>
                     ))}
                   </div>
+                )}
+              </div>
+
+              <div className={`col-span-2 flex flex-col border-l border-border-light py-1.5 pl-3 ${rowBorder}`}>
+                {dayTodos.length === 0 ? (
+                  <GhostAddButton
+                    onClick={() => setTodoSheetTarget({ mode: "add", date })}
+                    label="할 일 추가"
+                  />
+                ) : (
+                  dayTodos.map((t) => (
+                    <TodoChecklistItem
+                      key={t.id}
+                      todo={t}
+                      onToggle={() => handleToggleTodo(t)}
+                      onOpenEdit={() => setTodoSheetTarget({ mode: "edit", todo: t })}
+                    />
+                  ))
                 )}
               </div>
             </Fragment>

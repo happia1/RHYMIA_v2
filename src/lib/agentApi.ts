@@ -44,6 +44,26 @@ export type AgentResponse =
 // 에이전트 서버(agent/)로 직접 나가지 않고 Next.js route handler(/api/agent/*)를 경유한다 —
 // AGENT_API_KEY는 서버 전용 환경변수라 브라우저에 노출하지 않기 위함 (src/lib/agentServer.ts 참고).
 
+/** Next dev 서버가 컴파일 에러 등으로 API 라우트 대신 HTML 에러 페이지를 돌려줄 때가 있다 —
+ * 그 상태로 res.json()을 호출하면 "Unexpected token '<'" 같은 원문 파싱 에러가 그대로
+ * 사용자에게 노출되므로, 파싱 실패를 사람이 읽을 수 있는 메시지로 바꿔서 던진다. */
+async function parseAgentResponse(res: Response): Promise<any> {
+  const raw = await res.text();
+  let data: unknown;
+  try {
+    data = raw ? JSON.parse(raw) : {};
+  } catch {
+    throw new Error(
+      `서버가 예상치 못한 응답을 반환했어요 (status ${res.status}). 개발 서버 로그를 확인해주세요.`
+    );
+  }
+  if (!res.ok) {
+    const message = (data as { message?: unknown })?.message;
+    throw new Error(typeof message === "string" ? message : `agent_http_${res.status}`);
+  }
+  return data;
+}
+
 export async function callAgent(body: {
   user_text?: string;
   image_base64?: string;
@@ -56,11 +76,7 @@ export async function callAgent(body: {
     body: JSON.stringify(body),
   });
 
-  const data = await res.json();
-  // 에이전트 서버가 꺼져 있을 때 agentServer.ts의 proxyAgentRequest가 { ok: false, message }를
-  // 내려준다 — 그 message를 그대로 던져서 UI(AgentSheet)가 원인을 보여줄 수 있게 한다.
-  if (!res.ok) throw new Error(typeof data?.message === "string" ? data.message : `agent_http_${res.status}`);
-  return data;
+  return parseAgentResponse(res);
 }
 
 /** 메모/공지 작성 시 첨부한 이미지에서 텍스트만 추출 (저장 없이 내용란 자동 채우기용). */
@@ -71,7 +87,6 @@ export async function extractTextFromImage(imageBase64: string): Promise<string>
     body: JSON.stringify({ image_base64: imageBase64 }),
   });
 
-  const data = await res.json();
-  if (!res.ok) throw new Error(typeof data?.message === "string" ? data.message : `agent_http_${res.status}`);
+  const data = await parseAgentResponse(res);
   return data.text ?? "";
 }

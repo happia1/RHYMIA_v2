@@ -21,12 +21,11 @@ import { pickDeterministic } from "@/lib/randomPick";
 import type { Todo } from "@/types";
 
 const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
-// 기간 밴드는 겹쳐도 최대 이 줄 수까지만 쌓는다 — 넘치는 일정은 라인은 없지만 조합 라벨
-// 텍스트(예: "생리/여름특강/유치원방학")에는 이름이 포함된다(아래 참고).
+// 기간 밴드는 겹쳐도 최대 이 줄 수까지만 라인으로 그린다 — 넘치는 일정은 라인은 없지만
+// 조합 라벨 텍스트(예: "여름특강/유치원방학")에는 이름이 계속 포함된다.
 const MAX_BAND_ROWS = 2;
 // 라인 두께·줄 간격 — 실제 렌더 크기(h-[2px], gap 2px)와 반드시 일치해야 라벨/라인 스택
-// 높이 계산이 어긋나지 않는다. 이전엔 줄 간격이 1.5px(소수)라 일부 기기에서 두 줄이
-// 시각적으로 붙어 하나의 두꺼운 선처럼 보이는 문제가 있었음 — 정수 2px로 고정.
+// 높이 계산이 어긋나지 않는다.
 const BAND_LINE_H = 2;
 const BAND_LINE_GAP = 2;
 const LINE_STACK_H = MAX_BAND_ROWS * BAND_LINE_H + (MAX_BAND_ROWS - 1) * BAND_LINE_GAP;
@@ -36,17 +35,21 @@ const BAND_LABEL_GAP = 2.5;
 // 이래야 라벨 유무와 무관하게 모든 셀의 행 높이가 완전히 똑같이 유지된다(레이어 분리).
 // 시트가 열려 압축 모드일 땐 이 공간 자체를 0으로 접어 "도트+라인만" 남긴다.
 const BAND_LABEL_ZONE_H = 11;
+// 달력 ↔ 데이 시트 전환 애니메이션 지속시간 — DaySheet(useSwipeDownToClose 기반 슬라이드)와
+// 같은 값을 써서 "압축"과 "시트 등장"이 같은 박자로 움직이게 한다.
+const COMPRESS_TRANSITION = "height 200ms cubic-bezier(0.4, 0, 0.2, 1)";
 
 type TodoSheetTarget = { mode: "add"; date: string } | { mode: "edit"; todo: Todo };
 
 type BandEntry = {
   color: string;
-  row: number;
+  lane: number;
   isStart: boolean;
   isEnd: boolean;
   title: string;
-  spanCells: number;
 };
+
+type LabelOccurrence = { title: string; color: string; spanCells: number };
 
 function scheduleOverlapsDay(s: ExpandedSchedule, date: string) {
   const end = s.date_end ?? s.date_start;
@@ -59,15 +62,22 @@ function pad2(n: number) {
 
 // year/month(0-indexed)/day를 바로 문자열로 조립한다 — `toDateStr(new Date(y, m, d))`처럼
 // Date를 거쳐 toISOString()으로 변환하면, UTC보다 앞선 시간대(한국 등)에서는 로컬 자정이
-// 전날 UTC로 밀려 날짜가 하루 당겨지는 버그가 있었다(예: 7월 1일 셀이 "30"으로 표시 —
-// 전월 마지막 날짜가 첫 주에 나타나는 버그의 실제 원인). 이미 알고 있는 y/m/d 숫자에서
-// 곧장 문자열을 만들면 그 변환 자체가 없어 안전하다.
+// 전날 UTC로 밀려 날짜가 하루 당겨지는 버그가 있었다. 이미 알고 있는 y/m/d 숫자에서 곧장
+// 문자열을 만들면 그 변환 자체가 없어 안전하다.
 function ymd(year: number, month: number, day: number) {
   return `${year}-${pad2(month + 1)}-${pad2(day)}`;
 }
 
-// 월요일 시작 기준, 이 날짜가 속한 달력 그리드 주의 마지막 날짜(일요일)를 구한다 —
-// 기간 밴드 시작 셀의 라벨 폭을 "그 주 안에서" 몇 칸까지 뻗을 수 있는지 계산할 때 씀.
+// 0=일 ... 6=토 (JS Date와 동일 규약).
+function dowOf(dateStr: string) {
+  return new Date(`${dateStr}T00:00:00.000Z`).getUTCDay();
+}
+
+function isMonday(dateStr: string) {
+  return dowOf(dateStr) === 1;
+}
+
+// 월요일 시작 기준, 이 날짜가 속한 달력 그리드 주의 마지막 날짜(일요일)를 구한다.
 function endOfGridWeek(dateStr: string) {
   const d = new Date(`${dateStr}T00:00:00.000Z`);
   const dow = (d.getUTCDay() + 6) % 7; // 0=월 ... 6=일
@@ -79,6 +89,15 @@ function daysBetween(a: string, b: string) {
   const da = new Date(`${a}T00:00:00.000Z`).getTime();
   const db = new Date(`${b}T00:00:00.000Z`).getTime();
   return Math.round((db - da) / 86400000);
+}
+
+// 요일/공휴일 색 — 다크 배경에서 눈에 편한 저채도 톤을 쓰기 위해 원색 대신 기존 브랜드
+// 토큰(ocean/terra)을 재사용한다. 토요일은 ocean(파랑 계열), 일요일·공휴일은 terra(빨강
+// 계열) — 우선순위는 호출부에서 today/selected보다 낮게 적용.
+function weekendColorClass(dateStr: string, holiday: string | null) {
+  if (holiday || dowOf(dateStr) === 0) return "text-terra";
+  if (dowOf(dateStr) === 6) return "text-ocean";
+  return null;
 }
 
 // 완료 항목은 하단으로 — Array.sort는 안정 정렬이라 같은 is_done끼리는 원래 순서(등록순)를 유지한다.
@@ -142,72 +161,100 @@ export function MonthView({
     }
     return result;
   }, [year, month]);
-  // 가용 높이를 주(행) 수로 나눠 화면을 꽉 채운다(요구사항: 세로 스크롤바 제거) — grid-template-rows
-  // 를 이 값 기준 repeat(N, 1fr)로 줘서 브라우저가 알아서 남는 높이를 균등 분배하게 한다.
+  // 가용 높이를 주(행) 수로 나눠 화면을 꽉 채운다 — grid-template-rows를 이 값 기준
+  // repeat(N, 1fr)로 줘서 브라우저가 알아서 남는 높이를 균등 분배하게 한다.
   const weekRows = Math.ceil(cells.length / 7);
 
-  // 기간 일정(date_start !== date_end, 반복 일정의 가상 인스턴스 포함 — schedules 자체가
-  // getSchedulesForRange에서 이미 원본+가상 인스턴스를 합쳐서 내려온다)을 이 달 그리드 안에서
-  // 겹치지 않게 최대 MAX_BAND_ROWS줄로 배정한다. 다 못 들어가는(overflow) 일정은 라인은 못
-  // 그리지만 이름은 잃지 않는다 — 조합 라벨(겹치는 날 표기)에 자기 색으로 함께 나열된다.
-  const { bandsByDate, overflowByDate } = useMemo(() => {
+  // 기간 일정(date_start !== date_end, 반복 일정의 가상 인스턴스 포함)의 레인(층) 배정.
+  // 규칙(요구사항 4):
+  //  1) 서로 겹치는(체인으로 연결된) 기간들을 그룹으로 묶는다 — 시작일 순 스윕으로 병합.
+  //  2) 그룹 안에서 기간이 긴 순(동률이면 시작일 빠른 순)으로 정렬해, 긴 것부터 레인 0(맨
+  //     아래)부터 그리디 배정 — 이미 그 레인에 있는 것과 날짜가 겹치면 다음 레인으로.
+  //  3) 레인은 해당 기간의 전체 표시 구간(월 범위로 클램프된) 단위로 "한 번에" 배정되고
+  //     그 값 그대로 쓰이므로, 주가 바뀌어도(그리드 행이 바뀌어도) 재배정되지 않는다 —
+  //     이전엔 이걸 "이번 주 안에서만" 매번 다시 계산해 같은 일정이 주마다 층을 옮기는
+  //     문제가 있었음.
+  //  4) MAX_BAND_ROWS를 넘는 항목은 라인 자리가 없다(overflow) — 그래도 이름은 잃지 않고
+  //     라벨 텍스트(occurrence)에는 계속 포함된다.
+  // 라벨 표기 시점(요구사항 6): 기간 시작일 + 그 기간이 이어지는 각 주의 첫 셀(월요일).
+  const { bandsByDate, labelsByDate } = useMemo(() => {
     const candidates = schedules
       .filter(isPeriodSchedule)
-      .map((s) => ({
-        schedule: s,
-        start: s.date_start < monthStart ? monthStart : s.date_start,
-        end: s.date_end! > monthEnd ? monthEnd : s.date_end!,
-      }))
+      .map((s) => {
+        const start = s.date_start < monthStart ? monthStart : s.date_start;
+        const end = s.date_end! > monthEnd ? monthEnd : s.date_end!;
+        return { schedule: s, start, end, duration: daysBetween(start, end) };
+      })
       .sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0));
 
-    const rowEnd: (string | null)[] = Array(MAX_BAND_ROWS).fill(null);
-    const overflowCandidates: typeof candidates = [];
-    const byDate: Record<string, BandEntry[]> = {};
+    type Cand = (typeof candidates)[number];
 
+    // 겹치는(체인으로 연결된) 기간들을 그룹으로 묶는다 — 시작일 순으로 훑으며 현재 그룹의
+    // 최대 끝일보다 늦게 시작하면 새 그룹.
+    const groups: Cand[][] = [];
+    let current: Cand[] = [];
+    let groupEnd: string | null = null;
     for (const cand of candidates) {
-      let row = -1;
-      for (let r = 0; r < MAX_BAND_ROWS; r++) {
-        if (rowEnd[r] === null || cand.start > rowEnd[r]!) {
-          row = r;
-          break;
+      if (groupEnd === null || cand.start > groupEnd) {
+        if (current.length) groups.push(current);
+        current = [cand];
+        groupEnd = cand.end;
+      } else {
+        current.push(cand);
+        if (cand.end > groupEnd) groupEnd = cand.end;
+      }
+    }
+    if (current.length) groups.push(current);
+
+    const byDate: Record<string, BandEntry[]> = {};
+    const occByDate: Record<string, LabelOccurrence[]> = {};
+
+    const pushOccurrences = (cand: Cand, color: string) => {
+      for (let d = cand.start; d <= cand.end; d = addDaysToDateStr(d, 1)) {
+        if (d !== cand.start && !isMonday(d)) continue; // 시작일 또는 각 주의 첫 셀에서만
+        const weekEnd = endOfGridWeek(d);
+        const labelEnd = cand.end < weekEnd ? cand.end : weekEnd;
+        const spanCells = daysBetween(d, labelEnd) + 1;
+        (occByDate[d] ??= []).push({ title: cand.schedule.title, color, spanCells });
+      }
+    };
+
+    for (const group of groups) {
+      const ordered = [...group].sort(
+        (a, b) => b.duration - a.duration || (a.start < b.start ? -1 : a.start > b.start ? 1 : 0)
+      );
+
+      const laneRanges: { start: string; end: string }[][] = [];
+
+      for (const cand of ordered) {
+        let lane = 0;
+        while (laneRanges[lane]?.some((r) => cand.start <= r.end && r.start <= cand.end)) {
+          lane++;
+        }
+        (laneRanges[lane] ??= []).push({ start: cand.start, end: cand.end });
+
+        const color = getKeywordColor(cand.schedule.keyword_main);
+        pushOccurrences(cand, color);
+
+        if (lane >= MAX_BAND_ROWS) continue; // 라인 자리는 없음 — 이름은 이미 라벨에 반영됨
+
+        for (let d = cand.start; d <= cand.end; d = addDaysToDateStr(d, 1)) {
+          (byDate[d] ??= []).push({
+            color,
+            lane,
+            isStart: d === cand.start,
+            isEnd: d === cand.end,
+            title: cand.schedule.title,
+          });
         }
       }
-      if (row === -1) {
-        overflowCandidates.push(cand);
-        continue;
-      }
-      rowEnd[row] = cand.end;
-      const color = getKeywordColor(cand.schedule.keyword_main);
-      // 라벨은 시작 셀에서 그 주(일요일까지)가 끝나는 지점까지만 뻗는다 — 다음 주로
-      // 넘어가는 칸은 그리드 상 다른 행이라 라벨을 이어 그릴 수 없기 때문.
-      const weekEnd = endOfGridWeek(cand.start);
-      const labelEnd = cand.end < weekEnd ? cand.end : weekEnd;
-      const spanCells = daysBetween(cand.start, labelEnd) + 1;
-      for (let d = cand.start; d <= cand.end; d = addDaysToDateStr(d, 1)) {
-        (byDate[d] ??= []).push({
-          color,
-          row,
-          isStart: d === cand.start,
-          isEnd: d === cand.end,
-          title: cand.schedule.title,
-          spanCells,
-        });
-      }
     }
 
-    const overflow: Record<string, { title: string; color: string }[]> = {};
-    for (const cand of overflowCandidates) {
-      const color = getKeywordColor(cand.schedule.keyword_main);
-      for (let d = cand.start; d <= cand.end; d = addDaysToDateStr(d, 1)) {
-        (overflow[d] ??= []).push({ title: cand.schedule.title, color });
-      }
-    }
-
-    return { bandsByDate: byDate, overflowByDate: overflow };
+    return { bandsByDate: byDate, labelsByDate: occByDate };
   }, [schedules, monthStart, monthEnd]);
 
-  // 도트는 하루짜리(기간이 아닌) 일정만 — 기간 일정은 이제 전부 밴드 쪽(놓였든 +N 초과분이든)
-  // 에서만 표현하므로 여기서 완전히 제외한다(중복 표기 방지).
+  // 도트는 하루짜리(기간이 아닌) 일정만 — 기간 일정은 전부 밴드 쪽(라인이든 overflow든)에서만
+  // 표현하므로 여기서 완전히 제외한다(중복 표기 방지).
   const dotsByDate = useMemo(() => {
     const map: Record<string, ExpandedSchedule[]> = {};
     for (const s of schedules) {
@@ -258,8 +305,7 @@ export function MonthView({
 
   // 추가/삭제처럼 목록 자체가 바뀌는 변경은 router.refresh()로 서버에서 새 monthTodos/
   // overdueTodos를 받아오는데, useState의 초기값은 최초 마운트 때만 쓰이므로 prop이 실제로
-  // 바뀔 때마다 로컬 상태를 다시 맞춰준다(완료 토글처럼 목록 구성 자체는 안 바뀌는 변경은
-  // 이미 로컬에서 낙관적으로 처리해 여기 영향 없음).
+  // 바뀔 때마다 로컬 상태를 다시 맞춰준다.
   useEffect(() => {
     setTodos(monthTodos);
   }, [monthTodos]);
@@ -278,8 +324,7 @@ export function MonthView({
   }, [workspaceId, year, month]);
 
   // 홈 "오늘 뭐하지"에서 특정 일정을 탭해 들어온 딥링크의 최종 착지 — 해당 일정의 날짜로
-  // 데이 시트가 열린 상태로 보여준다(초기 렌더는 위 useState 초기값에서 이미 반영, 이 효과는
-  // highlightId가 마운트 후 바뀌는 경우를 대비).
+  // 데이 시트가 열린 상태로 보여준다.
   useEffect(() => {
     if (!highlightId) return;
     const match = schedules.find((s) => s.id === highlightId);
@@ -310,144 +355,159 @@ export function MonthView({
         <MemberFilterRow members={members} target={target} />
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col">
-        <div className="grid shrink-0 grid-cols-7 pb-1 text-center">
-          {WEEKDAY_LABELS.map((wd) => (
-            <span key={wd} className="text-[11px] text-[var(--text-muted)]">
-              {wd}
-            </span>
-          ))}
-        </div>
-
+      {/* 기본 상태: 달력이 남는 높이 전부(100%)를 씀 — 페이지 스크롤 없음(요구사항 1).
+          날짜 탭: 50%로 압축 애니메이션(요구사항 2), 하단 절반엔 DaySheet(고정 위치, 자체
+          슬라이드 트랜지션). 시트 닫힘: 다시 100%로(요구사항 3). */}
+      <div className="min-h-0 flex-1">
         <div
-          className="grid flex-1 grid-cols-7 gap-y-1 text-center"
-          style={{ gridTemplateRows: `repeat(${weekRows}, minmax(0, 1fr))` }}
-          onClick={handleCalendarAreaTap}
+          className="flex h-full flex-col overflow-hidden"
+          style={{ height: sheetOpen ? "50%" : "100%", transition: COMPRESS_TRANSITION }}
         >
-          {cells.map((date, i) => {
-            if (!date) return <div key={`empty-${i}`} />;
-            const dotSchedules = dotsByDate[date] ?? [];
-            const cellBands = bandsByDate[date] ?? [];
-            const overflowEntries = overflowByDate[date] ?? [];
-            const activeCount = cellBands.length + overflowEntries.length;
-            const grocery = dotSchedules.find((s) => s.is_grocery && s.amount);
-            const isToday = date === todayStr;
-            const isSelected = sheetOpen && date === selectedDate;
-            const holiday = getHoliday(date);
-
-            // 겹침 없는 날(활성 1개) — 그 밴드가 시작일일 때만 자기 이름 하나. 겹치는 날
-            // (활성 2개 이상) — 라인에 못 들어간 overflow까지 포함해 전부 "이름/이름/이름"
-            // 한 줄로(각자 자기 색), 시작일 여부와 무관하게 겹치는 모든 날 표기(구성이
-            // 날마다 바뀔 수 있어서). 어느 쪽이든 라벨은 최대 1개 — 줄별 개별 라벨 없음.
-            let labelNode: React.ReactNode = null;
-            if (activeCount === 1 && cellBands[0]?.isStart) {
-              const band = cellBands[0];
-              labelNode = (
-                <span
-                  className="pointer-events-none absolute left-0 truncate text-[8px] leading-none"
-                  style={{
-                    bottom: LINE_STACK_H + BAND_LABEL_GAP,
-                    width: `${band.spanCells * 100}%`,
-                    color: band.color,
-                    opacity: 0.55,
-                  }}
-                >
-                  {band.title}
-                </span>
-              );
-            } else if (activeCount >= 2) {
-              const items = [
-                ...cellBands.map((b) => ({ title: b.title, color: b.color })),
-                ...overflowEntries,
-              ];
-              labelNode = (
-                <span
-                  className="pointer-events-none absolute left-0 w-full truncate text-[8px] leading-none"
-                  style={{ bottom: LINE_STACK_H + BAND_LABEL_GAP }}
-                >
-                  {items.map((item, i) => (
-                    <span key={i}>
-                      {i > 0 && <span className="text-stone">/</span>}
-                      <span style={{ color: item.color, opacity: 0.55 }}>{item.title}</span>
-                    </span>
-                  ))}
-                </span>
-              );
-            }
-
-            return (
-              <button
-                key={date}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (date === selectedDate && sheetOpen) {
-                    setSheetOpen(false);
-                  } else {
-                    setSelectedDate(date);
-                    setSheetOpen(true);
-                  }
-                }}
-                className={`flex flex-col items-center justify-center gap-0.5 ${sheetOpen ? "py-0" : "py-1"}`}
+          <div className="grid shrink-0 grid-cols-7 pb-1 text-center">
+            {WEEKDAY_LABELS.map((wd, i) => (
+              <span
+                key={wd}
+                className={`text-[11px] ${
+                  i === 6 ? "text-terra" : i === 5 ? "text-ocean" : "text-[var(--text-muted)]"
+                }`}
               >
-                {/* 날짜 숫자 크기는 압축 여부와 무관하게 항상 동일 — 압축은 아래 부가 영역만 줄인다. */}
-                <span
-                  className={`flex h-6 w-6 items-center justify-center rounded-full text-[13px] ${
-                    isToday
-                      ? "bg-honey/15 font-medium text-honey"
-                      : isSelected
-                      ? "font-medium text-honey ring-1 ring-honey/40"
-                      : holiday
-                      ? "font-medium text-terra"
-                      : "text-ink"
-                  }`}
-                >
-                  {Number(date.slice(-2))}
-                </span>
-                <div className="flex gap-1" style={{ minHeight: sheetOpen ? 4 : 6 }}>
-                  {dotSchedules.slice(0, 3).map((s) => (
-                    <span
-                      key={s.id}
-                      className="h-[4px] w-[4px] rounded-full"
-                      style={{ backgroundColor: getKeywordColor(s.keyword_main) }}
-                    />
-                  ))}
-                </div>
-                {grocery && !sheetOpen && (
-                  <span className="text-[9px] text-[var(--text-muted)]">
-                    {grocery.amount!.toLocaleString()}
+                {wd}
+              </span>
+            ))}
+          </div>
+
+          <div
+            className="grid flex-1 grid-cols-7 gap-y-1 text-center"
+            style={{ gridTemplateRows: `repeat(${weekRows}, minmax(0, 1fr))` }}
+            onClick={handleCalendarAreaTap}
+          >
+            {cells.map((date, i) => {
+              if (!date) return <div key={`empty-${i}`} />;
+              const dotSchedules = dotsByDate[date] ?? [];
+              const cellBands = (bandsByDate[date] ?? []).slice().sort((a, b) => a.lane - b.lane);
+              const labelOccurrences = labelsByDate[date] ?? [];
+              const grocery = dotSchedules.find((s) => s.is_grocery && s.amount);
+              const isToday = date === todayStr;
+              const isSelected = sheetOpen && date === selectedDate;
+              const holiday = getHoliday(date);
+              const weekendClass = weekendColorClass(date, holiday);
+
+              // 라벨은 최대 1개 — 그 위치(시작일/주 첫 셀)에 걸친 기간이 하나면 자기 이름,
+              // 둘 이상이면 "이름/이름" 조합(요구사항 6, 줄별 개별 표기 없음).
+              let labelNode: React.ReactNode = null;
+              // 텍스트 기준점은 항상 그 주에서 기간이 차지하는 구간의 왼쪽 끝(시작 셀의
+              // 좌측) — 부모 day-grid의 text-center가 상속돼 절대 위치 오버레이 안에서도
+              // 글자가 중앙 정렬되는 버그가 있었다(박스 위치는 left:0로 고정해도 text-align은
+              // 별개라 그 안의 텍스트만 가운데로 쏠림) → text-left로 명시 오버라이드.
+              // 폭도 "occ.spanCells * 100%"(칸 수 그대로)를 다 쓰면 말줄임표(...)가 렌더될
+              // 여백이 없어 텍스트가 셀 경계에서 그냥 잘려 사라져 보였다 → 4px 여백을 빼
+              // 실제 가용 폭을 살짝 좁혀 "..."이 항상 보이게 한다.
+              if (labelOccurrences.length === 1) {
+                const occ = labelOccurrences[0];
+                labelNode = (
+                  <span
+                    className="pointer-events-none absolute left-0 truncate text-left text-[8px] leading-none"
+                    style={{
+                      bottom: LINE_STACK_H + BAND_LABEL_GAP,
+                      width: `calc(${occ.spanCells * 100}% - 4px)`,
+                      color: occ.color,
+                      opacity: 0.55,
+                    }}
+                  >
+                    {occ.title}
                   </span>
-                )}
-                {/* 라인은 텍스트 유무와 무관하게 항상 같은 두께·같은 자리에 렌더(레이어 분리) —
-                    라벨은 별도 position:absolute 오버레이라 이 컨테이너의 문서 흐름(높이
-                    계산)에는 전혀 관여하지 않는다. 라벨 한 줄분 공간(BAND_LABEL_ZONE_H)은
-                    라벨이 실제로 있든 없든 항상 동일하게 예약해둬 — 그래야 셀마다 행 높이가
-                    달라지지 않는다. 시트가 열려 달력이 압축되면 이 예약 공간을 0으로 접어
-                    라벨을 완전히 숨기고 도트+라인만 남긴다(요구사항 6). 라인은 justify-end로
-                    항상 셀(정확히는 이 영역) 최하단에 붙고, 겹치는 날엔 최하단에서 위로
-                    2px 간격으로 촘촘히 쌓인다 — 도트 영역과는 별도 존이라 어떤 경우에도
-                    서로 겹치지 않는다. */}
-                <span
-                  className="relative flex w-full flex-col justify-end"
-                  style={{
-                    height: (sheetOpen ? 0 : BAND_LABEL_ZONE_H) + LINE_STACK_H,
-                    paddingTop: sheetOpen ? 0 : BAND_LABEL_ZONE_H,
-                    gap: BAND_LINE_GAP,
+                );
+              } else if (labelOccurrences.length >= 2) {
+                labelNode = (
+                  <span
+                    className="pointer-events-none absolute left-0 truncate text-left text-[8px] leading-none"
+                    style={{ bottom: LINE_STACK_H + BAND_LABEL_GAP, width: "calc(100% - 4px)" }}
+                  >
+                    {labelOccurrences.map((occ, oi) => (
+                      <span key={oi}>
+                        {oi > 0 && <span className="text-stone">/</span>}
+                        <span style={{ color: occ.color, opacity: 0.55 }}>{occ.title}</span>
+                      </span>
+                    ))}
+                  </span>
+                );
+              }
+
+              return (
+                <button
+                  key={date}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (date === selectedDate && sheetOpen) {
+                      setSheetOpen(false);
+                    } else {
+                      setSelectedDate(date);
+                      setSheetOpen(true);
+                    }
                   }}
+                  className={`flex flex-col items-center justify-center gap-0.5 ${sheetOpen ? "py-0" : "py-1"}`}
                 >
-                  {cellBands.map((band) => (
-                    <span
-                      key={band.row}
-                      className={`h-[2px] ${band.isStart ? "rounded-l-full" : ""} ${
-                        band.isEnd ? "rounded-r-full" : ""
-                      }`}
-                      style={{ backgroundColor: band.color, opacity: 0.55 }}
-                    />
-                  ))}
-                  {!sheetOpen && labelNode}
-                </span>
-              </button>
-            );
-          })}
+                  {/* 날짜 숫자 크기는 압축 여부와 무관하게 항상 동일 — 압축은 아래 부가 영역만 줄인다. */}
+                  <span
+                    className={`flex h-6 w-6 items-center justify-center rounded-full text-[13px] ${
+                      isToday
+                        ? "bg-honey/15 font-medium text-honey"
+                        : isSelected
+                        ? "font-medium text-honey ring-1 ring-honey/40"
+                        : weekendClass
+                        ? `font-medium ${weekendClass}`
+                        : "text-ink"
+                    }`}
+                  >
+                    {Number(date.slice(-2))}
+                  </span>
+                  <div className="flex gap-1" style={{ minHeight: sheetOpen ? 4 : 6 }}>
+                    {dotSchedules.slice(0, 3).map((s) => (
+                      <span
+                        key={s.id}
+                        className="h-[4px] w-[4px] rounded-full"
+                        style={{ backgroundColor: getKeywordColor(s.keyword_main) }}
+                      />
+                    ))}
+                  </div>
+                  {grocery && !sheetOpen && (
+                    <span className="text-[9px] text-[var(--text-muted)]">
+                      {grocery.amount!.toLocaleString()}
+                    </span>
+                  )}
+                  {/* 라인은 텍스트 유무와 무관하게 항상 같은 두께로 렌더(레이어 분리) — 라벨은
+                      별도 position:absolute 오버레이라 이 컨테이너의 문서 흐름(높이 계산)에는
+                      전혀 관여하지 않는다. 라벨 한 줄분 공간(BAND_LABEL_ZONE_H)은 라벨이
+                      실제로 있든 없든 항상 동일하게 예약해둬 셀마다 행 높이가 달라지지
+                      않는다. 시트가 열려 압축되면 이 예약 공간을 0으로 접어 라벨을 완전히
+                      숨기고 도트+라인만 남긴다(요구사항 2).
+                      flex-col-reverse: lane 0(그룹 내 가장 긴 기간, "맨 아래 레인")이 배열의
+                      첫 항목이라 역방향 배치에서 셀 최하단에 오고, 그 위로 lane 1이 쌓인다.
+                      그날 실제로 활성인 lane만 렌더하므로(고정 슬롯 아님) 겹침 없는 날엔
+                      자동으로 셀 최하단에 온다(요구사항 5). */}
+                  <span
+                    className="relative flex w-full flex-col-reverse"
+                    style={{
+                      height: (sheetOpen ? 0 : BAND_LABEL_ZONE_H) + LINE_STACK_H,
+                      paddingTop: sheetOpen ? 0 : BAND_LABEL_ZONE_H,
+                      gap: BAND_LINE_GAP,
+                    }}
+                  >
+                    {cellBands.map((band) => (
+                      <span
+                        key={band.lane}
+                        className={`h-[2px] ${band.isStart ? "rounded-l-full" : ""} ${
+                          band.isEnd ? "rounded-r-full" : ""
+                        }`}
+                        style={{ backgroundColor: band.color, opacity: 0.55 }}
+                      />
+                    ))}
+                    {!sheetOpen && labelNode}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 

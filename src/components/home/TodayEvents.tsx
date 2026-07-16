@@ -2,47 +2,15 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { IconPaperclip, IconCheck } from "@tabler/icons-react";
+import { IconPaperclip } from "@tabler/icons-react";
 import { mirror } from "@/lib/homeTheme";
 import { getKeywordColor } from "@/lib/scheduleKeywords";
+import { isPeriodSchedule } from "@/lib/scheduleFormat";
+import { EventMarker } from "@/components/schedule/EventMarker";
 import { toggleTodoDone } from "@/app/(main)/schedule/actions";
 import type { Schedule, Todo } from "@/types";
 
-function isPeriodSchedule(s: Schedule) {
-  return Boolean(s.date_end && s.date_end !== s.date_start);
-}
-
 const PREVIEW_COUNT = 3;
-// 일정 도트/기간 바/할 일 체크 원이 전부 이 폭 안에서 중앙 정렬돼, 뒤따르는 텍스트의
-// 시작점이 항목 종류와 무관하게 항상 같은 자리에서 시작한다.
-const MARKER_SLOT = "flex h-4 w-4 shrink-0 items-center justify-center";
-
-function ScheduleMarker({ schedule }: { schedule: Schedule }) {
-  const color = getKeywordColor(schedule.keyword_main);
-  return (
-    <span className={MARKER_SLOT}>
-      {isPeriodSchedule(schedule) ? (
-        <span className="h-[2px] w-2 rounded-full" style={{ backgroundColor: color }} />
-      ) : (
-        <span className="h-[3px] w-[3px] rounded-full" style={{ backgroundColor: color }} />
-      )}
-    </span>
-  );
-}
-
-function TodoMarker({ done }: { done: boolean }) {
-  return (
-    <span className={MARKER_SLOT}>
-      <span
-        className={`flex h-3 w-3 items-center justify-center rounded-full border ${
-          done ? "border-sage bg-sage" : mirror.hairline
-        }`}
-      >
-        {done && <IconCheck size={7} className="text-white" stroke={3.5} />}
-      </span>
-    </span>
-  );
-}
 
 /** "오늘 뭐하지" — 오늘 일정 + 오늘 마감 할 일 + 지난(이월) 할 일을 이 순서로 합쳐 최대
  * 3개까지 보여주고(전체 목록/이번 주 보기는 일정 탭 전담), 넘치면 "더보기". 일정은 탭하면
@@ -88,7 +56,10 @@ export function TodayEvents({
               href={`/schedule?view=month&date=${s.date_start}&highlight=${s.id}`}
               className="flex items-center gap-2"
             >
-              <ScheduleMarker schedule={s} />
+              <EventMarker
+                type={isPeriodSchedule(s) ? "bar" : "dot"}
+                color={getKeywordColor(s.keyword_main)}
+              />
               <span
                 className={`min-w-0 flex-1 truncate text-[11px] ${
                   s.is_important ? "font-medium" : ""
@@ -106,7 +77,7 @@ export function TodayEvents({
                 onClick={() => handleToggle(todo, isOverdue)}
                 className="flex items-center gap-2 text-left"
               >
-                <TodoMarker done={todo.is_done} />
+                <EventMarker type="check" done={todo.is_done} />
                 <span
                   className={`min-w-0 flex-1 truncate text-[11px] ${
                     todo.is_done ? `line-through ${mirror.muted}` : mirror.primary

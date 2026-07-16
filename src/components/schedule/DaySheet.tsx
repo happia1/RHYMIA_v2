@@ -5,9 +5,10 @@ import { IconPlus } from "@tabler/icons-react";
 import { getHoliday } from "@/lib/holidays";
 import { solarToLunar } from "@/lib/lunar";
 import { getKeywordColor } from "@/lib/scheduleKeywords";
-import { isPeriodSchedule, shortRange } from "@/lib/scheduleFormat";
+import { isPeriodSchedule, shortRange, longRangeWithWeekday } from "@/lib/scheduleFormat";
 import { targetLabel, type MemberInfo } from "@/lib/scheduleTargets";
 import { TodoChecklistItem } from "@/components/schedule/TodoChecklistItem";
+import { EventMarker } from "@/components/schedule/EventMarker";
 import { ActivitySuggestionSection } from "@/components/schedule/ActivitySuggestionSection";
 import { SectionExpand } from "@/components/ui/SectionExpand";
 import { useSwipeDownToClose } from "@/components/ui/useSwipeDownToClose";
@@ -24,6 +25,15 @@ function formatHeaderParts(date: string) {
   const main = `${d.getUTCMonth() + 1}. ${d.getUTCDate()}. ${weekday}`;
   const lunar = solarToLunar(d);
   return { main, lunarLabel: lunar ? `음력 ${lunar.month}.${lunar.day}` : null };
+}
+
+// 토요일 ocean(파랑 계열), 일요일·공휴일 terra(빨강 계열) — 월간 달력과 같은 규칙(저채도,
+// 기존 브랜드 톤 재사용)을 데이 시트 헤더 날짜에도 그대로 적용.
+function weekendColorClass(date: string, holiday: string | null) {
+  const dow = new Date(`${date}T00:00:00.000Z`).getUTCDay();
+  if (holiday || dow === 0) return "text-terra";
+  if (dow === 6) return "text-ocean";
+  return null;
 }
 
 function SectionHeader({ label, onAdd, addLabel }: { label: string; onAdd: () => void; addLabel: string }) {
@@ -87,6 +97,7 @@ export function DaySheet({
   const { dragY, dragging, handlers } = useSwipeDownToClose(onClose);
   const holiday = getHoliday(date);
   const { main, lunarLabel } = formatHeaderParts(date);
+  const dateColorClass = weekendColorClass(date, holiday);
   const periodSchedules = schedules.filter(isPeriodSchedule);
   const singleDaySchedules = schedules.filter((s) => !isPeriodSchedule(s));
 
@@ -102,7 +113,7 @@ export function DaySheet({
       onTransitionEnd={() => {
         if (!open) setMounted(false);
       }}
-      className={`fixed inset-x-0 bottom-0 z-50 flex h-[62dvh] flex-col overflow-y-auto rounded-t-3xl bg-surface p-5 shadow-[0_-8px_24px_rgba(0,0,0,0.08)] ${
+      className={`fixed inset-x-0 bottom-0 z-50 flex h-[50dvh] flex-col overflow-y-auto rounded-t-3xl bg-surface p-5 shadow-[0_-8px_24px_rgba(0,0,0,0.08)] ${
         dragging ? "" : "transition-transform duration-200"
       } ${open ? "translate-y-0" : "translate-y-full"}`}
       style={dragY ? { transform: `translateY(${dragY}px)` } : undefined}
@@ -111,7 +122,7 @@ export function DaySheet({
 
       <div className="mb-3 flex items-baseline justify-between">
         <span className="flex items-baseline gap-1.5">
-          <span className="text-[15px] font-medium text-ink">{main}</span>
+          <span className={`text-[15px] font-medium ${dateColorClass ?? "text-ink"}`}>{main}</span>
           {lunarLabel && <span className="text-[11px] text-stone">{lunarLabel}</span>}
         </span>
         {holiday && <span className="text-[12px] font-medium text-terra">{holiday}</span>}
@@ -123,20 +134,22 @@ export function DaySheet({
           "앞과의 거리"는 신경 쓰지 않는다. */}
       <div className="flex flex-col gap-4">
         {periodSchedules.length > 0 && (
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-3">
             {periodSchedules.map((s) => (
               <button
                 key={s.id}
                 onClick={() => onOpenSchedule(s)}
-                className="flex items-center gap-1.5 text-left"
+                className="flex items-stretch gap-2 text-left"
               >
+                <span className="w-8 shrink-0 pt-0.5 text-[9px] text-stone">종일</span>
                 <span
-                  className="h-[2px] w-3 shrink-0 rounded-full"
+                  className="w-[3px] shrink-0 rounded-full"
                   style={{ backgroundColor: getKeywordColor(s.keyword_main) }}
                 />
-                <span className="min-w-0 flex-1 truncate text-[11px] text-ink">
-                  {s.title} <span className="text-stone">· {shortRange(s)}</span>
-                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[12px] text-ink">{s.title}</p>
+                  <p className="truncate text-[10px] text-stone">{longRangeWithWeekday(s)}</p>
+                </div>
               </button>
             ))}
           </div>
@@ -152,10 +165,11 @@ export function DaySheet({
                 <button
                   key={s.id}
                   onClick={() => onOpenSchedule(s)}
-                  className={`flex items-center justify-between gap-2 py-1.5 text-left ${
+                  className={`flex items-center gap-2 py-1.5 text-left ${
                     i > 0 ? "border-t border-border-light" : ""
                   } ${s.id === highlightId ? "-mx-2 rounded-xl bg-honey/10 px-2" : ""}`}
                 >
+                  <EventMarker type="dot" color={getKeywordColor(s.keyword_main)} />
                   <span
                     className={`min-w-0 flex-1 truncate text-[12px] ${
                       s.is_important ? "font-medium text-terra" : "text-ink"
