@@ -48,7 +48,7 @@ export type AgentResponse =
  * 그 상태로 res.json()을 호출하면 "Unexpected token '<'" 같은 원문 파싱 에러가 그대로
  * 사용자에게 노출되므로, 파싱 실패를 사람이 읽을 수 있는 메시지로 바꿔서 던진다. "개발 서버
  * 로그를 확인하라"는 안내는 로컬 dev에서만 의미가 있으므로 프로덕션에서는 일반 안내로 대체. */
-async function parseAgentResponse(res: Response): Promise<any> {
+async function parseAgentResponse(res: Response): Promise<unknown> {
   const raw = await res.text();
   let data: unknown;
   try {

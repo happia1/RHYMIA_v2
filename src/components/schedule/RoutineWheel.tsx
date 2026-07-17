@@ -71,7 +71,7 @@ export function RoutineWheel({
         />
 
         {blocks.map((b, i) => {
-          let startMin = timeToMinutes(b.start);
+          const startMin = timeToMinutes(b.start);
           let endMin = timeToMinutes(b.end);
           if (endMin <= startMin) endMin += 24 * 60;
           const startAngle = (startMin / 1440) * 360;
