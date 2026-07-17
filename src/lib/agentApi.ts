@@ -90,6 +90,6 @@ export async function extractTextFromImage(imageBase64: string): Promise<string>
     body: JSON.stringify({ image_base64: imageBase64 }),
   });
 
-  const data = await parseAgentResponse(res);
+  const data = (await parseAgentResponse(res)) as { text?: string };
   return data.text ?? "";
 }
