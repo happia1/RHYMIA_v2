@@ -79,7 +79,7 @@ export async function callAgent(body: {
     body: JSON.stringify(body),
   });
 
-  return parseAgentResponse(res);
+  return (await parseAgentResponse(res)) as AgentResponse;
 }
 
 /** 메모/공지 작성 시 첨부한 이미지에서 텍스트만 추출 (저장 없이 내용란 자동 채우기용). */
