@@ -61,6 +61,39 @@ async function estimateAndSaveMealNutrition(mealId: string, mainMenu: string, si
   }
 }
 
+/** 추천 레시피 상세("오늘 메뉴로 추가하기")/레시피(내부) 검색 결과에서 고른 완성 사진을
+ * 우리 Storage로 복사한다 — 공공데이터(식품안전나라)라 재배포가 허용되고, 외부 도메인
+ * URL을 meal.image_url에 그대로 저장하면 나중에 그쪽 서버 사정으로 깨질 수 있어서다.
+ * 서버에서 직접 fetch하므로 브라우저 CORS 제약이 없다. */
+export async function copyRecipeImageToStorage(
+  imageUrl: string
+): Promise<{ ok: true; url: string } | { ok: false; message: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  try {
+    const res = await fetch(imageUrl);
+    if (!res.ok) return { ok: false, message: "레시피 이미지를 불러오지 못했어요." };
+
+    const blob = await res.blob();
+    const contentType = res.headers.get("content-type") ?? "image/jpeg";
+    const ext = contentType.includes("png") ? "png" : "jpg";
+    const path = `${user.id}/${Date.now()}.${ext}`;
+    const { error } = await supabase.storage
+      .from("meal-images")
+      .upload(path, blob, { upsert: true, contentType });
+    if (error) return { ok: false, message: "레시피 이미지 저장에 실패했어요." };
+
+    const { data } = supabase.storage.from("meal-images").getPublicUrl(path);
+    return { ok: true, url: data.publicUrl };
+  } catch {
+    return { ok: false, message: "레시피 이미지 저장에 실패했어요." };
+  }
+}
+
 export async function createMeal(workspaceId: string, input: MealInput) {
   const supabase = await createClient();
   const {

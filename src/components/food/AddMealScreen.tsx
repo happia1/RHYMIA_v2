@@ -20,11 +20,12 @@ import { mirror } from "@/lib/homeTheme";
 import { createClient } from "@/lib/supabase/client";
 import { compressImage } from "@/lib/imageCompress";
 import { fetchYoutubeOembed, youtubeThumbnailUrl } from "@/lib/youtube";
-import { createMeal, updateMeal } from "@/app/(main)/food/actions";
+import { createMeal, updateMeal, copyRecipeImageToStorage } from "@/app/(main)/food/actions";
 import { MEAL_TAGS } from "@/lib/mealUtils";
 import { FridgeStockSheet } from "@/components/food/FridgeStockSheet";
 import { RecipeSearchSheet } from "@/components/food/RecipeSearchSheet";
 import { RecentMenuSection } from "@/components/food/RecentMenuSection";
+import type { NormalizedRecipe } from "@/lib/foodSafetyRecipe";
 import type { FridgeItem, Meal, MealType } from "@/types";
 
 const MEAL_TYPES: MealType[] = ["집밥", "외식", "배달"];
@@ -57,20 +58,32 @@ export function AddMealScreen({
   workspaceId,
   defaultDate,
   defaultMenu,
+  prefillImageUrl,
+  prefillIngredients,
+  prefillMemo,
   fridgeItems,
   existingMeal,
   recipeSearchEnabled = false,
+  foodSafetyEnabled = false,
 }: {
   workspaceId: string;
   defaultDate: string;
-  /** "자주 찾는 메뉴" 마퀴에서 메뉴를 탭해 들어왔을 때 프리필할 이름 — 수정 모드(existingMeal)
-   * 에선 무시된다. */
+  /** "자주 찾는 메뉴" 마퀴/추천 레시피 상세의 메뉴명 — 수정 모드(existingMeal)에선 무시된다. */
   defaultMenu?: string;
+  /** 추천 레시피 상세("오늘 메뉴로 추가하기")에서 넘어온, 이미 우리 Storage로 복사된 이미지 URL. */
+  prefillImageUrl?: string;
+  /** 추천 레시피 상세에서 넘어온 재료 목록. */
+  prefillIngredients?: string[];
+  /** 추천 레시피 상세에서 넘어온 조리 단계 요약(3줄 이내). */
+  prefillMemo?: string;
   fridgeItems: FridgeItem[];
   existingMeal?: Meal;
-  /** NAVER_CLIENT_ID/SECRET 설정 여부(isRecipeSearchEnabled) — 꺼져 있으면 "블로그에서
-   * 레시피 찾기" 메뉴 자체를 노출하지 않는다. */
+  /** NAVER_CLIENT_ID/SECRET 설정 여부(isRecipeSearchEnabled) — 꺼져 있으면 "레시피 찾아보기"의
+   * 블로그 탭을 숨긴다. */
   recipeSearchEnabled?: boolean;
+  /** FOOD_SAFETY_API_KEY 설정 여부(isFoodSafetyRecipeEnabled) — 꺼져 있으면 "레시피 찾아보기"의
+   * 레시피(내부) 탭을 숨긴다. */
+  foodSafetyEnabled?: boolean;
 }) {
   const { showToast } = useToast();
   const [tag, setTag] = useState(existingMeal?.tag ?? MEAL_TAGS[0]);
@@ -80,14 +93,16 @@ export function AddMealScreen({
   const [reservationTime, setReservationTime] = useState(
     existingMeal?.reservation_time ?? ""
   );
-  const [memo, setMemo] = useState(existingMeal?.memo ?? "");
-  const [imageUrl, setImageUrl] = useState<string | null>(existingMeal?.image_url ?? null);
+  const [memo, setMemo] = useState(existingMeal?.memo ?? prefillMemo ?? "");
+  const [imageUrl, setImageUrl] = useState<string | null>(
+    existingMeal?.image_url ?? prefillImageUrl ?? null
+  );
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [videoId, setVideoId] = useState<string | null>(existingMeal?.video_id ?? null);
   const [recipeTitle, setRecipeTitle] = useState<string | null>(existingMeal?.recipe_title ?? null);
   const [recipeUrl, setRecipeUrl] = useState<string | null>(existingMeal?.recipe_url ?? null);
   const [selectedIngredients, setSelectedIngredients] = useState<string[]>(
-    existingMeal?.ingredients ?? []
+    existingMeal?.ingredients ?? prefillIngredients ?? []
   );
   const [thumbnailError, setThumbnailError] = useState(false);
   const [photoOptionsOpen, setPhotoOptionsOpen] = useState(false);
@@ -135,15 +150,6 @@ export function AddMealScreen({
     }
   };
 
-  const openYoutubeSearch = () => {
-    const query = `${mainMenu.trim() || "레시피"} 레시피`;
-    window.open(
-      `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`,
-      "_blank",
-      "noopener,noreferrer"
-    );
-  };
-
   const handleFetchRecipeLink = async () => {
     const url = recipeLinkDraft.trim();
     if (!url) return;
@@ -175,6 +181,28 @@ export function AddMealScreen({
     setRecipeUrl(meal.recipe_url);
     setSelectedIngredients(meal.ingredients);
     showToast(`"${meal.main_menu}" 메뉴를 불러왔어요.`);
+  };
+
+  // "레시피 찾아보기" 시트의 레시피(내부) 탭에서 검색 결과를 골랐을 때 — 추천 레시피 상세의
+  // "오늘 메뉴로 추가하기"와 동일한 채우기 규칙(메뉴명/이미지 복사/재료/조리 요약)을 그
+  // 자리에서 바로 적용한다(페이지 이동 없이, 이미 끼니 등록 화면 "안"이므로).
+  const handleFillFromRecipe = async (recipe: NormalizedRecipe) => {
+    setMainMenu(recipe.name);
+    setSelectedIngredients(recipe.ingredients);
+    const summary = recipe.steps
+      .slice(0, 3)
+      .map((s) => s.text)
+      .join("\n");
+    if (summary) setMemo(summary);
+
+    if (recipe.image) {
+      const result = await copyRecipeImageToStorage(recipe.image);
+      if (result.ok) setImageUrl(result.url);
+      else showToast("레시피 사진은 가져오지 못했지만 나머지 내용은 채워드렸어요.");
+    }
+
+    setRecipeSearchOpen(false);
+    showToast(`"${recipe.name}" 레시피를 불러왔어요.`);
   };
 
   const toggleIngredient = (name: string) => {
@@ -439,25 +467,13 @@ export function AddMealScreen({
           <button
             onClick={() => {
               setPhotoOptionsOpen(false);
-              openYoutubeSearch();
+              setRecipeSearchOpen(true);
             }}
             className="flex items-center gap-3 border-t border-border-light py-3 text-left text-[14px] text-ink"
           >
-            <IconBrandYoutube size={18} className="text-honey" />
-            유튜브에서 레시피 찾기
+            <IconSearch size={18} className="text-honey" />
+            레시피 찾아보기
           </button>
-          {recipeSearchEnabled && (
-            <button
-              onClick={() => {
-                setPhotoOptionsOpen(false);
-                setRecipeSearchOpen(true);
-              }}
-              className="flex items-center gap-3 border-t border-border-light py-3 text-left text-[14px] text-ink"
-            >
-              <IconSearch size={18} className="text-honey" />
-              블로그에서 레시피 찾기
-            </button>
-          )}
           <button
             onClick={() => {
               setPhotoOptionsOpen(false);
@@ -492,20 +508,21 @@ export function AddMealScreen({
         </div>
       </BottomSheet>
 
-      {recipeSearchEnabled && (
-        <RecipeSearchSheet
-          open={recipeSearchOpen}
-          onClose={() => setRecipeSearchOpen(false)}
-          defaultQuery={mainMenu}
-          memo={memo}
-          onMemoChange={setMemo}
-          onSave={(url) => {
-            setRecipeUrl(url);
-            setRecipeSearchOpen(false);
-            showToast("레시피 링크를 저장했어요.");
-          }}
-        />
-      )}
+      <RecipeSearchSheet
+        open={recipeSearchOpen}
+        onClose={() => setRecipeSearchOpen(false)}
+        defaultQuery={mainMenu}
+        memo={memo}
+        onMemoChange={setMemo}
+        blogEnabled={recipeSearchEnabled}
+        internalEnabled={foodSafetyEnabled}
+        onSaveBlogLink={(url) => {
+          setRecipeUrl(url);
+          setRecipeSearchOpen(false);
+          showToast("레시피 링크를 저장했어요.");
+        }}
+        onFillFromRecipe={handleFillFromRecipe}
+      />
     </div>
   );
 }

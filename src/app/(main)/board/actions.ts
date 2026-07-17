@@ -100,6 +100,9 @@ export async function updateNotice(
 
   revalidatePath("/board");
   revalidatePath("/notifications");
+  // 홈의 고정 메모 영역·"하고싶은 말" 위젯도 이 데이터를 직접 조회하므로 함께 무효화한다
+  // (수정/삭제가 이제 홈 화면 위의 팝업에서도 일어날 수 있음).
+  revalidatePath("/home");
   return { ok: true as const };
 }
 
@@ -126,6 +129,7 @@ export async function deleteNotice(noticeId: string) {
 
   revalidatePath("/board");
   revalidatePath("/notifications");
+  revalidatePath("/home");
   return { ok: true as const };
 }
 
@@ -171,4 +175,5 @@ export async function addNoticeComment(noticeId: string, content: string) {
   if (error) throw new Error(error.message);
 
   revalidatePath("/board");
+  revalidatePath("/home");
 }

@@ -19,7 +19,7 @@ import { HomeTodaySection } from "@/components/home/HomeTodaySection";
 import { HomeStickySection } from "@/components/home/HomeStickySection";
 import { HomeShoppingSection } from "@/components/home/HomeShoppingSection";
 import { HomeSections } from "@/components/home/HomeSections";
-import type { RoutineBlock, Todo } from "@/types";
+import type { NoticeComment, RoutineBlock, Todo } from "@/types";
 
 export default async function HomePage() {
   const { supabase, user, workspaceId } = await requireWorkspaceContext();
@@ -82,15 +82,16 @@ export default async function HomePage() {
       .or(`expire_at.is.null,expire_at.gt.${new Date().toISOString()}`)
       .order("created_at", { ascending: false })
       .limit(5),
-    // 가족상태 아래 "고정 메모 한 줄" — 고정된(is_pinned) 메모가 여럿이어도 가장 최근 1건만.
+    // 가족상태 아래 "고정 메모" 영역 — 고정된(is_pinned) 메모 중 최근 고정 순 최대 2건.
+    // 탭하면 그 자리에서 상세 팝업(NoticeDetailSheet)을 여니 전체 컬럼이 필요하다.
     supabase
       .from("notice")
-      .select("id, content")
+      .select("*")
       .eq("workspace_id", workspaceId)
       .eq("type", "memo")
       .eq("is_pinned", true)
       .order("created_at", { ascending: false })
-      .limit(1),
+      .limit(2),
     supabase.from("users").select("home_layout").eq("id", user.id).single(),
   ]);
 
@@ -112,6 +113,23 @@ export default async function HomePage() {
     .select("member_id, day_of_week, blocks")
     .in("member_id", memberIds.length ? memberIds : [""])
     .in("day_of_week", [today.getDay(), yesterdayDow]);
+
+  // 고정 메모 상세 팝업(NoticeDetailSheet)이 댓글까지 게시판과 동일하게 보여주므로, 화면에
+  // 노출되는 최대 2건에 한해서만 댓글도 함께 가져온다(전체 notice_comment를 다 가져올
+  // 필요는 없음 — 게시판 탭의 commentsByNotice와 같은 패턴, 범위만 좁힌 것).
+  const pinnedMemoIds = (pinnedMemoRows ?? []).map((n) => n.id);
+  const { data: pinnedMemoCommentRows } = pinnedMemoIds.length
+    ? await supabase
+        .from("notice_comment")
+        .select("*")
+        .in("notice_id", pinnedMemoIds)
+        .order("created_at", { ascending: true })
+    : { data: [] as NoticeComment[] };
+
+  const pinnedMemoComments: Record<string, NoticeComment[]> = {};
+  for (const c of pinnedMemoCommentRows ?? []) {
+    (pinnedMemoComments[c.notice_id] ??= []).push(c);
+  }
 
   // 오늘 뭐먹지? — 오늘 등록된 끼니만 시간순으로 보여준다 (등록된 게 없으면 빈 상태).
   // 참여자는 카드에서 텍스트가 아니라 아바타로 표기하므로 이름뿐 아니라 아바타 색/이미지까지 넘긴다.
@@ -185,7 +203,11 @@ export default async function HomePage() {
       familyStatus={familyStatus}
       weather={weather}
       nowIso={new Date().toISOString()}
-      pinnedMemo={pinnedMemoRows?.[0] ?? null}
+      pinnedMemos={pinnedMemoRows ?? []}
+      workspaceId={workspaceId}
+      currentUserId={user.id}
+      membersById={membersByUserId}
+      commentsByNotice={pinnedMemoComments}
     />
   );
 

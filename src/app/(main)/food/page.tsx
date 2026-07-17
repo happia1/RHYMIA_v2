@@ -4,6 +4,7 @@ import { getWeekDates, toDateStr } from "@/lib/date";
 import { getFrequentMenus } from "@/lib/mealUtils";
 import { getWorkspaceMembers } from "@/lib/members";
 import { getMealTrackingDayCount } from "@/app/(main)/food/actions";
+import { isFoodSafetyRecipeEnabled, getDailyRecommendedRecipe } from "@/lib/foodSafetyRecipe";
 import { WeekCalendar } from "@/components/food/WeekCalendar";
 import { MealEmptyState } from "@/components/food/MealEmptyState";
 import { MealVoteCard } from "@/components/food/MealVoteCard";
@@ -23,6 +24,7 @@ export default async function FoodPage({
 
   const selectedDate = date ?? toDateStr(new Date());
   const weekDates = getWeekDates(new Date(selectedDate));
+  const recipeEnabled = isFoodSafetyRecipeEnabled();
 
   const [
     members,
@@ -33,6 +35,7 @@ export default async function FoodPage({
     { data: fridgeItems },
     trackingDays,
     nutritionEnabled,
+    recommendedRecipe,
   ] = await Promise.all([
     getWorkspaceMembers(workspaceId),
     supabase
@@ -68,6 +71,13 @@ export default async function FoodPage({
       .order("created_at", { ascending: false }),
     getMealTrackingDayCount(workspaceId),
     getNutritionDisplayEnabled(workspaceId),
+    // "매일 바뀌는" 추천이라 오늘의 실제 날짜로 시드 — WeekCalendar로 다른 날짜를 보고
+    // 있어도 배너 자체는 항상 "오늘의" 추천을 보여준다("오늘 메뉴로 추가"는 selectedDate로).
+    // 실패해도(공공 API 일시 장애 등) 이 배너 하나만 "불러오지 못했어요"로 빠지고 나머지
+    // 식탁 탭 전체에는 영향 없게 catch로 감싼다.
+    recipeEnabled
+      ? getDailyRecommendedRecipe(toDateStr(new Date())).catch(() => null)
+      : Promise.resolve(null),
   ]);
 
   const datesWithMeals = new Set((weekMeals ?? []).map((m) => m.date));
@@ -128,6 +138,8 @@ export default async function FoodPage({
           frequentMenus={frequentMenus}
           trackingDays={trackingDays}
           activeVote={blockingVote}
+          recommendedRecipe={recommendedRecipe}
+          recipeEnabled={recipeEnabled}
         />
       </div>
     </div>

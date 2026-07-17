@@ -1,38 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
-import {
-  IconPlus,
-  IconCamera,
-  IconPhotoScan,
-  IconLoader2,
-  IconX,
-  IconPin,
-} from "@tabler/icons-react";
-import { BottomSheet } from "@/components/ui/BottomSheet";
-import { SheetHeader, SheetHeaderAction } from "@/components/ui/SheetHeader";
-import { Avatar } from "@/components/ui/Avatar";
-import { Input, Textarea } from "@/components/ui/Input";
-import { useToast } from "@/components/ui/Toast";
+import { useState } from "react";
+import { IconPlus } from "@tabler/icons-react";
 import { SectionExpand } from "@/components/ui/SectionExpand";
-import {
-  addNotice,
-  updateNotice,
-  deleteNotice,
-  addNoticeComment,
-} from "@/app/(main)/board/actions";
+import { NoticeDetailSheet } from "@/components/board/NoticeDetailSheet";
+import { AddPostSheet } from "@/components/board/AddPostSheet";
 import { formatPostTimestamp } from "@/lib/date";
-import { AVATAR_SIZE } from "@/lib/uiTokens";
 import { mirror } from "@/lib/homeTheme";
-import { createClient } from "@/lib/supabase/client";
-import { extractTextFromImage } from "@/lib/agentApi";
-import { compressImage } from "@/lib/imageCompress";
 import type { WorkspaceMemberInfo } from "@/lib/members";
-import type { Notice, NoticeComment, NoticeType } from "@/types";
+import type { Notice, NoticeComment } from "@/types";
 
 const POSTS_PREVIEW_COUNT = 5;
 
-const STICKER_COLORS = ["#FFF9C4", "#FFE0E0", "#E1F5EE", "#E3E8FF", "#F3E1FF"];
 // 스티커는 배경이 항상 밝은 파스텔이라, 테마와 무관하게 항상 어두운 고정색 텍스트를 쓴다.
 const STICKER_TEXT_COLOR = "#3A3520";
 // 모서리 접힘 효과용 그림자색 — 각 배경색을 15%쯤 어둡게 고정 매핑(라이트/다크 무관, 종이 질감 표현이라 테마와 별개).
@@ -44,14 +23,6 @@ const STICKER_FOLD_COLORS: Record<string, string> = {
   "#F3E1FF": "#CFBFD9",
 };
 const STICKER_FOLD_SIZE = 14;
-
-function daysLeft(expireAt: string | null) {
-  if (!expireAt) return null;
-  const diff = Math.ceil(
-    (new Date(expireAt).getTime() - Date.now()) / 86400000
-  );
-  return diff;
-}
 
 export function BoardSection({
   workspaceId,
@@ -66,17 +37,9 @@ export function BoardSection({
   membersById: Record<string, WorkspaceMemberInfo>;
   commentsByNotice: Record<string, NoticeComment[]>;
 }) {
-  const { showToast } = useToast();
   const [detail, setDetail] = useState<Notice | null>(null);
   const [addingSticky, setAddingSticky] = useState(false);
   const [addingPost, setAddingPost] = useState(false);
-  const [editingNotice, setEditingNotice] = useState<Notice | null>(null);
-  const [commentDraft, setCommentDraft] = useState("");
-  const [isEditingDetail, setIsEditingDetail] = useState(false);
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [editTitle, setEditTitle] = useState("");
-  const [editContent, setEditContent] = useState("");
-  const [isPending, startTransition] = useTransition();
 
   const stickers = notices.filter((n) => n.type === "sticky");
   // 고정(is_pinned)이 최우선 — 같으면 notices 원래 순서(작성일 최신순)를 그대로 유지한다
@@ -123,68 +86,15 @@ export function BoardSection({
     </div>
   );
 
-  // 상세 시트를 열 때마다(대상이 바뀔 때 포함) 수정/삭제 확인 상태를 초기화한다.
-  useEffect(() => {
-    setIsEditingDetail(false);
-    setDeleteConfirmOpen(false);
-    if (detail) {
-      setEditTitle(detail.title ?? "");
-      setEditContent(detail.content);
-    }
-  }, [detail]);
-
-  const handleComment = () => {
-    const value = commentDraft.trim();
-    if (!value || !detail) return;
-    setCommentDraft("");
-    startTransition(() => addNoticeComment(detail.id, value));
-  };
-
-  // 스티커는 색상/사진까지 편집해야 해서 이 시트 안에서 인라인으로 다루지 않고, 기존에
-  // 색상·사진 편집을 전부 갖춘 AddPostSheet(수정 모드)로 넘긴다 — 논스티키(메모)만 이
-  // 시트 안에서 제목/내용을 바로 편집.
-  const handleStartEdit = () => {
-    if (!detail) return;
-    if (detail.type === "sticky") {
-      setEditingNotice(detail);
-      setDetail(null);
-    } else {
-      setIsEditingDetail(true);
-    }
-  };
-
-  const handleSaveDetailEdit = () => {
-    if (!detail || !editContent.trim()) return;
-    startTransition(async () => {
-      const result = await updateNotice(detail.id, {
-        title: editTitle,
-        content: editContent,
-        isPinned: detail.is_pinned,
-      });
-      if (!result.ok) {
-        showToast(result.message);
-        return;
-      }
-      setDetail(null);
-    });
-  };
-
-  const handleConfirmDelete = () => {
-    if (!detail) return;
-    startTransition(async () => {
-      const result = await deleteNotice(detail.id);
-      if (!result.ok) {
-        showToast(result.message);
-        return;
-      }
-      setDetail(null);
-    });
-  };
-
   return (
     <div className="flex flex-col gap-1.5">
       <section className="flex flex-col gap-label-gap">
         <span className={mirror.label}>하고싶은 말</span>
+        {stickers.length === 0 && (
+          <p className="text-[13px] text-[var(--text-muted)]">
+            전하고 싶은 말을 쪽지로 남겨보세요!
+          </p>
+        )}
         <div className="scrollbar-hide flex gap-3 overflow-x-auto pb-1">
           {stickers.map((s) => {
             const author = authorOf(s.created_by);
@@ -271,505 +181,27 @@ export function BoardSection({
         </div>
       </section>
 
-      <BottomSheet
-        open={!!detail}
-        onClose={() => {
-          setDetail(null);
-          setCommentDraft("");
-        }}
-      >
-        {detail && (
-          <div className="flex flex-col gap-3">
-            <SheetHeader title={detail.type === "sticky" ? "" : detail.title ?? ""}>
-              {!deleteConfirmOpen && !isEditingDetail && detail.created_by === currentUserId && (
-                <>
-                  <SheetHeaderAction label="수정" onClick={handleStartEdit} />
-                  <SheetHeaderAction
-                    label="삭제"
-                    tone="terra"
-                    onClick={() => setDeleteConfirmOpen(true)}
-                  />
-                </>
-              )}
-              {!deleteConfirmOpen && isEditingDetail && (
-                <SheetHeaderAction
-                  label="저장"
-                  onClick={handleSaveDetailEdit}
-                  disabled={isPending || !editContent.trim()}
-                />
-              )}
-            </SheetHeader>
-
-            {deleteConfirmOpen ? (
-              <div className="flex flex-col gap-3">
-                <p className="text-[13px] text-ink">정말 삭제하시겠어요?</p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setDeleteConfirmOpen(false)}
-                    className="flex-1 rounded-xl bg-cream py-2.5 text-[13px] font-medium text-stone"
-                  >
-                    취소
-                  </button>
-                  <button
-                    onClick={handleConfirmDelete}
-                    disabled={isPending}
-                    className="flex flex-1 items-center justify-center rounded-xl bg-terra py-2.5 text-[13px] font-medium text-white disabled:opacity-50"
-                  >
-                    삭제하기
-                  </button>
-                </div>
-              </div>
-            ) : /* 스티커는 handleStartEdit에서 별도 AddPostSheet(수정 모드)로 보내므로
-                   이 인라인 편집 분기는 항상 non-sticky용이다. */
-            isEditingDetail ? (
-              <>
-                <Input
-                  value={editTitle}
-                  onChange={(e) => setEditTitle(e.target.value)}
-                  placeholder="제목"
-                  className="h-11 rounded-xl px-3 text-[14px]"
-                />
-                <Textarea
-                  value={editContent}
-                  onChange={(e) => setEditContent(e.target.value)}
-                  rows={4}
-                  className="rounded-xl p-3 text-[14px]"
-                />
-                <div className="flex items-center justify-end gap-1.5 text-[11px] text-[var(--text-muted)]">
-                  <span className="font-medium">
-                    {authorOf(detail.created_by)?.display_name ?? "가족"}
-                  </span>
-                  <span>· {formatPostTimestamp(detail.created_at)}</span>
-                </div>
-              </>
-            ) : (
-              <>
-                {detail.type !== "sticky" && detail.is_pinned && (
-                  <div className="flex items-center gap-1 text-[10px] font-medium text-honey">
-                    <IconPin size={12} />
-                    고정
-                  </div>
-                )}
-                {detail.image_url && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={detail.image_url}
-                    alt=""
-                    className="max-h-56 w-full rounded-xl object-cover"
-                  />
-                )}
-                <p
-                  className={`whitespace-pre-wrap text-[13px] text-ink ${
-                    detail.type === "sticky" ? "font-handwriting text-[16px]" : ""
-                  }`}
-                >
-                  {detail.content}
-                </p>
-
-                {detail.type === "sticky" ? (
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-medium text-[var(--text-muted)]">
-                      {authorOf(detail.created_by)?.display_name ?? "가족"}
-                    </span>
-                    {daysLeft(detail.expire_at) !== null && (
-                      <span className="text-[11px] text-[var(--text-muted)]">
-                        D-{Math.max(daysLeft(detail.expire_at)!, 0)}
-                      </span>
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-end gap-1.5 text-[11px] text-[var(--text-muted)]">
-                    <span className="font-medium">
-                      {authorOf(detail.created_by)?.display_name ?? "가족"}
-                    </span>
-                    <span>· {formatPostTimestamp(detail.created_at)}</span>
-                  </div>
-                )}
-              </>
-            )}
-
-            {detail.type !== "sticky" && !isEditingDetail && !deleteConfirmOpen && (
-              <div className="mt-2 flex flex-col gap-3 border-t border-border-light pt-3">
-                <span className="text-[12px] font-medium text-stone">댓글</span>
-                {(commentsByNotice[detail.id] ?? []).map((c) => {
-                  const commenter = authorOf(c.user_id);
-                  return (
-                    <div key={c.id} className="flex items-start gap-2">
-                      <Avatar
-                        name={commenter?.display_name ?? "가족"}
-                        color={commenter?.avatar_color}
-                        textColor={commenter?.avatar_text_color}
-                        imageUrl={commenter?.avatar_image_url}
-                        size={AVATAR_SIZE.comment}
-                      />
-                      <div className="flex flex-col">
-                        <span className="text-[12px] font-medium text-ink">
-                          {commenter?.display_name ?? "가족"}
-                        </span>
-                        <span className="whitespace-pre-wrap text-[13px] text-ink">{c.content}</span>
-                      </div>
-                    </div>
-                  );
-                })}
-                <div className="flex items-center gap-2">
-                  <Input
-                    value={commentDraft}
-                    onChange={(e) => setCommentDraft(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleComment()}
-                    placeholder="댓글을 남겨보세요"
-                    className="h-11 flex-1 rounded-xl px-3 text-[13px]"
-                  />
-                  <button
-                    onClick={handleComment}
-                    disabled={isPending}
-                    className="rounded-xl bg-ink px-4 py-2.5 text-[13px] font-medium text-cream"
-                  >
-                    등록
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </BottomSheet>
+      <NoticeDetailSheet
+        notice={detail}
+        onClose={() => setDetail(null)}
+        workspaceId={workspaceId}
+        currentUserId={currentUserId}
+        membersById={membersById}
+        commentsByNotice={commentsByNotice}
+      />
 
       <AddPostSheet
-        open={addingSticky || addingPost || !!editingNotice}
+        open={addingSticky || addingPost}
         onClose={() => {
           setAddingSticky(false);
           setAddingPost(false);
-          setEditingNotice(null);
         }}
         workspaceId={workspaceId}
         currentUserId={currentUserId}
         fixedType={addingSticky ? "sticky" : undefined}
         initialType={addingPost ? "memo" : undefined}
-        existingNotice={editingNotice}
       />
     </div>
   );
 }
 
-export function AddPostSheet({
-  open,
-  onClose,
-  workspaceId,
-  currentUserId,
-  fixedType,
-  initialType,
-  existingNotice,
-}: {
-  open: boolean;
-  onClose: () => void;
-  workspaceId: string;
-  currentUserId: string;
-  /** 지정하면 타입 선택 UI를 숨기고 이 타입으로 고정 (예: "하고싶은 말" 작성 버튼) */
-  fixedType?: NoticeType;
-  /** fixedType이 없을 때(메모/공지 작성 버튼) 기본 선택 타입 — 픽커는 항상 메모/공지만 보여줌 */
-  initialType?: NoticeType;
-  /** 지정하면 수정 모드로 열림 — 기존 내용으로 채우고 저장 시 새로 만들지 않고 updateNotice로 반영 */
-  existingNotice?: Notice | null;
-}) {
-  const { showToast } = useToast();
-  const [type, setType] = useState<NoticeType>(fixedType ?? initialType ?? "memo");
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  const [color, setColor] = useState(STICKER_COLORS[0]);
-  const [expireDays, setExpireDays] = useState(1);
-  const [isPinned, setIsPinned] = useState(false);
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [isUploadingImage, setIsUploadingImage] = useState(false);
-  const [isExtractingText, setIsExtractingText] = useState(false);
-  const [attachError, setAttachError] = useState("");
-  const [isPending, startTransition] = useTransition();
-
-  const imageFileInputRef = useRef<HTMLInputElement>(null);
-  const ocrFileInputRef = useRef<HTMLInputElement>(null);
-
-  // 시트가 열릴 때마다(수정 대상이 바뀔 때 포함) 필드를 다시 채운다 — 시트 자체는
-  // 계속 마운트된 채 open만 토글되므로, 최초 마운트 시 useState 초기값만으로는
-  // "추가"→"수정"으로 열릴 때 이전 내용이 남는 문제가 생긴다.
-  useEffect(() => {
-    if (!open) return;
-    if (existingNotice) {
-      setType(existingNotice.type);
-      setTitle(existingNotice.title ?? "");
-      setContent(existingNotice.content);
-      setColor(existingNotice.color);
-      setImageUrl(existingNotice.image_url);
-      setIsPinned(existingNotice.is_pinned);
-    } else {
-      setType(fixedType ?? initialType ?? "memo");
-      setTitle("");
-      setContent("");
-      setColor(STICKER_COLORS[0]);
-      setExpireDays(1);
-      setIsPinned(false);
-      setImageUrl(null);
-    }
-    setAttachError("");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, existingNotice, fixedType, initialType]);
-
-  /** 이미지 삽입 — 스티키(사진 첨부)와 메모/공지(이미지 삽입) 둘 다에서 공용으로 쓰는 업로드 핸들러. */
-  const handleImageSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-
-    setAttachError("");
-    if (!file.type.startsWith("image/")) {
-      setAttachError("이미지 파일만 첨부할 수 있어요.");
-      return;
-    }
-
-    setIsUploadingImage(true);
-    try {
-      const supabase = createClient();
-      const extMatch = file.name.match(/\.([a-zA-Z0-9]+)$/);
-      const ext = extMatch ? extMatch[1].toLowerCase() : "png";
-      const path = `${currentUserId}/${Date.now()}.${ext}`;
-      const { error: uploadError } = await supabase.storage
-        .from("notice-images")
-        .upload(path, file, { upsert: true });
-      if (uploadError) throw uploadError;
-
-      const { data } = supabase.storage.from("notice-images").getPublicUrl(path);
-      setImageUrl(data.publicUrl);
-    } catch (err) {
-      setAttachError(err instanceof Error ? `업로드에 실패했어요: ${err.message}` : "업로드에 실패했어요.");
-    } finally {
-      setIsUploadingImage(false);
-    }
-  };
-
-  const handleOcrImageSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-
-    setAttachError("");
-    if (!file.type.startsWith("image/")) {
-      setAttachError("이미지 파일만 첨부할 수 있어요.");
-      return;
-    }
-
-    setIsExtractingText(true);
-    try {
-      const dataUrl = await compressImage(file);
-      const text = await extractTextFromImage(dataUrl);
-      if (text.trim()) {
-        setContent((prev) => (prev ? `${prev}\n${text.trim()}` : text.trim()));
-      } else {
-        setAttachError("이미지에서 텍스트를 찾지 못했어요.");
-      }
-    } catch (err) {
-      setAttachError(
-        err instanceof Error && err.message && !err.message.startsWith("agent_http_")
-          ? err.message
-          : "텍스트 추출에 실패했어요."
-      );
-    } finally {
-      setIsExtractingText(false);
-    }
-  };
-
-  const handleSubmit = () => {
-    if (!content.trim()) return;
-    startTransition(async () => {
-      if (existingNotice) {
-        const result = await updateNotice(existingNotice.id, {
-          type: type !== "sticky" ? type : undefined,
-          title: type === "sticky" ? undefined : title,
-          content,
-          color: type === "sticky" ? color : undefined,
-          isPinned: type !== "sticky" ? isPinned : undefined,
-          imageUrl,
-        });
-        if (!result.ok) {
-          showToast(result.message);
-          return;
-        }
-      } else {
-        await addNotice(workspaceId, {
-          type,
-          title: type === "sticky" ? undefined : title,
-          content,
-          color: type === "sticky" ? color : undefined,
-          isPinned: type !== "sticky" ? isPinned : undefined,
-          expireDays: type === "sticky" ? expireDays : undefined,
-          imageUrl,
-        });
-      }
-      onClose();
-    });
-  };
-
-  const sheetTitle = existingNotice
-    ? type === "sticky"
-      ? "하고싶은 말 수정"
-      : "메모 수정"
-    : type === "sticky"
-    ? "하고싶은 말 작성"
-    : "메모 작성";
-
-  return (
-    <BottomSheet open={open} onClose={onClose}>
-      <div className="flex flex-col gap-4">
-        <SheetHeader title={sheetTitle}>
-          <SheetHeaderAction
-            label={existingNotice ? "저장" : "등록"}
-            onClick={handleSubmit}
-            disabled={isPending || !content.trim()}
-          />
-        </SheetHeader>
-
-        {type === "sticky" ? (
-          <>
-            <div className="flex gap-2">
-              {STICKER_COLORS.map((c) => (
-                <button
-                  key={c}
-                  onClick={() => setColor(c)}
-                  className={`h-8 w-8 rounded-full ${
-                    color === c ? "ring-2 ring-ink ring-offset-2" : ""
-                  }`}
-                  style={{ backgroundColor: c }}
-                  aria-label={c}
-                />
-              ))}
-            </div>
-            <Textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="자유롭게 적어보세요"
-              rows={3}
-              className="rounded-xl p-3 text-[14px]"
-            />
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => imageFileInputRef.current?.click()}
-                disabled={isUploadingImage}
-                className="flex items-center gap-1.5 text-[13px] font-medium text-honey disabled:opacity-50"
-              >
-                {isUploadingImage ? (
-                  <IconLoader2 size={16} className="animate-spin" />
-                ) : (
-                  <IconCamera size={16} />
-                )}
-                {imageUrl ? "사진 변경" : "사진 첨부"}
-              </button>
-              {imageUrl && (
-                <div className="relative h-10 w-10">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={imageUrl} alt="" className="h-10 w-10 rounded-lg object-cover" />
-                  <button
-                    onClick={() => setImageUrl(null)}
-                    aria-label="사진 제거"
-                    className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-ink text-cream"
-                  >
-                    <IconX size={10} />
-                  </button>
-                </div>
-              )}
-            </div>
-            {!existingNotice && (
-              <div className="flex gap-2">
-                {[1, 2, 3].map((d) => (
-                  <button
-                    key={d}
-                    onClick={() => setExpireDays(d)}
-                    className={`rounded-full px-3 py-1.5 text-[13px] font-medium ${
-                      expireDays === d ? "bg-ink text-cream" : "bg-cream text-stone"
-                    }`}
-                  >
-                    {d}일
-                  </button>
-                ))}
-              </div>
-            )}
-          </>
-        ) : (
-          <>
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="제목"
-              className="h-11 rounded-xl px-3 text-[14px]"
-            />
-            <Textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="내용을 입력하세요"
-              rows={4}
-              className="rounded-xl p-3 text-[14px]"
-            />
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => imageFileInputRef.current?.click()}
-                disabled={isUploadingImage}
-                className="flex items-center gap-1.5 text-[13px] font-medium text-honey disabled:opacity-50"
-              >
-                {isUploadingImage ? (
-                  <IconLoader2 size={16} className="animate-spin" />
-                ) : (
-                  <IconCamera size={16} />
-                )}
-                {imageUrl ? "이미지 변경" : "이미지 삽입"}
-              </button>
-              {imageUrl && (
-                <div className="relative h-10 w-10">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={imageUrl} alt="" className="h-10 w-10 rounded-lg object-cover" />
-                  <button
-                    onClick={() => setImageUrl(null)}
-                    aria-label="이미지 제거"
-                    className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-ink text-cream"
-                  >
-                    <IconX size={10} />
-                  </button>
-                </div>
-              )}
-            </div>
-            <button
-              onClick={() => ocrFileInputRef.current?.click()}
-              disabled={isExtractingText}
-              className="flex items-center gap-1.5 self-start text-[13px] font-medium text-honey disabled:opacity-50"
-            >
-              {isExtractingText ? (
-                <IconLoader2 size={16} className="animate-spin" />
-              ) : (
-                <IconPhotoScan size={16} />
-              )}
-              {isExtractingText ? "텍스트를 읽는 중..." : "사진에서 텍스트 채우기"}
-            </button>
-            <input
-              ref={ocrFileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleOcrImageSelected}
-            />
-            <label className="flex items-center gap-2 text-[13px] text-ink">
-              <input
-                type="checkbox"
-                checked={isPinned}
-                onChange={(e) => setIsPinned(e.target.checked)}
-              />
-              상단 고정
-            </label>
-          </>
-        )}
-        <input
-          ref={imageFileInputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={handleImageSelected}
-        />
-
-        {attachError && <p className="text-[12px] text-terra">{attachError}</p>}
-      </div>
-    </BottomSheet>
-  );
-}

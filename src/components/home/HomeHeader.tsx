@@ -8,6 +8,9 @@ import { WEEKDAY_LABEL } from "@/lib/date";
 import { Avatar } from "@/components/ui/Avatar";
 import { AVATAR_SIZE } from "@/lib/uiTokens";
 import { mirror } from "@/lib/homeTheme";
+import { NoticeDetailSheet } from "@/components/board/NoticeDetailSheet";
+import type { WorkspaceMemberInfo } from "@/lib/members";
+import type { Notice, NoticeComment } from "@/types";
 
 export interface FamilyMemberStatus {
   id: string;
@@ -29,16 +32,25 @@ export function HomeHeader({
   familyStatus,
   weather,
   nowIso,
-  pinnedMemo,
+  pinnedMemos,
+  workspaceId,
+  currentUserId,
+  membersById,
+  commentsByNotice,
 }: {
   familyStatus: FamilyMemberStatus[];
   weather: WeatherData | null;
   nowIso: string;
-  /** 게시판(메모)에서 상단 고정한 글 중 가장 최근 1건 — 없으면 이 줄 자체를 렌더하지 않는다
-   * (자리 미리 확보 안 함, 홈 하단 여백은 그대로 유지). */
-  pinnedMemo?: { id: string; content: string } | null;
+  /** 게시판(메모)에서 상단 고정한 글 중 최근 고정 순 최대 2건 — 없으면 이 영역 자체를
+   * 렌더하지 않는다(자리 미리 확보 안 함, placeholder 없이 그냥 빈 여백 그대로 유지). */
+  pinnedMemos: Notice[];
+  workspaceId: string;
+  currentUserId: string;
+  membersById: Record<string, WorkspaceMemberInfo>;
+  commentsByNotice: Record<string, NoticeComment[]>;
 }) {
   const [now, setNow] = useState(() => new Date(nowIso));
+  const [openMemo, setOpenMemo] = useState<Notice | null>(null);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 30_000);
@@ -112,12 +124,37 @@ export function HomeHeader({
         ))}
       </div>
 
-      {pinnedMemo && (
-        <Link href="/board" className="flex items-center gap-1.5">
-          <IconPin size={11} className={`shrink-0 ${mirror.muted}`} />
-          <span className={`truncate text-[11px] ${mirror.muted}`}>{pinnedMemo.content}</span>
-        </Link>
+      {pinnedMemos.length > 0 && (
+        <div className="flex flex-col gap-1">
+          {pinnedMemos.map((memo) => {
+            const author = memo.created_by ? membersById[memo.created_by] : null;
+            return (
+              <button
+                key={memo.id}
+                onClick={() => setOpenMemo(memo)}
+                className="flex items-center gap-1.5 text-left"
+              >
+                <IconPin size={11} className={`shrink-0 ${mirror.muted}`} />
+                <span className={`min-w-0 flex-1 truncate text-[11px] ${mirror.muted}`}>
+                  {memo.content}
+                </span>
+                <span className={`shrink-0 text-[11px] ${mirror.muted}`}>
+                  {author?.display_name ?? "가족"}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       )}
+
+      <NoticeDetailSheet
+        notice={openMemo}
+        onClose={() => setOpenMemo(null)}
+        workspaceId={workspaceId}
+        currentUserId={currentUserId}
+        membersById={membersById}
+        commentsByNotice={commentsByNotice}
+      />
     </div>
   );
 }
