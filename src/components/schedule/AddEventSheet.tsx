@@ -7,10 +7,17 @@ import { SheetHeader, SheetHeaderAction } from "@/components/ui/SheetHeader";
 import { useToast } from "@/components/ui/Toast";
 import { Input, Textarea } from "@/components/ui/Input";
 import { PlaceInput } from "@/components/schedule/PlaceInput";
-import { createSchedule, updateSchedule, deleteSchedule } from "@/app/(main)/schedule/actions";
+import {
+  createSchedule,
+  updateSchedule,
+  deleteSchedule,
+  type ScheduleInput,
+} from "@/app/(main)/schedule/actions";
 import { KEYWORD_GROUPS } from "@/lib/scheduleKeywords";
 import type { ExpandedSchedule } from "@/lib/recurrence";
 import type { NotifyOffset, RecurType, RecurCalendar } from "@/types";
+
+type CreateScheduleResult = Awaited<ReturnType<typeof createSchedule>>;
 
 interface MemberOption {
   id: string;
@@ -51,6 +58,8 @@ export function AddEventSheet({
   defaultDate,
   prefill,
   existingSchedule,
+  onOptimisticCreate,
+  onCreateSettled,
 }: {
   open: boolean;
   onClose: () => void;
@@ -64,6 +73,12 @@ export function AddEventSheet({
    * updateSchedule을 호출한다. 가상 인스턴스(isVirtual)면 originalId로 저장/삭제하고
    * "반복 일정의 원본을 수정합니다" 안내를 보여준다. */
   existingSchedule?: ExpandedSchedule | null;
+  /** 홈처럼 부모가 직접 로컬 상태를 들고 있어 낙관적 업데이트가 가능한 화면에서만 넘긴다 —
+   * 있으면(신규 등록 한정) 서버 응답을 기다리지 않고 시트를 즉시 닫으면서 tempId를 먼저
+   * 통지하고, 백그라운드에서 실제 요청이 끝나면 onCreateSettled로 확정 결과를 알려준다.
+   * 없으면(월간/주간 뷰 등 기존 호출부) 예전과 동일하게 응답을 기다린 뒤 닫는다. */
+  onOptimisticCreate?: (tempId: string, input: ScheduleInput) => void;
+  onCreateSettled?: (tempId: string, result: CreateScheduleResult) => void;
 }) {
   const { showToast } = useToast();
   const [title, setTitle] = useState("");
@@ -166,7 +181,6 @@ export function AddEventSheet({
 
   const handleSubmit = async () => {
     if (!title.trim()) return;
-    setIsSubmitting(true);
     const input = {
       title,
       date_start: dateStart,
@@ -188,6 +202,25 @@ export function AddEventSheet({
       recur_calendar: recurType === "yearly" ? recurCalendar : ("solar" as RecurCalendar),
       recur_until: recurType !== "none" ? recurUntil || null : null,
     };
+
+    // 낙관적 경로 — 신규 등록이고 부모가 로컬 상태를 직접 관리할 때만(onOptimisticCreate가
+    // 있을 때). 서버 응답을 기다리지 않고 시트부터 닫아 "즉시 반영"된 것처럼 보이게 하고,
+    // 실제 결과는 백그라운드에서 받아 onCreateSettled로 부모에게 넘긴다(성공 시 확정 데이터로
+    // 교체, 실패 시 부모가 롤백 + 에러 토스트).
+    if (!targetId && onOptimisticCreate) {
+      const tempId = crypto.randomUUID();
+      onOptimisticCreate(tempId, input);
+      reset();
+      onClose();
+      const result = await createSchedule(workspaceId, input);
+      onCreateSettled?.(tempId, result);
+      if (!result.ok) {
+        showToast((result as { message?: string }).message ?? "일정 처리에 실패했습니다.");
+      }
+      return;
+    }
+
+    setIsSubmitting(true);
     const result = targetId
       ? await updateSchedule(targetId, input)
       : await createSchedule(workspaceId, input);

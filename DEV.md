@@ -1,6 +1,31 @@
 # 개발 참조 문서
 
-## 마지막 업데이트: 2026-07-16 (마커 시각 언어 통일 + 주간 뷰 배치 개선)
+## 마지막 업데이트: 2026-07-17 (Vercel 배포 준비 점검)
+
+- 2026-07-17: Vercel 배포 준비 점검 — 기능 추가 없이 마감/정리만 진행
+  - **프로덕션 정리**: `src/` 전체에 `console.log`/`debug` 호출 없음(신규 발견 0건). 미사용
+    import/dead code — `tsc --noEmit --noUnusedLocals --noUnusedParameters`로 프로젝트 전체
+    스캔(임시 플래그, `tsconfig.json` 자체는 안 건드림) 결과 0건, 이미 깨끗한 상태였음. 잔존
+    TODO/임시 플래그는 코드 변경 없이 보고만: `holidays.ts`(공공데이터포털 API 대기 중, 정적
+    2026년 목록), `PlaceInput.tsx`(카카오 로컬 API 대기 중, 텍스트 입력만), `DaySheet.tsx`의
+    `SHOW_ACTIVITY_SUGGESTION = false`(사용자 요청으로 의도적으로 꺼둔 기능 플래그, 실수 아님).
+  - **에이전트 미배포 대응**: `agentServer.ts`의 `proxyAgentRequest`(에이전트 서버 fetch 실패
+    시 503 응답)와 `agentApi.ts`의 `parseAgentResponse`(API 라우트가 JSON 대신 HTML 에러
+    페이지를 반환했을 때의 폴백)가 각각 하드코딩하고 있던 "터미널에서 npm run dev:all로
+    실행해주세요" 로컬 dev 안내 메시지를 `process.env.NODE_ENV === "production"` 분기로
+    나눔 — 프로덕션에서는 "AI 도우미는 준비 중이에요."로 대체(Next.js가 두 번들 모두에
+    `NODE_ENV`를 자동으로 정적 치환해주므로 별도 환경변수 없이 안전하게 분기 가능).
+  - **환경변수 최종 점검** + **빌드 정적 점검**: 상세 내용은 새로 만든 "Vercel 배포" 섹션
+    (환경변수 절 바로 아래) 참고 — `.env.example`의 8개 변수가 실제 코드 사용처와 정확히
+    일치함을 확인(빠지거나 남는 변수 없음), `NEXT_PUBLIC_` 분류표와 값이 없을 때의 폴백
+    동작을 표로 정리. 서버 전용 모듈의 클라이언트 import, 빌드타임에 평가되는 위험한
+    top-level 코드, `next/image` 외부 도메인 설정 누락 등 빌드를 깨뜨릴 만한 요소는 발견되지
+    않음(로컬은 FAT32 드라이브라 `next build` 자체를 못 돌려 정적 점검으로 대체 — Vercel의
+    리눅스 빌드 환경과는 무관한 로컬 한정 제약이라는 점도 명시).
+  - **Supabase SQL 인벤토리 + 검증 쿼리**: `supabase/`의 SQL 파일 28개 전체를 표로 정리하고
+    프로덕션 DB 대조용 확인 쿼리를 작성 — 대화 응답으로 전달(문서 분량이 커서 DEV.md에는
+    싣지 않음, 아래 "Supabase 스키마 현황" 절이 표 형태는 아니지만 이미 같은 정보의 산문
+    버전을 담고 있음).
 
 - 2026-07-16: 마커 시각 언어 통일(EventMarker 공용화) + 월간 기간 텍스트 버그 2건 + 주간 뷰
   열 재배치/기간 표기 단순화
@@ -1657,6 +1682,59 @@ agent/                                                     2026-07-08 신규: Ne
 - `GEMINI_API_KEY` — Google AI Studio에서 발급
 - `ALLOWED_ORIGINS` — CORS 허용 도메인, 콤마 구분 (로컬 기본값 `http://localhost:3000`, 배포 후 실제 Vercel 도메인 추가 필요)
 - `AGENT_API_KEY` — 2026-07-11 추가, 설정하면 `/process-schedule`/`/extract-text`에 `X-API-Key` 헤더 검증을 강제(`/health`는 제외). 미설정 시 인증 생략(로컬 개발 기본값) — 배포 환경에서는 반드시 설정하고 Next.js `.env.local`의 `AGENT_API_KEY`와 같은 값으로 맞출 것
+
+## Vercel 배포
+
+2026-07-17 배포 준비 점검에서 정리. **이 프로젝트에서 실제로 Vercel에 배포되는 건 Next.js 앱뿐**
+— `agent/`(Python)는 별도 서비스라 Render 등 다른 곳에 따로 배포해야 하고, 그 서버의
+`GEMINI_API_KEY`/`ALLOWED_ORIGINS`/`AGENT_API_KEY`는 Vercel 프로젝트 환경변수가 아니다(위
+"`agent/.env`" 표 참고 — 헷갈리지 않도록 분리).
+
+### Vercel 프로젝트에 등록할 환경변수
+
+| 변수 | 필수 | `NEXT_PUBLIC_` | 값이 없을 때 |
+|---|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | ✅ 필수 | 필요(브라우저 Supabase 클라이언트가 직접 읽음) | `createClient()` 호출 시 즉시 런타임 에러(빈 문자열로 접속 시도) |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✅ 필수 | 필요 | 위와 동일 |
+| `SUPABASE_SERVICE_ROLE_KEY` | ✅ 필수 | ❌ 절대 금지(비밀키 — 붙이면 브라우저에 노출됨) | 공유 링크(`/share/[token]`) 전용 관리자 클라이언트가 실패 |
+| `OPENWEATHER_API_KEY` | 선택 | ❌ 불필요(서버에서만 fetch) | `getCurrentWeather()`가 `null` 반환 → 홈 날씨 카드가 "서울/-°"로 조용히 폴백(에러 아님) |
+| `NEXT_PUBLIC_AGENT_API_URL` | 선택 | 이미 있음(단, 실제로는 서버 코드만 읽음 — 아래 참고) | 미설정 시 `localhost:8000`로 폴백 → Vercel에서는 항상 연결 실패 → 이번에 추가한 "AI 도우미는 준비 중이에요" 메시지로 처리됨(정상 동작, 에이전트 서버를 아직 배포하지 않았다면 그냥 비워둬도 됨) |
+| `AGENT_API_KEY` | 선택 | ❌ 불필요 | 에이전트 서버가 `X-API-Key` 검증을 요구하도록 설정했을 때만 필요. `agent/.env`의 같은 이름 값과 일치시킬 것 |
+| `NAVER_CLIENT_ID` | 선택 | ❌ 불필요 | `isRecipeSearchEnabled()`가 `false` → "블로그에서 레시피 찾기" 버튼 자체가 화면에서 숨겨짐(에러 아님) |
+| `NAVER_CLIENT_SECRET` | 선택 | ❌ 절대 금지(비밀키) | 위와 동일 |
+
+**분류 메모**:
+- `NEXT_PUBLIC_` 접두사는 "빌드 시점에 브라우저 번들에도 값이 그대로 박제된다"는 뜻이므로,
+  비밀키(서비스 롤 키, 네이버 Client Secret, 에이전트 API 키)에는 **어떤 경우에도 붙이면 안 됨**.
+  실수로 붙이면 즉시 브라우저 개발자 도구 네트워크 탭/번들 소스에서 값이 그대로 보인다.
+- `NEXT_PUBLIC_AGENT_API_URL`은 2026-07-11 리팩터로 이제 `/api/agent/*` route handler(서버)만
+  읽고 브라우저는 더 이상 이 값을 쓰지 않는다 — 즉 오늘 기준으론 접두사가 굳이 필요 없다.
+  그래도 이름을 바꾸면 로컬 `.env.local`/문서/과거 배포 메모가 전부 어긋나므로 이번 점검에서는
+  **이름은 그대로 두고 분류만 기록**(코드/설정 변경 없음 — "기능 추가 없이 마감만" 범위 밖).
+- Vercel 대시보드에 값을 바꿔 넣은 뒤에는 **Redeploy가 필요**함(`NEXT_PUBLIC_` 값은 특히 빌드 시점에
+  박제되므로 재배포 없이는 반영되지 않음).
+
+### 로컬에서 `next build`를 확인할 수 없는 이유
+
+- 이 로컬 환경은 E: 드라이브가 FAT32라 `next build`가 심볼릭 링크 확인(readlink) 단계에서
+  실패한다(이미 위 "알려진 이슈" 절에 기록돼 있던 문제, `next.config.mjs`의
+  `config.resolve.symlinks = false` 워크어라운드는 dev 모드 한정 증상만 완화함 — 프로덕션 빌드
+  자체는 여전히 로컬에서 못 돌림). **Vercel의 빌드 환경은 리눅스라 이 FAT32 이슈와 무관** —
+  즉 로컬에서 안 되는 것과 Vercel에서 되는 것은 별개 문제이고, 코드 자체에서 발견된
+  빌드-차단 요소는 없었다(아래 정적 점검 결과).
+- 대신 이번엔 `tsc --noEmit`(+`--noUnusedLocals --noUnusedParameters`로 임시 확장), `next lint`,
+  그리고 서버 컴포넌트/클라이언트 컴포넌트 경계의 정적 점검으로 대체 검증했다:
+  - `"use client"` 파일 64개 전수 조사 — 서버 전용 모듈(`@/lib/supabase/server`,
+    `@/lib/supabase/admin`, `next/headers`)을 런타임에 import하는 곳 없음(`HomeHeader.tsx`가
+    `@/lib/weather`를 참조하지만 `import type`이라 타입만 가져오고 번들엔 안 남음 — 안전).
+  - `fs`/`path`/`child_process` 등 Node 전용 모듈 import 없음.
+  - `process.env.*` 참조는 전부 함수 본문 안(요청/렌더 시점에 평가)이라 빌드 타임에 미리
+    평가되며 죽는 top-level 코드 없음 — 유일한 top-level 예외는
+    `agentServer.ts`의 `NEXT_PUBLIC_AGENT_API_URL` 상수인데, `NEXT_PUBLIC_` 값은 원래
+    빌드 타임에 박제되는 게 정상 동작이라 문제 아님.
+  - `next/image` 미사용(전부 `<img>` 태그) — 외부 이미지 도메인(`images.remotePatterns`)
+    미설정으로 인한 빌드/런타임 이슈 없음.
+  - `export const runtime/dynamic/revalidate` 커스텀 설정 없음 — 전부 App Router 기본값.
 
 ## Supabase 스키마 현황
 

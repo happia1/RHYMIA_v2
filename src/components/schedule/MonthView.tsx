@@ -418,10 +418,18 @@ export function MonthView({
                   </span>
                 );
               } else if (labelOccurrences.length >= 2) {
+                // 단일 라벨과 동일한 규칙 — 합쳐진 라벨도 그 중 가장 넓게 뻗는 기간의
+                // spanCells를 폭으로 써야 그 주에서 실제로 쓸 수 있는 라인 폭만큼 보인다.
+                // 이전엔 무조건 한 칸(셀 1개) 폭으로 고정돼 있어서 "여름특강/유치원방학"처럼
+                // 합쳐진 이름이 길면 실제 밴드 라인보다 훨씬 먼저 잘렸다.
+                const maxSpanCells = Math.max(...labelOccurrences.map((occ) => occ.spanCells));
                 labelNode = (
                   <span
                     className="pointer-events-none absolute left-0 truncate text-left text-[8px] leading-none"
-                    style={{ bottom: LINE_STACK_H + BAND_LABEL_GAP, width: "calc(100% - 4px)" }}
+                    style={{
+                      bottom: LINE_STACK_H + BAND_LABEL_GAP,
+                      width: `calc(${maxSpanCells * 100}% - 4px)`,
+                    }}
                   >
                     {labelOccurrences.map((occ, oi) => (
                       <span key={oi}>

@@ -39,6 +39,7 @@ export default async function HomePage() {
     { data: meals },
     { data: shoppingItems },
     { data: stickers },
+    { data: pinnedMemoRows },
     { data: myUserRow },
   ] = await Promise.all([
     getWorkspaceMembers(workspaceId),
@@ -81,6 +82,15 @@ export default async function HomePage() {
       .or(`expire_at.is.null,expire_at.gt.${new Date().toISOString()}`)
       .order("created_at", { ascending: false })
       .limit(5),
+    // 가족상태 아래 "고정 메모 한 줄" — 고정된(is_pinned) 메모가 여럿이어도 가장 최근 1건만.
+    supabase
+      .from("notice")
+      .select("id, content")
+      .eq("workspace_id", workspaceId)
+      .eq("type", "memo")
+      .eq("is_pinned", true)
+      .order("created_at", { ascending: false })
+      .limit(1),
     supabase.from("users").select("home_layout").eq("id", user.id).single(),
   ]);
 
@@ -171,7 +181,12 @@ export default async function HomePage() {
   }));
 
   const headerNode = (
-    <HomeHeader familyStatus={familyStatus} weather={weather} nowIso={new Date().toISOString()} />
+    <HomeHeader
+      familyStatus={familyStatus}
+      weather={weather}
+      nowIso={new Date().toISOString()}
+      pinnedMemo={pinnedMemoRows?.[0] ?? null}
+    />
   );
 
   // 홈 위젯 4개 — 2026-07-11부터 각각 독립 단위(예전엔 끼니+오늘/하고싶은말+장바구니 2개로 묶여있었음)
@@ -186,6 +201,7 @@ export default async function HomePage() {
       members={memberOptions}
       workspaceId={workspaceId}
       defaultDate={todayStr}
+      currentUserId={user.id}
     />
   );
   const stickySection = (

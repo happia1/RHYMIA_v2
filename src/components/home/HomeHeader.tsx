@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { IconBell, IconSettings } from "@tabler/icons-react";
+import { IconBell, IconSettings, IconPin } from "@tabler/icons-react";
 import type { WeatherData } from "@/lib/weather";
 import { WEEKDAY_LABEL } from "@/lib/date";
 import { Avatar } from "@/components/ui/Avatar";
@@ -29,10 +29,14 @@ export function HomeHeader({
   familyStatus,
   weather,
   nowIso,
+  pinnedMemo,
 }: {
   familyStatus: FamilyMemberStatus[];
   weather: WeatherData | null;
   nowIso: string;
+  /** 게시판(메모)에서 상단 고정한 글 중 가장 최근 1건 — 없으면 이 줄 자체를 렌더하지 않는다
+   * (자리 미리 확보 안 함, 홈 하단 여백은 그대로 유지). */
+  pinnedMemo?: { id: string; content: string } | null;
 }) {
   const [now, setNow] = useState(() => new Date(nowIso));
 
@@ -107,6 +111,13 @@ export function HomeHeader({
           </Link>
         ))}
       </div>
+
+      {pinnedMemo && (
+        <Link href="/board" className="flex items-center gap-1.5">
+          <IconPin size={11} className={`shrink-0 ${mirror.muted}`} />
+          <span className={`truncate text-[11px] ${mirror.muted}`}>{pinnedMemo.content}</span>
+        </Link>
+      )}
     </div>
   );
 }

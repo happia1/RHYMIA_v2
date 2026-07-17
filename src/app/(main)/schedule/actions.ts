@@ -48,38 +48,43 @@ export async function createSchedule(workspaceId: string, input: ScheduleInput) 
   if (!user) redirect("/login");
 
   const scheduleId = crypto.randomUUID();
-  const { error } = await supabase.from("schedule").insert({
-    id: scheduleId,
-    workspace_id: workspaceId,
-    title,
-    date_start: input.date_start,
-    date_end: input.date_end || null,
-    time_start: input.time_start || null,
-    time_end: input.time_end || null,
-    author_id: user.id,
-    target_members: input.target_members,
-    is_shared: input.is_shared,
-    keyword_main: input.keyword_main || null,
-    keyword_sub: input.keyword_sub || null,
-    is_important: input.is_important,
-    memo: input.memo || null,
-    place: input.place || null,
-    amount: input.amount ?? null,
-    is_all_day: input.is_all_day,
-    notify_offset: input.notify_offset || null,
-    notify_custom_at: input.notify_custom_at || null,
-    recur_type: input.recur_type ?? "none",
-    recur_calendar: input.recur_calendar ?? "solar",
-    recur_until: input.recur_until || null,
-  });
+  const { data, error } = await supabase
+    .from("schedule")
+    .insert({
+      id: scheduleId,
+      workspace_id: workspaceId,
+      title,
+      date_start: input.date_start,
+      date_end: input.date_end || null,
+      time_start: input.time_start || null,
+      time_end: input.time_end || null,
+      author_id: user.id,
+      target_members: input.target_members,
+      is_shared: input.is_shared,
+      keyword_main: input.keyword_main || null,
+      keyword_sub: input.keyword_sub || null,
+      is_important: input.is_important,
+      memo: input.memo || null,
+      place: input.place || null,
+      amount: input.amount ?? null,
+      is_all_day: input.is_all_day,
+      notify_offset: input.notify_offset || null,
+      notify_custom_at: input.notify_custom_at || null,
+      recur_type: input.recur_type ?? "none",
+      recur_calendar: input.recur_calendar ?? "solar",
+      recur_until: input.recur_until || null,
+    })
+    .select("*")
+    .single();
 
-  if (error) {
-    throw new Error(error.message);
+  if (error || !data) {
+    throw new Error(error?.message ?? "일정 등록에 실패했습니다.");
   }
 
   revalidatePath("/schedule");
   revalidatePath("/home");
-  return { ok: true as const };
+  // 홈의 낙관적 업데이트(HomeTodaySection)가 임시로 넣어둔 항목을 확정 데이터로 교체할 때 씀.
+  return { ok: true as const, schedule: data as Schedule };
 }
 
 /** 월간/주간/연간 뷰가 쓰는 일정 조회 — 실제 저장된 행과 반복 일정(recur_type != 'none')의
@@ -351,25 +356,33 @@ export async function createTodo(workspaceId: string, input: TodoInput) {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { error } = await supabase.from("todo").insert({
-    id: crypto.randomUUID(),
-    workspace_id: workspaceId,
-    author_id: user.id,
-    title,
-    due_date: input.due_date,
-    description: input.description,
-    notify_enabled: input.notify_enabled,
-    repeat_type: input.repeat_type,
-    tag: input.tag,
-    color: input.color,
-  });
+  const { data, error } = await supabase
+    .from("todo")
+    .insert({
+      id: crypto.randomUUID(),
+      workspace_id: workspaceId,
+      author_id: user.id,
+      title,
+      due_date: input.due_date,
+      description: input.description,
+      notify_enabled: input.notify_enabled,
+      repeat_type: input.repeat_type,
+      tag: input.tag,
+      color: input.color,
+    })
+    .select("*")
+    .single();
 
-  if (error) {
-    throw new Error(error.message);
+  if (error || !data) {
+    throw new Error(error?.message ?? "할 일 등록에 실패했습니다.");
   }
 
   revalidatePath("/schedule");
-  return { ok: true as const };
+  // 예전엔 /home이 빠져 있었음 — 홈의 "오늘 뭐하지"도 due_date=오늘인 할 일을 직접 조회하므로
+  // 여기서도 무효화해야 낙관적 업데이트 이후의 자연스러운 재방문에서 캐시가 안 어긋난다.
+  revalidatePath("/home");
+  // 홈의 낙관적 업데이트(HomeTodaySection)가 임시로 넣어둔 항목을 확정 데이터로 교체할 때 씀.
+  return { ok: true as const, todo: data as Todo };
 }
 
 /** 월간 뷰의 선택일 패널이 그 달 범위 안의 할 일을 "등록된(= due_date가 그 날인)" 날짜에

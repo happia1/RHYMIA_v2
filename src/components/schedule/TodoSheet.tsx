@@ -6,10 +6,12 @@ import { BottomSheet } from "@/components/ui/BottomSheet";
 import { SheetHeader, SheetHeaderAction } from "@/components/ui/SheetHeader";
 import { useToast } from "@/components/ui/Toast";
 import { Input, Textarea } from "@/components/ui/Input";
-import { createTodo, updateTodo, deleteTodo } from "@/app/(main)/schedule/actions";
+import { createTodo, updateTodo, deleteTodo, type TodoInput } from "@/app/(main)/schedule/actions";
 import { toDateStr } from "@/lib/date";
 import { KEYWORD_GROUPS } from "@/lib/scheduleKeywords";
 import type { Todo } from "@/types";
+
+type CreateTodoResult = Awaited<ReturnType<typeof createTodo>>;
 
 const COLORS = ["#E8A04A", "#3D7EAA", "#5BAD7F", "#D96B5A", "#9B8EC4", "#E8416A"];
 
@@ -32,12 +34,20 @@ export function TodoSheet({
   workspaceId,
   existingTodo,
   defaultDueDate,
+  onOptimisticCreate,
+  onCreateSettled,
 }: {
   open: boolean;
   onClose: () => void;
   workspaceId: string;
   existingTodo?: Todo | null;
   defaultDueDate?: string | null;
+  /** 홈처럼 부모가 직접 로컬 상태를 들고 있어 낙관적 업데이트가 가능한 화면에서만 넘긴다 —
+   * 있으면(신규 등록 한정) 서버 응답을 기다리지 않고 시트를 즉시 닫으면서 tempId를 먼저
+   * 통지하고, 백그라운드에서 실제 요청이 끝나면 onCreateSettled로 확정 결과를 알려준다.
+   * 없으면(월간/주간 뷰 등 기존 호출부) 예전과 동일하게 응답을 기다린 뒤 router.refresh(). */
+  onOptimisticCreate?: (tempId: string, input: TodoInput) => void;
+  onCreateSettled?: (tempId: string, result: CreateTodoResult) => void;
 }) {
   const router = useRouter();
   const { showToast } = useToast();
@@ -92,7 +102,6 @@ export function TodoSheet({
 
   const handleSubmit = async () => {
     if (!title.trim()) return;
-    setIsSubmitting(true);
     const input = {
       title,
       due_date: quickPick === "custom" ? customDate : quickPickDate(quickPick),
@@ -102,6 +111,22 @@ export function TodoSheet({
       tag,
       color,
     };
+
+    // 낙관적 경로 — 신규 등록이고 부모가 로컬 상태를 직접 관리할 때만(onOptimisticCreate가
+    // 있을 때). 서버 응답/router.refresh() 왕복을 기다리지 않고 시트부터 닫아 "즉시
+    // 반영"된 것처럼 보이게 하고, 실제 결과는 백그라운드에서 받아 onCreateSettled로 부모에게
+    // 넘긴다(성공 시 확정 데이터로 교체, 실패 시 부모가 롤백 + 에러 토스트).
+    if (!existingTodo && onOptimisticCreate) {
+      const tempId = crypto.randomUUID();
+      onOptimisticCreate(tempId, input);
+      reset();
+      onClose();
+      const result = await createTodo(workspaceId, input);
+      onCreateSettled?.(tempId, result);
+      return;
+    }
+
+    setIsSubmitting(true);
     const result = existingTodo
       ? await updateTodo(existingTodo.id, input)
       : await createTodo(workspaceId, input);

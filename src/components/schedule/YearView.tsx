@@ -31,7 +31,7 @@ export function YearView({
   const [editingSchedule, setEditingSchedule] = useState<ExpandedSchedule | null>(null);
   const [detailSchedule, setDetailSchedule] = useState<ExpandedSchedule | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
-  const [listOpen, setListOpen] = useState(false);
+  const [listOpen, setListOpen] = useState(true);
 
   // schedule/page.tsx가 뷰 종류와 무관하게 keywordMain URL 파라미터로 schedules를
   // 걸러서 내려주므로, 여기서 고른 키워드는 월간 뷰로 전환해도 그대로 유지된다

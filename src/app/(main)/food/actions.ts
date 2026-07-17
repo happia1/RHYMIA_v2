@@ -4,7 +4,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { callAgentServer } from "@/lib/agentServer";
-import type { FridgeCategory, MealNutritionEstimate, MealType } from "@/types";
+import { toDateStr } from "@/lib/date";
+import { addDaysToDateStr } from "@/lib/recurrence";
+import type { FridgeCategory, Meal, MealNutritionEstimate, MealType } from "@/types";
 
 export interface MealInput {
   date: string;
@@ -240,6 +242,33 @@ export async function getTopFrequentMenus(workspaceId: string, limit = 20): Prom
     .sort((a, b) => b[1] - a[1])
     .slice(0, limit)
     .map(([menu]) => menu);
+}
+
+/** "끼니 추가"의 "최근 먹은 메뉴" 칩 목록용 — 최근 `days`일(오늘 포함)간 등록된 끼니를
+ * 최신순으로 반환한다. 같은 메뉴(main_menu+sides 조합)를 그 기간에 여러 번 먹었으면 가장
+ * 최근 것 하나만 남겨 중복 칩이 뜨지 않게 한다. */
+export async function getRecentMeals(workspaceId: string, days = 3): Promise<Meal[]> {
+  const supabase = await createClient();
+  const since = addDaysToDateStr(toDateStr(new Date()), -(days - 1));
+
+  const { data, error } = await supabase
+    .from("meal")
+    .select("*")
+    .eq("workspace_id", workspaceId)
+    .gte("date", since)
+    .order("created_at", { ascending: false });
+
+  if (error) throw new Error(error.message);
+
+  const seen = new Set<string>();
+  const result: Meal[] = [];
+  for (const meal of (data ?? []) as Meal[]) {
+    const key = [meal.main_menu, ...meal.sides].filter(Boolean).join(", ");
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(meal);
+  }
+  return result;
 }
 
 export async function createMealVote(workspaceId: string, date: string, candidates: string[]) {

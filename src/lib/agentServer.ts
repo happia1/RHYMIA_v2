@@ -34,15 +34,19 @@ export async function proxyAgentRequest(path: string, body: string): Promise<Res
       body,
     });
   } catch {
-    // 에이전트 서버(agent/main.py)가 아예 꺼져 있을 때(ECONNREFUSED 등) — fetch 자체가 던지므로
-    // res.status를 볼 수 없다. 500 원문 대신 사용자가 바로 원인을 알 수 있는 메시지로 응답한다.
-    return new Response(
-      JSON.stringify({
-        ok: false,
-        message: "AI 도우미 서버가 꺼져 있어요. 터미널에서 npm run dev:all로 실행해주세요.",
-      }),
-      { status: 503, headers: { "Content-Type": "application/json" } }
-    );
+    // 에이전트 서버(agent/main.py)가 아예 꺼져 있거나(로컬 dev, ECONNREFUSED) 애초에
+    // 배포되지 않아 도달 불가능할 때(프로덕션 — NEXT_PUBLIC_AGENT_API_URL 미설정 시
+    // localhost:8000으로 폴백해 마찬가지로 연결 실패) — fetch 자체가 던지므로 res.status를
+    // 볼 수 없다. 500 원문 대신 사람이 읽을 메시지로 응답하되, "터미널에서 실행하라"는
+    // 안내는 로컬 dev에서만 의미가 있으므로 NODE_ENV로 분기한다.
+    const message =
+      process.env.NODE_ENV === "production"
+        ? "AI 도우미는 준비 중이에요."
+        : "AI 도우미 서버가 꺼져 있어요. 터미널에서 npm run dev:all로 실행해주세요.";
+    return new Response(JSON.stringify({ ok: false, message }), {
+      status: 503,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   const text = await res.text();

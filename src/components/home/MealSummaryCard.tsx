@@ -48,7 +48,7 @@ export function MealSummaryCard({ meals }: { meals: MealSummaryItem[] }) {
             <Link
               key={meal.id}
               href="/food"
-              className="flex w-full shrink-0 snap-center items-center gap-2.5"
+              className="flex w-full shrink-0 snap-start items-center gap-2.5"
             >
               <MealThumbnail meal={meal} className="h-10 w-10" />
               <div className="flex min-w-0 flex-1 flex-col gap-0.5">

@@ -24,6 +24,7 @@ import { createMeal, updateMeal } from "@/app/(main)/food/actions";
 import { MEAL_TAGS } from "@/lib/mealUtils";
 import { FridgeStockSheet } from "@/components/food/FridgeStockSheet";
 import { RecipeSearchSheet } from "@/components/food/RecipeSearchSheet";
+import { RecentMenuSection } from "@/components/food/RecentMenuSection";
 import type { FridgeItem, Meal, MealType } from "@/types";
 
 const MEAL_TYPES: MealType[] = ["집밥", "외식", "배달"];
@@ -162,6 +163,20 @@ export function AddMealScreen({
     }
   };
 
+  const handleSelectRecentMeal = (meal: Meal) => {
+    setTag(meal.tag);
+    setType(meal.type);
+    // sides는 UI 입력 필드가 없어져 메뉴 쉼표 텍스트로 통합됐으므로(위 handleSubmit 참고),
+    // 복사도 같은 방식으로 합쳐 넣는다 — 저장 시 sides는 신규 등록과 동일하게 빈 배열이 됨.
+    setMainMenu([meal.main_menu, ...meal.sides].filter(Boolean).join(", "));
+    setImageUrl(meal.image_url);
+    setVideoId(meal.video_id);
+    setRecipeTitle(meal.recipe_title);
+    setRecipeUrl(meal.recipe_url);
+    setSelectedIngredients(meal.ingredients);
+    showToast(`"${meal.main_menu}" 메뉴를 불러왔어요.`);
+  };
+
   const toggleIngredient = (name: string) => {
     setSelectedIngredients((prev) =>
       prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]
@@ -220,6 +235,10 @@ export function AddMealScreen({
       </header>
 
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
+        {!existingMeal && (
+          <RecentMenuSection workspaceId={workspaceId} onSelect={handleSelectRecentMeal} />
+        )}
+
         <section className="flex flex-col gap-2">
           <span className={mirror.label}>끼니</span>
           <div className="flex gap-4 overflow-x-auto">
