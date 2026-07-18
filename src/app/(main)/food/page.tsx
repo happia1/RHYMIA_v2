@@ -132,6 +132,8 @@ export default async function FoodPage({
 
         <FoodTabActions workspaceId={workspaceId} fridgeItems={(fridgeItems as FridgeItem[]) ?? []} />
 
+        <div className="h-px w-full shrink-0 bg-border-light" />
+
         <SuggestionSection
           workspaceId={workspaceId}
           selectedDate={selectedDate}

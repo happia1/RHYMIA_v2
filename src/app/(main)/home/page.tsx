@@ -10,6 +10,7 @@ import {
 import { getCurrentWeather } from "@/lib/weather";
 import { getWorkspaceMembers } from "@/lib/members";
 import { getOverdueTodos } from "@/app/(main)/schedule/actions";
+import { listHomePhotos } from "@/lib/homePhotos";
 import { mirror } from "@/lib/homeTheme";
 import { resolveHomeLayout } from "@/lib/homeLayout";
 import { HomeHeader, type FamilyMemberStatus } from "@/components/home/HomeHeader";
@@ -19,6 +20,7 @@ import { HomeTodaySection } from "@/components/home/HomeTodaySection";
 import { HomeStickySection } from "@/components/home/HomeStickySection";
 import { HomeShoppingSection } from "@/components/home/HomeShoppingSection";
 import { HomeSections } from "@/components/home/HomeSections";
+import { HomeTabletHome } from "@/components/home/HomeTabletHome";
 import type { NoticeComment, RoutineBlock, Todo } from "@/types";
 
 export default async function HomePage() {
@@ -41,6 +43,7 @@ export default async function HomePage() {
     { data: stickers },
     { data: pinnedMemoRows },
     { data: myUserRow },
+    homePhotos,
   ] = await Promise.all([
     getWorkspaceMembers(workspaceId),
     getCurrentWeather(),
@@ -94,6 +97,9 @@ export default async function HomePage() {
       .order("created_at", { ascending: false })
       .limit(6),
     supabase.from("users").select("home_layout").eq("id", user.id).single(),
+    // 태블릿 홈 중앙 포토 프레임용 — 모바일 레이아웃은 안 쓰지만, list() 자체가 가벼운
+    // Storage 호출이라 뷰 종류를 가리지 않고 그냥 함께 조회한다(분기 복잡도 줄이기).
+    listHomePhotos(workspaceId),
   ]);
 
   const homeSectionOrder = resolveHomeLayout(myUserRow?.home_layout);
@@ -258,23 +264,23 @@ export default async function HomePage() {
         </div>
       </div>
 
-      {/* 태블릿 이상: 고정 3단 쇼케이스 레이아웃 (순서 변경 대상 아님) */}
-      <div className="hidden lg:grid lg:h-full lg:grid-cols-mirror lg:items-stretch lg:gap-0">
-        <div className="flex flex-col justify-center lg:pr-8">{headerNode}</div>
-
-        <div className={`flex flex-col gap-section lg:border-l lg:px-8 ${mirror.hairline}`}>
-          <div className="grid grid-cols-2 gap-4">
-            {mealTodaySection}
-            {scheduleTodaySection}
-          </div>
-        </div>
-
-        <div className={`flex flex-col lg:border-l lg:pl-8 ${mirror.hairline}`}>
-          <div className="grid grid-cols-2 gap-4">
-            {stickySection}
-            {shoppingSection}
-          </div>
-        </div>
+      {/* 태블릿(1024px~): 가로/세로 전용 레이아웃 — fridge_tablet_suite.jsx 스펙,
+          CSS orientation 미디어 쿼리로 실제 화면 방향에 맞는 쪽만 렌더된다. */}
+      <div className="hidden h-full lg:block">
+        <HomeTabletHome
+          familyStatus={familyStatus}
+          weather={weather}
+          nowIso={new Date().toISOString()}
+          pinnedMemos={pinnedMemoRows ?? []}
+          stickers={stickers ?? []}
+          workspaceId={workspaceId}
+          currentUserId={user.id}
+          membersById={membersByUserId}
+          commentsByNotice={pinnedMemoComments}
+          mealTodaySection={mealTodaySection}
+          scheduleTodaySection={scheduleTodaySection}
+          photoUrls={homePhotos.map((p) => p.url)}
+        />
       </div>
     </div>
   );

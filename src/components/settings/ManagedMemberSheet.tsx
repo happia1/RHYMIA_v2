@@ -5,6 +5,7 @@ import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
 import { Avatar } from "@/components/ui/Avatar";
+import { ManagedAvatarUploader } from "@/components/settings/ManagedAvatarUploader";
 import {
   createManagedMember,
   updateManagedMember,
@@ -17,6 +18,7 @@ export interface ManagedMemberEditTarget {
   id: string;
   display_name: string;
   avatar_color: string;
+  avatar_image_url: string | null;
   birth_year: number | null;
 }
 
@@ -99,21 +101,30 @@ export function ManagedMemberSheet({
           {existing ? "프로필 수정" : "구성원 추가"}
         </h2>
 
-        <div className="flex items-center gap-4">
+        {existing ? (
+          <ManagedAvatarUploader
+            workspaceId={workspaceId}
+            memberId={existing.id}
+            displayName={name}
+            avatarColor={color}
+            avatarImageUrl={existing.avatar_image_url}
+          />
+        ) : (
           <Avatar name={name || "새 구성원"} color={color} textColor="#1A1A18" size={56} />
-          <div className="flex flex-wrap gap-2">
-            {AVATAR_COLOR_OPTIONS.map((c) => (
-              <button
-                key={c}
-                onClick={() => setColor(c)}
-                aria-label={c}
-                className={`h-8 w-8 rounded-full ${
-                  color === c ? "ring-2 ring-ink ring-offset-2" : ""
-                }`}
-                style={{ backgroundColor: c }}
-              />
-            ))}
-          </div>
+        )}
+
+        <div className="flex flex-wrap gap-2">
+          {AVATAR_COLOR_OPTIONS.map((c) => (
+            <button
+              key={c}
+              onClick={() => setColor(c)}
+              aria-label={c}
+              className={`h-8 w-8 rounded-full ${
+                color === c ? "ring-2 ring-ink ring-offset-2" : ""
+              }`}
+              style={{ backgroundColor: c }}
+            />
+          ))}
         </div>
 
         <Input

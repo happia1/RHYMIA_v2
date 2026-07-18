@@ -163,9 +163,9 @@ export function WeekView({
 
       <div key={weekDates[0]} {...handlers} style={swipeCalendarNavStyle({ dragging, ...swipeNav })} className="flex flex-col gap-3">
         {weekPeriods.length > 0 && (
-          <div className="flex flex-col gap-2.5 border-b border-border-light pb-3">
+          <div className="grid grid-cols-2 gap-x-3 gap-y-2 border-b border-border-light pb-3">
             {weekPeriods.map((s) => (
-              <PeriodBarRow key={s.id} schedule={s} onClick={() => setDetailSchedule(s)} />
+              <PeriodBarRow key={s.id} schedule={s} onClick={() => setDetailSchedule(s)} compact />
             ))}
           </div>
         )}
@@ -181,7 +181,6 @@ export function WeekView({
             const dayTodos = sortTodos(
               isToday ? [...todosByDate[date], ...overdueSorted] : todosByDate[date]
             );
-            const isEmpty = daySchedules.length === 0 && dayTodos.length === 0;
 
             return (
               <div key={date} className={`flex flex-col gap-1.5 py-2.5 ${i > 0 ? "border-t border-border-light" : ""}`}>
@@ -210,8 +209,6 @@ export function WeekView({
                     <IconPlus size={16} />
                   </button>
                 </div>
-
-                {isEmpty && <p className="text-[12px] text-[var(--text-muted)]">등록된 게 없어요</p>}
 
                 {daySchedules.length > 0 && (
                   <div className="flex flex-col gap-1">

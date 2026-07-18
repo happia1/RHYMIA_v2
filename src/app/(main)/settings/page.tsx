@@ -2,6 +2,7 @@ import Link from "next/link";
 import { IconArrowLeft } from "@tabler/icons-react";
 import { requireWorkspaceContext } from "@/lib/workspace";
 import { mapWorkspaceMembers } from "@/lib/members";
+import { listHomePhotos } from "@/lib/homePhotos";
 import { mirror } from "@/lib/homeTheme";
 import { CopyLinkButton } from "@/components/ui/CopyLinkButton";
 import { AvatarUploader } from "@/components/settings/AvatarUploader";
@@ -9,12 +10,13 @@ import { ThemeToggle } from "@/components/settings/ThemeToggle";
 import { ShareLinkSection } from "@/components/settings/ShareLinkSection";
 import { MemberList } from "@/components/settings/MemberList";
 import { NutritionDisplayToggle } from "@/components/settings/NutritionDisplayToggle";
+import { HomePhotoManager } from "@/components/settings/HomePhotoManager";
 import { signOut } from "./actions";
 
 export default async function SettingsPage() {
   const { supabase, user, workspaceId, role } = await requireWorkspaceContext();
 
-  const [{ data: workspace }, { data: memberRows }] = await Promise.all([
+  const [{ data: workspace }, { data: memberRows }, homePhotos] = await Promise.all([
     supabase.from("family_workspace").select("*").eq("id", workspaceId).single(),
     supabase
       .from("workspace_member")
@@ -23,6 +25,7 @@ export default async function SettingsPage() {
       )
       .eq("workspace_id", workspaceId)
       .order("role", { ascending: true }),
+    listHomePhotos(workspaceId),
   ]);
 
   const rawRows = memberRows ?? [];
@@ -61,6 +64,11 @@ export default async function SettingsPage() {
       <section className="flex flex-col gap-3">
         <span className="text-[12px] font-medium text-stone">화면 모드</span>
         <ThemeToggle />
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <span className="text-[12px] font-medium text-stone">홈 화면 사진</span>
+        <HomePhotoManager workspaceId={workspaceId} initialPhotos={homePhotos} />
       </section>
 
       <section className="flex flex-col gap-3">

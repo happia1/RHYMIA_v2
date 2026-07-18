@@ -74,6 +74,7 @@ export function MemberList({
                 id: editing.id,
                 display_name: editing.display_name,
                 avatar_color: editing.avatar_color,
+                avatar_image_url: editing.avatar_image_url,
                 birth_year: editing.birth_year,
               }
             : null

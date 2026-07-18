@@ -167,12 +167,15 @@ export function HomeSections({
           onDragEnd={handleDragEnd}
         >
           {/* "오늘 뭐먹지"/"오늘 뭐하지"는 풀폭으로 쌓이고, "하고싶은 말"/"장바구니"는 2열로
-              나란히 붙는다 — 드래그로 순서를 바꿔도 각 섹션의 폭 자체는 유지된다. */}
+              나란히 붙는다 — 드래그로 순서를 바꿔도 각 섹션의 폭 자체는 유지된다. 구분선은
+              (1) 풀폭 섹션끼리 이어지는 사이(예: 뭐먹지/뭐하지)와 (2) 풀폭 구간과 2열 구간의
+              경계, 두 자리 모두에 그린다 — 둘 다 "leadingFullWidthCount 이하 인덱스" 조건
+              하나로 표현된다. */}
           <SortableContext items={order} strategy={rectSortingStrategy}>
             <div className="grid grid-cols-2 gap-x-4 gap-y-1">
               {order.map((id, index) => (
                 <Fragment key={id}>
-                  {index === leadingFullWidthCount && leadingFullWidthCount > 0 && leadingFullWidthCount < order.length && (
+                  {index > 0 && index <= leadingFullWidthCount && (
                     <div className={`col-span-2 mt-4 h-px w-full ${mirror.hairlineBg}`} />
                   )}
                   <SortableItem id={id} editMode={editMode} fullWidth={FULL_WIDTH_SECTION_IDS.includes(id)}>

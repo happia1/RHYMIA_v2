@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { IconFridge, IconMessageCircleFilled, IconBrandGoogle } from "@tabler/icons-react";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/Toast";
@@ -21,8 +22,13 @@ function isRedirectError(error: unknown): boolean {
 
 export default function LoginPage() {
   const { showToast } = useToast();
+  const searchParams = useSearchParams();
+  // 초대 링크("OO 가족에 초대됐어요" 화면)의 회원가입/로그인 버튼이 넘겨주는 파라미터 —
+  // 각각 어느 모드로 열지, 완료 후 어디로 돌아갈지(초대 링크 경로)를 함께 보존한다.
+  const redirectParam = searchParams.get("redirect") ?? undefined;
+  const initialMode = searchParams.get("mode") === "signup" ? "signup" : "login";
 
-  const [mode, setMode] = useState<"login" | "signup">("login");
+  const [mode, setMode] = useState<"login" | "signup">(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
@@ -67,7 +73,7 @@ export default function LoginPage() {
     }
 
     try {
-      await completeEmailAuth();
+      await completeEmailAuth(redirectParam);
     } catch (err) {
       if (isRedirectError(err)) throw err;
       setError(
@@ -107,7 +113,7 @@ export default function LoginPage() {
 
     if (data.session) {
       try {
-        await completeEmailAuth();
+        await completeEmailAuth(redirectParam);
       } catch (err) {
         if (isRedirectError(err)) throw err;
         setError(

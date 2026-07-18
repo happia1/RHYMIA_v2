@@ -116,6 +116,33 @@ export async function updateManagedMember(memberId: string, input: ManagedMember
   return { ok: true as const };
 }
 
+/** managed 멤버(자녀 등)는 auth.uid()가 없어 계정용 avatar_image_url(users 테이블)이 아니라
+ * workspace_member.avatar_image_url에 저장한다 — 업로드 경로도 `managed/{workspaceId}/{memberId}/...`
+ * 규칙을 쓰고(ManagedAvatarUploader), 스토리지 정책도 그 경로 규칙 기준으로 워크스페이스
+ * 멤버 여부를 확인한다(supabase/add_managed_avatar_storage.sql). */
+export async function updateManagedMemberAvatar(memberId: string, imageUrl: string | null) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { error } = await supabase
+    .from("workspace_member")
+    .update({ avatar_image_url: imageUrl })
+    .eq("id", memberId)
+    .eq("member_type", "managed");
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/settings");
+  revalidatePath("/home");
+  revalidatePath("/food");
+  revalidatePath("/schedule");
+  revalidatePath("/board");
+  return { ok: true as const };
+}
+
 export async function deleteManagedMember(memberId: string) {
   const supabase = await createClient();
   const {

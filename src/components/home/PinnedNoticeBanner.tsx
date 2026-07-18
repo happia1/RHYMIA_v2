@@ -6,14 +6,13 @@ import type { WorkspaceMemberInfo } from "@/lib/members";
 import type { Notice } from "@/types";
 
 const ROTATE_MS = 4000;
-const FLAP_ANIMATION = "notice-flap-in 280ms ease-out";
-// 위/아래로 이 정도 이상 끌었을 때만 스와이프로 인정 — 살짝 스친 정도로는 안 넘어가게.
+// 이보다 좌우로 더 끌었을 때만 스와이프로 인정 — 살짝 스친 정도로는 안 넘어가게.
 const SWIPE_THRESHOLD_PX = 40;
 
-/** 홈 헤더 "공지" 배너 — 게시판 메모 중 고정(is_pinned)한 것을 카드 1장씩 보여준다.
- * 여러 건이면 4초 간격으로 자동으로 다음 카드로 넘어가고(위→아래로 접히듯 등장하는
- * 플랩 애니메이션), 세로 스와이프로 수동 이동도 가능하다. 터치 중엔 자동 전환을 멈춰서
- * 읽는 도중 카드가 바뀌는 일이 없게 한다. */
+/** 홈 헤더 "공지" 배너 — 게시판 메모 중 고정(is_pinned)한 것을 테두리 블록 카드 1장씩
+ * 보여준다. 여러 건이면 4초 간격으로 좌→우 가로 슬라이드로 자동 전환되고, 좌우 스와이프로
+ * 수동 이동도 가능하다. 터치 중엔 자동 전환용 타이머 자체를 꺼서(isPaused) 읽는 도중
+ * 카드가 바뀌는 일이 없게 하고, 손을 떼면 그 시점부터 다시 4초를 센다. */
 export function PinnedNoticeBanner({
   memos,
   membersById,
@@ -24,8 +23,9 @@ export function PinnedNoticeBanner({
   onSelect: (memo: Notice) => void;
 }) {
   const [index, setIndex] = useState(0);
-  const touchStartY = useRef<number | null>(null);
-  const touchStartX = useRef<number | null>(null);
+  const [direction, setDirection] = useState<1 | -1>(1);
+  const [isPaused, setIsPaused] = useState(false);
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
 
   // 카드 목록이 바뀌면(다른 메모가 고정/해제되는 등) 인덱스가 범위를 벗어날 수 있어 안전하게 맞춘다.
   useEffect(() => {
@@ -33,12 +33,13 @@ export function PinnedNoticeBanner({
   }, [memos.length]);
 
   useEffect(() => {
-    if (memos.length <= 1) return;
+    if (memos.length <= 1 || isPaused) return;
     const timer = setInterval(() => {
+      setDirection(1);
       setIndex((i) => (i + 1) % memos.length);
     }, ROTATE_MS);
     return () => clearInterval(timer);
-  }, [memos.length]);
+  }, [memos.length, isPaused]);
 
   if (memos.length === 0) return null;
 
@@ -46,22 +47,28 @@ export function PinnedNoticeBanner({
   const author = current.created_by ? membersById[current.created_by] : null;
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartY.current = e.touches[0].clientY;
-    touchStartX.current = e.touches[0].clientX;
+    touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    setIsPaused(true);
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartY.current === null || touchStartX.current === null) return;
-    const deltaY = e.changedTouches[0].clientY - touchStartY.current;
-    const deltaX = e.changedTouches[0].clientX - touchStartX.current;
-    touchStartY.current = null;
-    touchStartX.current = null;
+    setIsPaused(false);
+    if (!touchStart.current) return;
+    const deltaX = e.changedTouches[0].clientX - touchStart.current.x;
+    const deltaY = e.changedTouches[0].clientY - touchStart.current.y;
+    touchStart.current = null;
 
-    // 가로 움직임이 더 크면(옆으로 스치듯 터치) 스와이프로 취급하지 않는다.
-    if (Math.abs(deltaY) < SWIPE_THRESHOLD_PX || Math.abs(deltaY) < Math.abs(deltaX)) return;
+    // 세로 움직임이 더 크면(스크롤 의도) 스와이프로 취급하지 않는다.
+    if (Math.abs(deltaX) < SWIPE_THRESHOLD_PX || Math.abs(deltaX) < Math.abs(deltaY)) return;
     if (memos.length <= 1) return;
 
-    setIndex((i) => (deltaY < 0 ? (i + 1) % memos.length : (i - 1 + memos.length) % memos.length));
+    if (deltaX < 0) {
+      setDirection(1);
+      setIndex((i) => (i + 1) % memos.length);
+    } else {
+      setDirection(-1);
+      setIndex((i) => (i - 1 + memos.length) % memos.length);
+    }
   };
 
   return (
@@ -71,8 +78,13 @@ export function PinnedNoticeBanner({
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
         onClick={() => onSelect(current)}
-        style={{ animation: memos.length > 1 ? FLAP_ANIMATION : undefined }}
-        className="flex h-14 w-full cursor-pointer items-center gap-2.5"
+        style={{
+          animation:
+            memos.length > 1
+              ? `notice-slide-in-${direction === 1 ? "right" : "left"} 280ms ease-out`
+              : undefined,
+        }}
+        className={`flex h-14 w-full cursor-pointer items-center gap-2.5 rounded-xl border-[0.5px] px-3 ${mirror.hairline}`}
       >
         {current.image_url && (
           // eslint-disable-next-line @next/next/no-img-element

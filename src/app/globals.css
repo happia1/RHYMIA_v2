@@ -146,14 +146,35 @@ input[type="radio"] {
   }
 }
 
-/* 홈 헤더 "공지" 배너 카드 전환 — 위에서 아래로 접히듯 등장(PinnedNoticeBanner.tsx) */
-@keyframes notice-flap-in {
+/* 홈 헤더 "공지" 배너 카드 전환 — 좌우로 미끄러져 등장(PinnedNoticeBanner.tsx).
+   -right: 다음(오른쪽에서), -left: 이전(왼쪽에서). */
+@keyframes notice-slide-in-right {
   from {
-    transform: translateY(-8px);
+    transform: translateX(16px);
     opacity: 0;
   }
   to {
-    transform: translateY(0);
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+@keyframes notice-slide-in-left {
+  from {
+    transform: translateX(-16px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* 태블릿 홈 중앙 포토 프레임 — 사진이 바뀔 때 은은하게 페이드인(HomePhotoFrame.tsx) */
+@keyframes photo-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
     opacity: 1;
   }
 }

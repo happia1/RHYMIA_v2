@@ -1,19 +1,21 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { IconCheck, IconDice5, IconTrophy, IconUsers } from "@tabler/icons-react";
+import { useEffect, useState, useTransition } from "react";
+import { IconCheck, IconDice5, IconTrophy, IconLadder, IconUsers } from "@tabler/icons-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Input } from "@/components/ui/Input";
 import { RouletteBoard } from "@/components/ui/RouletteBoard";
+import { LadderGame } from "@/components/ui/LadderGame";
 import { createMeal, createMealVote } from "@/app/(main)/food/actions";
 import { currentMealTag } from "@/lib/mealUtils";
 import type { MealVote } from "@/types";
 
-type Mode = "roulette" | "worldcup" | "vote";
+export type Mode = "roulette" | "worldcup" | "ladder" | "vote";
 
 const MODES: { value: Mode; label: string; icon: typeof IconDice5 }[] = [
   { value: "roulette", label: "룰렛", icon: IconDice5 },
   { value: "worldcup", label: "이상형 월드컵", icon: IconTrophy },
+  { value: "ladder", label: "사다리", icon: IconLadder },
   { value: "vote", label: "가족 투표", icon: IconUsers },
 ];
 
@@ -24,6 +26,7 @@ export function MealDecisionSheet({
   selectedDate,
   candidatePool,
   activeVote,
+  initialMode = "roulette",
 }: {
   open: boolean;
   onClose: () => void;
@@ -31,9 +34,17 @@ export function MealDecisionSheet({
   selectedDate: string;
   candidatePool: string[];
   activeVote: MealVote | null;
+  /** 식탁 탭 "오늘의 제안" 배너에서 어떤 칩을 눌렀는지에 따라 그 모드로 바로 연다. */
+  initialMode?: Mode;
 }) {
-  const [mode, setMode] = useState<Mode>("roulette");
+  const [mode, setMode] = useState<Mode>(initialMode);
   const [isPending, startTransition] = useTransition();
+
+  // 시트가 열릴 때마다 호출부가 넘긴 모드로 맞춘다 — 시트 자체는 계속 마운트된 채
+  // open만 토글되므로, 재오픈 시 지난번 탭 상태가 남아있지 않게 한다.
+  useEffect(() => {
+    if (open) setMode(initialMode);
+  }, [open, initialMode]);
 
   const registerMenu = (menu: string) => {
     startTransition(() => {
@@ -80,6 +91,14 @@ export function MealDecisionSheet({
         )}
         {mode === "worldcup" && (
           <WorldCupMode pool={candidatePool} onRegister={registerMenu} isPending={isPending} />
+        )}
+        {mode === "ladder" && (
+          <LadderGame
+            candidates={candidatePool}
+            onSelect={registerMenu}
+            isPending={isPending}
+            actionLabel="이걸로 등록"
+          />
         )}
         {mode === "vote" && (
           <VoteMode

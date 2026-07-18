@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
+import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
 import { mirror } from "@/lib/homeTheme";
 import { MealThumbnail } from "@/components/food/MealThumbnail";
 import type { Meal } from "@/types";
@@ -31,46 +32,77 @@ export function MealSummaryCard({ meals }: { meals: MealSummaryItem[] }) {
     setIndex(Math.round(el.scrollLeft / el.clientWidth));
   };
 
+  const scrollToIndex = (i: number) => {
+    const el = containerRef.current;
+    if (!el) return;
+    el.scrollTo({ left: i * el.clientWidth, behavior: "smooth" });
+  };
+
   if (meals.length === 0) {
     return null;
   }
 
+  const hasMultiple = meals.length > 1;
+
   return (
     <div className="flex flex-col gap-label-gap">
-      <div
-        ref={containerRef}
-        onScroll={handleScroll}
-        className="scrollbar-hide flex snap-x snap-mandatory overflow-x-auto"
-      >
-        {meals.map((meal) => {
-          const sidesText = meal.sides.join(", ");
-          return (
-            <Link
-              key={meal.id}
-              href="/food"
-              className="flex w-full shrink-0 snap-start items-center gap-2.5"
-            >
-              <MealThumbnail meal={meal} className="h-10 w-10" />
-              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <span className={`text-[11px] ${mirror.muted}`}>
-                  {meal.tag} · {meal.type}
-                  {meal.type === "외식" && meal.reservation_time
-                    ? ` · ${meal.reservation_time}`
-                    : ""}
-                </span>
-                <span className={`truncate text-[14px] font-medium ${mirror.primary}`}>
-                  {meal.main_menu}
-                </span>
-                {sidesText && (
-                  <span className={`truncate text-[12px] ${mirror.muted}`}>+ {sidesText}</span>
-                )}
-              </div>
-            </Link>
-          );
-        })}
+      <div className="relative">
+        {hasMultiple && (
+          <button
+            onClick={() => scrollToIndex((index - 1 + meals.length) % meals.length)}
+            aria-label="이전 메뉴"
+            className="absolute inset-y-0 left-0 z-10 flex w-8 items-center justify-start text-stone"
+          >
+            <IconChevronLeft size={16} />
+          </button>
+        )}
+        <div
+          ref={containerRef}
+          onScroll={handleScroll}
+          className="scrollbar-hide flex snap-x snap-mandatory overflow-x-auto"
+        >
+          {meals.map((meal) => {
+            const sidesText = meal.sides.join(", ");
+            return (
+              <Link
+                key={meal.id}
+                href="/food"
+                className={`flex w-full shrink-0 snap-start items-center gap-2.5 ${
+                  hasMultiple ? "px-8" : ""
+                }`}
+              >
+                <MealThumbnail meal={meal} className="h-10 w-10" />
+                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <span className={`text-[11px] ${mirror.muted}`}>
+                    {meal.tag} · {meal.type}
+                    {meal.type === "외식" && meal.reservation_time
+                      ? ` · ${meal.reservation_time}`
+                      : ""}
+                  </span>
+                  <span className={`truncate text-[14px] font-medium ${mirror.primary}`}>
+                    {meal.main_menu}
+                  </span>
+                  {sidesText && (
+                    <span className={`truncate text-[12px] ${mirror.muted}`}>+ {sidesText}</span>
+                  )}
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+
+        {hasMultiple && (
+          <button
+            onClick={() => scrollToIndex((index + 1) % meals.length)}
+            aria-label="다음 메뉴"
+            className="absolute inset-y-0 right-0 z-10 flex w-8 items-center justify-end text-stone"
+          >
+            <IconChevronRight size={16} />
+          </button>
+        )}
       </div>
 
-      {meals.length > 1 && (
+      {hasMultiple && (
         <div className="flex gap-1.5">
           {meals.map((meal, i) => (
             <span

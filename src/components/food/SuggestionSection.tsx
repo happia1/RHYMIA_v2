@@ -2,9 +2,9 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { IconSparkles } from "@tabler/icons-react";
+import { IconSparkles, IconDice5, IconTrophy, IconLadder, IconUsers } from "@tabler/icons-react";
 import { SectionLabel } from "@/components/home/SectionLabel";
-import { MealDecisionSheet } from "@/components/food/MealDecisionSheet";
+import { MealDecisionSheet, type Mode as DecisionMode } from "@/components/food/MealDecisionSheet";
 import { RecipeDetailSheet } from "@/components/food/RecipeDetailSheet";
 import { buildCandidatePool } from "@/lib/mealUtils";
 import type { MealVote } from "@/types";
@@ -13,10 +13,18 @@ import type { NormalizedRecipe } from "@/lib/foodSafetyRecipe";
 // "자주 찾는 메뉴"는 서로 다른 날짜 7일 이상의 끼니 기록이 쌓여야 의미 있는 통계라 콜드스타트를 건다.
 const FREQUENT_MENU_MIN_DAYS = 7;
 
+// "메뉴 고르기" 배너 — 설명 문구 없이 4가지 방식을 바로 칩으로 나열, 탭하면 그 모드로 시트가 연다.
+const DECISION_MODES: { mode: DecisionMode; label: string; icon: typeof IconDice5 }[] = [
+  { mode: "roulette", label: "룰렛 돌리기", icon: IconDice5 },
+  { mode: "worldcup", label: "이상형 월드컵", icon: IconTrophy },
+  { mode: "ladder", label: "사다리", icon: IconLadder },
+  { mode: "vote", label: "가족 투표", icon: IconUsers },
+];
+
 interface Slide {
   key: string;
   title: string;
-  body: string;
+  body?: string;
   action?: { label: string; onClick: () => void };
 }
 
@@ -46,6 +54,7 @@ export function SuggestionSection({
 }) {
   const router = useRouter();
   const [decisionOpen, setDecisionOpen] = useState(false);
+  const [decisionMode, setDecisionMode] = useState<DecisionMode>("roulette");
   const [recipeOpen, setRecipeOpen] = useState(false);
   const [index, setIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -63,6 +72,11 @@ export function SuggestionSection({
     ? recommendedRecipe.name
     : "잠시 후 다시 시도해주세요";
 
+  const openDecision = (mode: DecisionMode) => {
+    setDecisionMode(mode);
+    setDecisionOpen(true);
+  };
+
   const slides: Slide[] = [
     {
       key: "frequent",
@@ -74,8 +88,6 @@ export function SuggestionSection({
     {
       key: "roulette",
       title: "메뉴 고르기",
-      body: "오늘 뭐 먹을지 룰렛으로 정해보세요",
-      action: { label: "룰렛 돌리기", onClick: () => setDecisionOpen(true) },
     },
     {
       key: "recipe",
@@ -101,16 +113,33 @@ export function SuggestionSection({
         {slides.map((slide) => (
           <div key={slide.key} className="flex w-full shrink-0 snap-start flex-col gap-1.5">
             <span className="text-[11px] font-medium text-stone">{slide.title}</span>
-            <span className="text-[13px] text-ink">{slide.body}</span>
-            {slide.action && (
-              <div className="border-t border-border-light pt-1.5">
-                <button
-                  onClick={slide.action.onClick}
-                  className="text-[12px] font-medium text-honey"
-                >
-                  {slide.action.label}
-                </button>
+            {slide.key === "roulette" ? (
+              <div className="flex flex-wrap gap-2">
+                {DECISION_MODES.map((m) => (
+                  <button
+                    key={m.mode}
+                    onClick={() => openDecision(m.mode)}
+                    className="flex items-center gap-1.5 rounded-full bg-cream px-3 py-1.5 text-[12px] font-medium text-ink"
+                  >
+                    <m.icon size={14} className="text-honey" />
+                    {m.label}
+                  </button>
+                ))}
               </div>
+            ) : (
+              <>
+                <span className="text-[13px] text-ink">{slide.body}</span>
+                {slide.action && (
+                  <div className="border-t border-border-light pt-1.5">
+                    <button
+                      onClick={slide.action.onClick}
+                      className="text-[12px] font-medium text-honey"
+                    >
+                      {slide.action.label}
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         ))}
@@ -134,6 +163,7 @@ export function SuggestionSection({
         selectedDate={selectedDate}
         candidatePool={buildCandidatePool(frequentMenus)}
         activeVote={activeVote}
+        initialMode={decisionMode}
       />
 
       <RecipeDetailSheet
