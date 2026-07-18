@@ -157,3 +157,26 @@ input[type="radio"] {
     opacity: 1;
   }
 }
+
+/* 일정 탭 월간/주간/연간 뷰 전환 — 이전/다음으로 이동하면 콘텐츠가 그 방향에서 미끄러져
+   들어온다(useSwipeCalendarNav.ts 공용). -right: 다음(오른쪽에서), -left: 이전(왼쪽에서). */
+@keyframes calendar-slide-in-right {
+  from {
+    transform: translateX(24px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+@keyframes calendar-slide-in-left {
+  from {
+    transform: translateX(-24px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}

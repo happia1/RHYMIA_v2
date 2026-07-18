@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { IconPin } from "@tabler/icons-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
+import { FullScreenSheet } from "@/components/ui/FullScreenSheet";
 import { SheetHeader, SheetHeaderAction } from "@/components/ui/SheetHeader";
 import { Avatar } from "@/components/ui/Avatar";
 import { Input, Textarea } from "@/components/ui/Input";
@@ -46,6 +47,14 @@ export function NoticeDetailSheet({
   const [editTitle, setEditTitle] = useState("");
   const [editContent, setEditContent] = useState("");
   const [isPending, startTransition] = useTransition();
+  // 스티커는 부분 높이 BottomSheet, 메모/공지사항은 전체화면 FullScreenSheet(요구사항 9) —
+  // notice는 닫힐 때 곧장 null이 되므로, 닫힘 애니메이션이 끝날 때까지 어느 컨테이너였는지
+  // 별도로 기억해둔다(그러지 않으면 닫히는 도중 컨테이너 타입 자체가 바뀌어 리마운트되며
+  // 트랜지션이 끊긴다).
+  const [lastType, setLastType] = useState<Notice["type"] | null>(notice?.type ?? null);
+  useEffect(() => {
+    if (notice) setLastType(notice.type);
+  }, [notice]);
 
   const authorOf = (userId: string | null) => (userId && membersById[userId]) || null;
 
@@ -102,9 +111,11 @@ export function NoticeDetailSheet({
     });
   };
 
+  const Container = lastType === "sticky" ? BottomSheet : FullScreenSheet;
+
   return (
     <>
-      <BottomSheet open={!!notice} onClose={onClose}>
+      <Container open={!!notice} onClose={onClose}>
         {notice && (
           <div className="flex flex-col gap-3">
             <SheetHeader title={notice.type === "sticky" ? "" : notice.title ?? ""}>
@@ -184,8 +195,8 @@ export function NoticeDetailSheet({
                   />
                 )}
                 <p
-                  className={`whitespace-pre-wrap text-[13px] text-ink ${
-                    notice.type === "sticky" ? "font-handwriting text-[16px]" : ""
+                  className={`whitespace-pre-wrap text-ink ${
+                    notice.type === "sticky" ? "font-handwriting text-[14px]" : "text-[13px]"
                   }`}
                 >
                   {notice.content}
@@ -256,7 +267,7 @@ export function NoticeDetailSheet({
             )}
           </div>
         )}
-      </BottomSheet>
+      </Container>
 
       <AddPostSheet
         open={!!editingNotice}

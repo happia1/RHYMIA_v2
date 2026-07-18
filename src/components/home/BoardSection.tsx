@@ -164,7 +164,7 @@ export function BoardSection({
 
       <section className="flex flex-col gap-label-gap">
         <div className="flex items-center justify-between">
-          <span className={mirror.label}>메모</span>
+          <span className={mirror.label}>메모/공지사항</span>
           <button
             onClick={() => setAddingPost(true)}
             aria-label="메모 작성"

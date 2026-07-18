@@ -2,8 +2,12 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
 import { KEYWORD_GROUPS } from "@/lib/scheduleKeywords";
 import { targetLabel, type MemberInfo } from "@/lib/scheduleTargets";
+import { addYears } from "@/lib/date";
+import { useSwipeCalendarNav, swipeCalendarNavStyle } from "@/components/schedule/useSwipeCalendarNav";
+import { MemberFilterRow } from "@/components/schedule/MemberFilterRow";
 import { AddEventSheet } from "@/components/schedule/AddEventSheet";
 import { ScheduleDetailSheet } from "@/components/schedule/ScheduleDetailSheet";
 import { SectionExpand } from "@/components/ui/SectionExpand";
@@ -19,12 +23,17 @@ export function YearView({
   membersById,
   keywordMain,
   workspaceId,
+  members,
+  target,
 }: {
   anchorDate: string;
   schedules: ExpandedSchedule[];
   membersById: Record<string, MemberInfo>;
   keywordMain?: string;
   workspaceId: string;
+  /** 연도 이동 줄 오른쪽의 멤버 필터 드롭다운용 — 월간/주간 뷰와 동일한 자리 */
+  members: { id: string; display_name: string; avatar_color: string }[];
+  target: string;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -32,6 +41,19 @@ export function YearView({
   const [detailSchedule, setDetailSchedule] = useState<ExpandedSchedule | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
   const [listOpen, setListOpen] = useState(true);
+
+  const year = new Date(anchorDate).getFullYear();
+  const goToYear = (delta: number) => {
+    const next = new URLSearchParams(searchParams.toString());
+    next.set("date", addYears(anchorDate, delta));
+    router.push(`/schedule?${next.toString()}`);
+  };
+  // 다른 뷰와 같은 공용 훅 — 좌우 스와이프로 연도 이동, 기존 <> 버튼과 같은 목적지 재사용.
+  const { dragging, handlers, ...swipeNav } = useSwipeCalendarNav({
+    value: year,
+    onPrev: () => goToYear(-1),
+    onNext: () => goToYear(1),
+  });
 
   // schedule/page.tsx가 뷰 종류와 무관하게 keywordMain URL 파라미터로 schedules를
   // 걸러서 내려주므로, 여기서 고른 키워드는 월간 뷰로 전환해도 그대로 유지된다
@@ -64,6 +86,28 @@ export function YearView({
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center">
+        <div />
+        <div className="flex items-center justify-center gap-4">
+          <button onClick={() => goToYear(-1)} aria-label="이전 연도">
+            <IconChevronLeft size={20} className="text-stone" />
+          </button>
+          <span className="whitespace-nowrap text-[15px] font-medium text-ink">{year}년</span>
+          <button onClick={() => goToYear(1)} aria-label="다음 연도">
+            <IconChevronRight size={20} className="text-stone" />
+          </button>
+        </div>
+        <div className="flex justify-end">
+          <MemberFilterRow members={members} target={target} />
+        </div>
+      </div>
+
+      <div
+        key={year}
+        {...handlers}
+        style={swipeCalendarNavStyle({ dragging, ...swipeNav })}
+        className="flex flex-col gap-4"
+      >
       <div className="grid grid-cols-3 gap-y-4 text-center">
         {Array.from({ length: 12 }, (_, m) => {
           const count = countByMonth[m] ?? 0;
@@ -162,6 +206,7 @@ export function YearView({
             )}
           </>
         )}
+      </div>
       </div>
 
       <AddEventSheet

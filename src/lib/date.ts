@@ -17,6 +17,13 @@ export function addMonths(dateStr: string, delta: number): string {
   return toDateStr(d);
 }
 
+/** dateStr 기준 연도를 delta만큼 이동한 날짜 문자열(YYYY-MM-DD)을 반환합니다(연간 뷰 이동용). */
+export function addYears(dateStr: string, delta: number): string {
+  const d = new Date(dateStr);
+  d.setFullYear(d.getFullYear() + delta, d.getMonth(), 1);
+  return toDateStr(d);
+}
+
 /** 오늘이면 "오후 3:20", 아니면 "7/6" 형태로 표시합니다 (게시판 작성 시각용). */
 export function formatPostTimestamp(iso: string): string {
   const d = new Date(iso);

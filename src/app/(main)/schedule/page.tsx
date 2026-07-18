@@ -1,9 +1,7 @@
 import { requireWorkspaceContext } from "@/lib/workspace";
 import { toDateStr, getWeekDates } from "@/lib/date";
 import { getWorkspaceMembers } from "@/lib/members";
-import { mirror } from "@/lib/homeTheme";
 import { ScheduleTabs } from "@/components/schedule/ScheduleTabs";
-import { MemberFilterRow } from "@/components/schedule/MemberFilterRow";
 import { ScheduleDayView } from "@/components/schedule/ScheduleDayView";
 import { MonthView } from "@/components/schedule/MonthView";
 import { WeekView } from "@/components/schedule/WeekView";
@@ -12,12 +10,6 @@ import { AddEventEntry } from "@/components/schedule/AddEventEntry";
 import { AgentLauncher } from "@/components/agent/AgentLauncher";
 import { getSchedulesForRange, getTodosForRange, getOverdueTodos } from "@/app/(main)/schedule/actions";
 import type { Schedule, Routine, Todo } from "@/types";
-
-const VIEW_LABEL: Record<"month" | "week" | "year", string> = {
-  month: "월간 일정",
-  week: "주간 일정",
-  year: "연간 일정",
-};
 
 type ViewMode = "day" | "month" | "week" | "year";
 
@@ -156,12 +148,6 @@ export default async function SchedulePage({
 
       <div className={`min-h-0 flex-1 ${view === "month" ? "overflow-hidden" : "overflow-y-auto pb-24"}`}>
         <section className={`flex flex-col ${view === "month" ? "h-full gap-label-gap" : "gap-label-gap"}`}>
-          {view === "year" && (
-            <div className="flex items-center justify-between gap-3">
-              <span className={mirror.label}>{VIEW_LABEL[view]}</span>
-              <MemberFilterRow members={members} target={params.target ?? "all"} />
-            </div>
-          )}
           {view === "month" && (
             <MonthView
               anchorDate={anchorStr}
@@ -194,6 +180,8 @@ export default async function SchedulePage({
               membersById={membersById}
               keywordMain={params.keywordMain}
               workspaceId={workspaceId}
+              members={members}
+              target={params.target ?? "all"}
             />
           )}
         </section>

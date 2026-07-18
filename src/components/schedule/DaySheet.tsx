@@ -5,10 +5,11 @@ import { IconPlus } from "@tabler/icons-react";
 import { getHoliday } from "@/lib/holidays";
 import { solarToLunar } from "@/lib/lunar";
 import { getKeywordColor } from "@/lib/scheduleKeywords";
-import { isPeriodSchedule, shortRange, longRangeWithWeekday } from "@/lib/scheduleFormat";
+import { isPeriodSchedule, shortRange } from "@/lib/scheduleFormat";
 import { targetLabel, type MemberInfo } from "@/lib/scheduleTargets";
 import { TodoChecklistItem } from "@/components/schedule/TodoChecklistItem";
 import { EventMarker } from "@/components/schedule/EventMarker";
+import { PeriodBarRow } from "@/components/schedule/PeriodBarRow";
 import { ActivitySuggestionSection } from "@/components/schedule/ActivitySuggestionSection";
 import { SectionExpand } from "@/components/ui/SectionExpand";
 import { useSwipeDownToClose } from "@/components/ui/useSwipeDownToClose";
@@ -136,21 +137,12 @@ export function DaySheet({
         {periodSchedules.length > 0 && (
           <div className="flex flex-col gap-3">
             {periodSchedules.map((s) => (
-              <button
-                key={s.id}
-                onClick={() => onOpenSchedule(s)}
-                className="flex items-stretch gap-2 text-left"
-              >
+              <div key={s.id} className="flex items-stretch gap-2">
                 <span className="w-8 shrink-0 pt-0.5 text-[9px] text-stone">종일</span>
-                <span
-                  className="w-[3px] shrink-0 rounded-full"
-                  style={{ backgroundColor: getKeywordColor(s.keyword_main) }}
-                />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[12px] text-ink">{s.title}</p>
-                  <p className="truncate text-[10px] text-stone">{longRangeWithWeekday(s)}</p>
+                  <PeriodBarRow schedule={s} onClick={() => onOpenSchedule(s)} />
                 </div>
-              </button>
+              </div>
             ))}
           </div>
         )}

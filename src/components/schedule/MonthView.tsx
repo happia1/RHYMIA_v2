@@ -2,9 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
 import { getKeywordColor } from "@/lib/scheduleKeywords";
 import { formatYearMonth, addMonths } from "@/lib/date";
+import { useSwipeCalendarNav, swipeCalendarNavStyle } from "@/components/schedule/useSwipeCalendarNav";
 import { getHoliday } from "@/lib/holidays";
 import { addDaysToDateStr, type ExpandedSchedule } from "@/lib/recurrence";
 import { type MemberInfo } from "@/lib/scheduleTargets";
@@ -130,6 +132,7 @@ export function MonthView({
   members: { id: string; display_name: string; avatar_color: string }[];
   target: string;
 }) {
+  const router = useRouter();
   const initialHighlightMatch = highlightId ? schedules.find((s) => s.id === highlightId) : undefined;
   const [selectedDate, setSelectedDate] = useState(initialHighlightMatch?.date_start ?? anchorDate);
   const [sheetOpen, setSheetOpen] = useState(Boolean(initialHighlightMatch));
@@ -339,6 +342,15 @@ export function MonthView({
     if (sheetOpen) setSheetOpen(false);
   };
 
+  // 좌우 스와이프로 이전/다음 달 이동 — 기존 <> 버튼과 같은 목적지(URL)를 그대로 재사용.
+  // 데이 시트가 열려 있을 땐 날짜 선택/스크롤 제스처와 겹치지 않도록 비활성화.
+  const { dragging, handlers, ...swipeNav } = useSwipeCalendarNav({
+    value: anchorDate,
+    onPrev: () => router.push(`/schedule?view=month&date=${addMonths(anchorDate, -1)}`),
+    onNext: () => router.push(`/schedule?view=month&date=${addMonths(anchorDate, 1)}`),
+    disabled: sheetOpen,
+  });
+
   return (
     <div className="flex h-full flex-col gap-4 overflow-x-hidden pb-16">
       <div className="flex shrink-0 items-center justify-between">
@@ -363,25 +375,31 @@ export function MonthView({
           className="flex h-full flex-col overflow-hidden"
           style={{ height: sheetOpen ? "50%" : "100%", transition: COMPRESS_TRANSITION }}
         >
-          <div className="grid shrink-0 grid-cols-7 pb-1 text-center">
-            {WEEKDAY_LABELS.map((wd, i) => (
-              <span
-                key={wd}
-                className={`text-[11px] ${
-                  i === 6 ? "text-terra" : i === 5 ? "text-ocean" : "text-[var(--text-muted)]"
-                }`}
-              >
-                {wd}
-              </span>
-            ))}
-          </div>
-
           <div
-            className="grid flex-1 grid-cols-7 gap-y-1 text-center"
-            style={{ gridTemplateRows: `repeat(${weekRows}, minmax(0, 1fr))` }}
-            onClick={handleCalendarAreaTap}
+            key={anchorDate}
+            {...handlers}
+            className="flex h-full flex-col"
+            style={swipeCalendarNavStyle({ dragging, ...swipeNav })}
           >
-            {cells.map((date, i) => {
+            <div className="grid shrink-0 grid-cols-7 pb-1 text-center">
+              {WEEKDAY_LABELS.map((wd, i) => (
+                <span
+                  key={wd}
+                  className={`text-[11px] ${
+                    i === 6 ? "text-terra" : i === 5 ? "text-ocean" : "text-[var(--text-muted)]"
+                  }`}
+                >
+                  {wd}
+                </span>
+              ))}
+            </div>
+
+            <div
+              className="grid flex-1 grid-cols-7 gap-y-1 text-center"
+              style={{ gridTemplateRows: `repeat(${weekRows}, minmax(0, 1fr))` }}
+              onClick={handleCalendarAreaTap}
+            >
+              {cells.map((date, i) => {
               if (!date) return <div key={`empty-${i}`} />;
               const dotSchedules = dotsByDate[date] ?? [];
               const cellBands = (bandsByDate[date] ?? []).slice().sort((a, b) => a.lane - b.lane);
@@ -515,6 +533,7 @@ export function MonthView({
                 </button>
               );
             })}
+            </div>
           </div>
         </div>
       </div>
