@@ -20,7 +20,8 @@ export async function GET(request: Request) {
   try {
     const items = await searchRecipes(query);
     return Response.json({ items });
-  } catch {
-    return Response.json({ error: "레시피를 검색하지 못했어요." }, { status: 502 });
+  } catch (err) {
+    console.error(`[api/recipes] 검색 실패 (query="${query}"):`, err);
+    return Response.json({ error: "잠시 후 다시 시도해주세요." }, { status: 502 });
   }
 }

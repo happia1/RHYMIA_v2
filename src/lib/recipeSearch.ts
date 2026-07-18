@@ -41,9 +41,9 @@ export async function searchInternalRecipes(
   try {
     const res = await fetch(`/api/recipes?q=${encodeURIComponent(query)}`);
     const data = await res.json();
-    if (!res.ok) return { error: data.error ?? "레시피를 검색하지 못했어요." };
+    if (!res.ok) return { error: data.error ?? "잠시 후 다시 시도해주세요." };
     return { items: data.items as NormalizedRecipe[] };
   } catch {
-    return { error: "레시피를 검색하지 못했어요." };
+    return { error: "잠시 후 다시 시도해주세요." };
   }
 }

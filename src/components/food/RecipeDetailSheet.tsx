@@ -10,21 +10,27 @@ import type { NormalizedRecipe } from "@/lib/foodSafetyRecipe";
 
 const MEMO_STEP_COUNT = 3;
 
-/** 식탁 탭 "추천 레시피" 배너 및 끼니 등록 "레시피(내부) 검색" 결과 양쪽이 공유하는 상세
- * 팝업 — 완성 사진, 재료, 조리 단계, 출처(식품안전나라 공공데이터) 표기. 하단 "오늘 메뉴로
- * 추가하기"는 완성 사진을 우리 Storage로 복사(공공데이터라 재배포 허용)한 뒤 끼니 등록
- * 화면으로 이동해 메뉴명/이미지/재료/조리 요약을 프리필한다 — 등록 자체는 사용자가 폼에서
- * 확인 후 직접 저장. */
+/** 식탁 탭 "추천 레시피" 배너 및 끼니 등록 "레시피 찾아보기"(검색 결과/즐겨찾기/최근 본)
+ * 양쪽이 공유하는 상세 팝업 — 완성 사진, 재료, 조리 단계, 출처(식품안전나라 공공데이터) 표기.
+ * 두 호출부의 "채우기" 동선이 서로 달라 하단 버튼 동작을 분기한다:
+ * - onFillFromRecipe가 있으면(끼니 등록 화면 "안"에서 열린 경우) 그 콜백만 호출하고 끝 —
+ *   이미 등록 화면 위에 떠 있으므로 페이지 이동 없이 그 자리에서 폼을 채운다.
+ * - 없으면(식탁 탭 배너에서 열린 경우, selectedDate 필요) 완성 사진을 우리 Storage로
+ *   복사한 뒤 끼니 등록 화면으로 이동해 메뉴명/이미지/재료/조리 요약을 프리필한다. */
 export function RecipeDetailSheet({
   recipe,
   open,
   onClose,
   selectedDate,
+  onFillFromRecipe,
 }: {
   recipe: NormalizedRecipe | null;
   open: boolean;
   onClose: () => void;
-  selectedDate: string;
+  /** food 탭 배너에서 열렸을 때만 필요("오늘 메뉴로 추가하기"의 이동 대상 날짜) */
+  selectedDate?: string;
+  /** 끼니 등록 화면 안에서 열렸을 때만 전달 — 있으면 페이지 이동 대신 이 콜백으로 그 자리에서 채운다. */
+  onFillFromRecipe?: (recipe: NormalizedRecipe) => void;
 }) {
   const router = useRouter();
   const { showToast } = useToast();
@@ -32,6 +38,12 @@ export function RecipeDetailSheet({
 
   const handleAddToToday = async () => {
     if (!recipe) return;
+
+    if (onFillFromRecipe) {
+      onFillFromRecipe(recipe);
+      return;
+    }
+
     setIsAdding(true);
 
     let imageUrl = "";
@@ -49,7 +61,7 @@ export function RecipeDetailSheet({
       .map((s) => s.text)
       .join("\n");
 
-    const params = new URLSearchParams({ date: selectedDate, menu: recipe.name });
+    const params = new URLSearchParams({ date: selectedDate ?? "", menu: recipe.name });
     if (imageUrl) params.set("recipeImage", imageUrl);
     if (recipe.ingredients.length) params.set("recipeIngredients", recipe.ingredients.join(","));
     if (memoSummary) params.set("recipeMemo", memoSummary);
@@ -123,7 +135,7 @@ export function RecipeDetailSheet({
             className="flex h-11 items-center justify-center gap-1.5 rounded-2xl bg-ink text-[14px] font-medium text-cream disabled:opacity-60"
           >
             {isAdding && <IconLoader2 size={16} className="animate-spin" />}
-            오늘 메뉴로 추가하기
+            {onFillFromRecipe ? "이 레시피로 채우기" : "오늘 메뉴로 추가하기"}
           </button>
         </div>
       )}

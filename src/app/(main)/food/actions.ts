@@ -6,7 +6,13 @@ import { createClient } from "@/lib/supabase/server";
 import { callAgentServer } from "@/lib/agentServer";
 import { toDateStr } from "@/lib/date";
 import { addDaysToDateStr } from "@/lib/recurrence";
+import type { NormalizedRecipe } from "@/lib/foodSafetyRecipe";
 import type { FridgeCategory, Meal, MealNutritionEstimate, MealType } from "@/types";
+
+// 레시피 노트(즐겨찾기/최근 본 레시피) — 현재는 식품안전나라 내부 레시피만 지원.
+const RECIPE_NOTE_SOURCE = "foodsafety";
+// "최근 본 레시피"는 이 개수를 넘어가면 오래된 것부터 정리한다(즐겨찾기는 예외 — 안 지움).
+const MAX_RECENT_RECIPES = 30;
 
 export interface MealInput {
   date: string;
@@ -379,4 +385,120 @@ export async function addMealComment(mealId: string, content: string) {
   if (error) throw new Error(error.message);
 
   revalidatePath("/food");
+}
+
+/** "레시피 찾아보기" 시트에서 검색어 없이 열었을 때 보여줄 "내 레시피 노트"(즐겨찾기)와
+ * "최근 본 레시피" 목록. recipe_note.data에 스냅샷으로 저장해둔 NormalizedRecipe를
+ * 그대로 돌려주므로 외부 API를 다시 호출하지 않는다. */
+export async function getRecipeNotes(workspaceId: string): Promise<{
+  favorites: NormalizedRecipe[];
+  recent: NormalizedRecipe[];
+}> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("recipe_note")
+    .select("data, is_favorite, last_viewed_at")
+    .eq("workspace_id", workspaceId)
+    .eq("source", RECIPE_NOTE_SOURCE)
+    .order("last_viewed_at", { ascending: false, nullsFirst: false });
+
+  if (error) throw new Error(error.message);
+
+  const rows = (data ?? []) as {
+    data: NormalizedRecipe;
+    is_favorite: boolean;
+    last_viewed_at: string | null;
+  }[];
+
+  return {
+    favorites: rows.filter((r) => r.is_favorite).map((r) => r.data),
+    recent: rows.filter((r) => r.last_viewed_at).map((r) => r.data),
+  };
+}
+
+/** 레시피 카드의 별 토글 — 껐다 켰다 할 때마다 현재 상태를 조회해 반전시킨다(체크박스가
+ * 아니라 하나의 액션으로 켜기/끄기를 겸함). 아직 recipe_note 행이 없던 레시피(검색 결과에서
+ * 바로 즐겨찾기하는 경우)도 이 upsert 한 번으로 스냅샷과 함께 새로 생긴다. */
+export async function toggleRecipeFavorite(
+  workspaceId: string,
+  recipe: NormalizedRecipe
+): Promise<{ ok: true; isFavorite: boolean } | { ok: false; message: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, message: "로그인이 필요해요." };
+
+  const { data: existing } = await supabase
+    .from("recipe_note")
+    .select("is_favorite")
+    .eq("workspace_id", workspaceId)
+    .eq("source", RECIPE_NOTE_SOURCE)
+    .eq("external_id", recipe.id)
+    .maybeSingle();
+
+  const nextFavorite = !existing?.is_favorite;
+
+  const { error } = await supabase.from("recipe_note").upsert(
+    {
+      workspace_id: workspaceId,
+      source: RECIPE_NOTE_SOURCE,
+      external_id: recipe.id,
+      title: recipe.name,
+      image_url: recipe.image,
+      data: recipe,
+      is_favorite: nextFavorite,
+      created_by: user.id,
+    },
+    { onConflict: "workspace_id,source,external_id" }
+  );
+
+  if (error) return { ok: false, message: error.message };
+  return { ok: true, isFavorite: nextFavorite };
+}
+
+/** 레시피 상세 시트를 열 때 호출 — "최근 본" 순서 갱신용으로 last_viewed_at만 갱신하고
+ * is_favorite은 건드리지 않는다(upsert에 안 넣은 컬럼은 충돌 시에도 그대로 유지됨).
+ * 실패해도 상세 화면 자체엔 영향이 없어야 하는 부가 기록이라 에러를 던지지 않는다. */
+export async function recordRecipeViewed(workspaceId: string, recipe: NormalizedRecipe): Promise<void> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { error } = await supabase.from("recipe_note").upsert(
+      {
+        workspace_id: workspaceId,
+        source: RECIPE_NOTE_SOURCE,
+        external_id: recipe.id,
+        title: recipe.name,
+        image_url: recipe.image,
+        data: recipe,
+        last_viewed_at: new Date().toISOString(),
+        created_by: user.id,
+      },
+      { onConflict: "workspace_id,source,external_id" }
+    );
+    if (error) return;
+
+    // "최근 본"은 최대 MAX_RECENT_RECIPES건만 유지 — 즐겨찾기(is_favorite)는 대상에서 제외.
+    const { data: viewedRows } = await supabase
+      .from("recipe_note")
+      .select("id")
+      .eq("workspace_id", workspaceId)
+      .eq("source", RECIPE_NOTE_SOURCE)
+      .eq("is_favorite", false)
+      .not("last_viewed_at", "is", null)
+      .order("last_viewed_at", { ascending: false })
+      .limit(500);
+
+    const staleIds = (viewedRows ?? []).slice(MAX_RECENT_RECIPES).map((r) => r.id as string);
+    if (staleIds.length > 0) {
+      await supabase.from("recipe_note").delete().in("id", staleIds);
+    }
+  } catch {
+    // 조회 기록은 부가 기능 — 실패를 사용자에게 알릴 필요 없음
+  }
 }

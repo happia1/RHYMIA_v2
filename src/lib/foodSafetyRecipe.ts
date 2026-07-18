@@ -1,12 +1,14 @@
 /** 식품안전나라(식약처) 조리식품의 레시피 DB(COOKRCP01) OpenAPI 연동.
  * 공식 문서: https://www.foodsafetykorea.go.kr/api/openApiInfo.do?...&svc_no=COOKRCP01
- * 엔드포인트 형식: http://openapi.foodsafetykorea.go.kr/api/{키}/COOKRCP01/{json|xml}/{시작}/{끝}[/{필드}={값}]
+ * 엔드포인트 형식: https://openapi.foodsafetykorea.go.kr/api/{키}/COOKRCP01/{json|xml}/{시작}/{끝}[/{필드}={값}]
  * 응답 포장: { COOKRCP01: { total_count, row: [...], RESULT: { CODE, MSG } } }
  * 이 파일은 서버 전용(FOOD_SAFETY_API_KEY는 서버 전용 환경변수) — 서버 컴포넌트(식탁 탭
  * "추천 레시피")와 /api/recipes route handler(끼니 등록 화면의 인터랙티브 검색) 양쪽에서
  * 공용으로 쓴다. */
 
-const BASE_URL = "http://openapi.foodsafetykorea.go.kr/api";
+// 예전엔 http(평문)로 호출했었음 — 일부 네트워크/프록시가 평문 아웃바운드를 막거나
+// 느리게 처리해 무한 대기의 원인이 될 수 있어 https로 전환(엔드포인트 경로는 동일).
+const BASE_URL = "https://openapi.foodsafetykorea.go.kr/api";
 const SERVICE_ID = "COOKRCP01";
 const MANUAL_STEP_COUNT = 20;
 // 외부 정부 API가 응답 없이 멈추면(느린 네트워크/장애) 이 fetch를 기다리는 페이지
@@ -107,17 +109,38 @@ async function fetchRows(
 
   const segments = [BASE_URL, apiKey, SERVICE_ID, "json", String(startIdx), String(endIdx)];
   if (filterSegment) segments.push(filterSegment);
+  // 실패 원인을 구체적으로 남기되, API 키가 그대로 들어간 URL은 로그에 남기지 않는다.
+  const logLabel = `COOKRCP01 ${startIdx}-${endIdx}${filterSegment ? ` (${filterSegment})` : ""}`;
 
-  const res = await fetch(segments.join("/"), {
-    next: { revalidate: 86400 },
-    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-  });
-  if (!res.ok) throw new Error(`레시피 API 응답 오류 (status ${res.status})`);
+  let res: Response;
+  try {
+    res = await fetch(segments.join("/"), {
+      next: { revalidate: 86400 },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+  } catch (err) {
+    const isTimeout = err instanceof Error && err.name === "TimeoutError";
+    console.error(`[foodSafetyRecipe] 요청 실패(${isTimeout ? "타임아웃" : "네트워크 오류"}) — ${logLabel}:`, err);
+    throw new Error("레시피 API 호출에 실패했습니다.");
+  }
 
-  const data = (await res.json()) as RawResponse;
+  if (!res.ok) {
+    console.error(`[foodSafetyRecipe] 응답 오류 status=${res.status} — ${logLabel}`);
+    throw new Error(`레시피 API 응답 오류 (status ${res.status})`);
+  }
+
+  let data: RawResponse;
+  try {
+    data = (await res.json()) as RawResponse;
+  } catch (err) {
+    console.error(`[foodSafetyRecipe] 응답 형식 오류(JSON 파싱 실패) — ${logLabel}:`, err);
+    throw new Error("레시피 API 응답 형식이 예상과 다릅니다.");
+  }
+
   const body = data[SERVICE_ID];
   // 검색 결과가 0건일 때는 row 없이 RESULT만 내려온다(정상 — 에러 아님).
   if (!body || body.RESULT?.CODE?.startsWith("ERROR")) {
+    console.error(`[foodSafetyRecipe] API 에러 코드 — ${logLabel}:`, body?.RESULT);
     throw new Error(body?.RESULT?.MSG ?? "레시피 API 응답 형식이 예상과 다릅니다.");
   }
 

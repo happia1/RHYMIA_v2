@@ -8,12 +8,16 @@ export function BottomSheet({
   onClose,
   children,
   tall = false,
+  fixedHeight = false,
 }: {
   open: boolean;
   onClose: () => void;
   children: React.ReactNode;
   /** 장보기 시트처럼 더 높은 높이가 필요할 때 — 92dvh (기본 85vh) */
   tall?: boolean;
+  /** "레시피 찾아보기"처럼 콘텐츠 양과 무관하게 항상 화면 대부분(85dvh)을 채워야 하는
+   * 시트 전용 — max-h만 걸면 콘텐츠가 적을 때(검색 전 등) 시트가 쪼그라들어 보인다. */
+  fixedHeight?: boolean;
 }) {
   const [mounted, setMounted] = useState(open);
   const { dragY, dragging, handlers } = useSwipeDownToClose(onClose);
@@ -40,7 +44,9 @@ export function BottomSheet({
         {...handlers}
         className={`relative z-10 flex w-full flex-col overflow-y-auto rounded-t-3xl bg-surface p-6 ${
           dragging ? "" : "transition-transform duration-200"
-        } ${tall ? "max-h-[92dvh]" : "max-h-[85vh]"} ${open ? "translate-y-0" : "translate-y-full"}`}
+        } ${fixedHeight ? "h-[85dvh]" : tall ? "max-h-[92dvh]" : "max-h-[85vh]"} ${
+          open ? "translate-y-0" : "translate-y-full"
+        }`}
         style={dragY ? { transform: `translateY(${dragY}px)` } : undefined}
       >
         <div className="mx-auto mb-4 h-1 w-9 shrink-0 rounded-full bg-[#E8E6E0]" />

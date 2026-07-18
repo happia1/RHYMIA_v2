@@ -263,10 +263,6 @@ export function AddMealScreen({
       </header>
 
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
-        {!existingMeal && (
-          <RecentMenuSection workspaceId={workspaceId} onSelect={handleSelectRecentMeal} />
-        )}
-
         <section className="flex flex-col gap-2">
           <span className={mirror.label}>끼니</span>
           <div className="flex gap-4 overflow-x-auto">
@@ -349,6 +345,11 @@ export function AddMealScreen({
             className="hidden"
             onChange={handleImageSelected}
           />
+
+          {!existingMeal && (
+            <RecentMenuSection workspaceId={workspaceId} onSelect={handleSelectRecentMeal} />
+          )}
+
           {videoId && (
             <div className="flex items-center gap-2">
               {thumbnailError ? (
@@ -411,13 +412,22 @@ export function AddMealScreen({
               ))}
             </div>
           )}
-          <button
-            onClick={() => setFridgeOpen(true)}
-            className="flex items-center gap-1.5 self-start text-[13px] font-medium text-honey"
-          >
-            <IconFridge size={18} />
-            집에 뭐 있지
-          </button>
+          <div className="grid grid-cols-2">
+            <button
+              onClick={() => setFridgeOpen(true)}
+              className="flex items-center justify-center gap-2 py-2.5 pr-3 text-[13px] text-stone"
+            >
+              <IconFridge size={16} className="text-honey" />
+              집에 뭐 있지
+            </button>
+            <button
+              onClick={() => setRecipeSearchOpen(true)}
+              className="flex items-center justify-center gap-2 border-l border-border-light py-2.5 pl-3 text-[13px] text-stone"
+            >
+              <IconSearch size={16} className="text-honey" />
+              레시피 찾아보기
+            </button>
+          </div>
         </section>
 
         <section className={`flex flex-col gap-2 ${SECTION_DIVIDER}`}>
@@ -464,26 +474,6 @@ export function AddMealScreen({
             <IconPhoto size={18} className="text-honey" />
             앨범에서 선택
           </button>
-          <button
-            onClick={() => {
-              setPhotoOptionsOpen(false);
-              setRecipeSearchOpen(true);
-            }}
-            className="flex items-center gap-3 border-t border-border-light py-3 text-left text-[14px] text-ink"
-          >
-            <IconSearch size={18} className="text-honey" />
-            레시피 찾아보기
-          </button>
-          <button
-            onClick={() => {
-              setPhotoOptionsOpen(false);
-              setRecipeLinkOpen(true);
-            }}
-            className="flex items-center gap-3 border-t border-border-light py-3 text-left text-[14px] text-ink"
-          >
-            <IconLink size={18} className="text-honey" />
-            레시피 링크 붙여넣기
-          </button>
         </div>
       </BottomSheet>
 
@@ -511,6 +501,7 @@ export function AddMealScreen({
       <RecipeSearchSheet
         open={recipeSearchOpen}
         onClose={() => setRecipeSearchOpen(false)}
+        workspaceId={workspaceId}
         defaultQuery={mainMenu}
         memo={memo}
         onMemoChange={setMemo}
@@ -522,6 +513,10 @@ export function AddMealScreen({
           showToast("레시피 링크를 저장했어요.");
         }}
         onFillFromRecipe={handleFillFromRecipe}
+        onOpenLinkPaste={() => {
+          setRecipeSearchOpen(false);
+          setRecipeLinkOpen(true);
+        }}
       />
     </div>
   );

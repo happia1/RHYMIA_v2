@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { IconSparkles } from "@tabler/icons-react";
 import { SectionLabel } from "@/components/home/SectionLabel";
 import { MealDecisionSheet } from "@/components/food/MealDecisionSheet";
@@ -43,6 +44,7 @@ export function SuggestionSection({
   /** FOOD_SAFETY_API_KEY 설정 여부 — 꺼져 있으면 배너에 "준비 중"만 표시. */
   recipeEnabled: boolean;
 }) {
+  const router = useRouter();
   const [decisionOpen, setDecisionOpen] = useState(false);
   const [recipeOpen, setRecipeOpen] = useState(false);
   const [index, setIndex] = useState(0);
@@ -59,7 +61,7 @@ export function SuggestionSection({
     ? "준비 중"
     : recommendedRecipe
     ? recommendedRecipe.name
-    : "레시피를 불러오지 못했어요";
+    : "잠시 후 다시 시도해주세요";
 
   const slides: Slide[] = [
     {
@@ -79,10 +81,11 @@ export function SuggestionSection({
       key: "recipe",
       title: "추천 레시피",
       body: recipeBody,
-      action:
-        recipeEnabled && recommendedRecipe
+      action: recipeEnabled
+        ? recommendedRecipe
           ? { label: "레시피 보기", onClick: () => setRecipeOpen(true) }
-          : undefined,
+          : { label: "다시 시도", onClick: () => router.refresh() }
+        : undefined,
     },
   ];
 
