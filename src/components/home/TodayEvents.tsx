@@ -66,7 +66,7 @@ export function TodayEvents({
                 >
                   <EventMarker type="bar" color={getKeywordColor(s.keyword_main)} />
                   <span
-                    className={`min-w-0 flex-1 truncate text-[11px] ${
+                    className={`min-w-0 flex-1 truncate text-[13px] ${
                       s.is_important ? "font-medium" : ""
                     } ${mirror.primary}`}
                   >
@@ -88,7 +88,7 @@ export function TodayEvents({
                 >
                   <EventMarker type="dot" color={getKeywordColor(s.keyword_main)} />
                   <span
-                    className={`min-w-0 flex-1 truncate text-[11px] ${
+                    className={`min-w-0 flex-1 truncate text-[13px] ${
                       s.is_important ? "font-medium" : ""
                     } ${mirror.primary}`}
                   >
@@ -110,7 +110,7 @@ export function TodayEvents({
                 >
                   <EventMarker type="check" done={todo.is_done} />
                   <span
-                    className={`min-w-0 flex-1 truncate text-[11px] ${
+                    className={`min-w-0 flex-1 truncate text-[13px] ${
                       todo.is_done ? `line-through ${mirror.muted}` : mirror.primary
                     }`}
                   >
@@ -124,7 +124,7 @@ export function TodayEvents({
       )}
 
       {combinedCount > PREVIEW_COUNT && (
-        <Link href="/schedule" className={`self-end text-[11px] ${mirror.muted}`}>
+        <Link href="/schedule" className={`self-end text-[12px] ${mirror.muted}`}>
           더보기
         </Link>
       )}

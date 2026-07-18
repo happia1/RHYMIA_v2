@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { IconBell, IconSettings, IconPin } from "@tabler/icons-react";
+import { IconBell, IconSettings } from "@tabler/icons-react";
 import type { WeatherData } from "@/lib/weather";
 import { WEEKDAY_LABEL } from "@/lib/date";
 import { Avatar } from "@/components/ui/Avatar";
 import { AVATAR_SIZE } from "@/lib/uiTokens";
 import { mirror } from "@/lib/homeTheme";
 import { NoticeDetailSheet } from "@/components/board/NoticeDetailSheet";
+import { PinnedNoticeBanner } from "@/components/home/PinnedNoticeBanner";
 import type { WorkspaceMemberInfo } from "@/lib/members";
 import type { Notice, NoticeComment } from "@/types";
 
@@ -41,8 +42,8 @@ export function HomeHeader({
   familyStatus: FamilyMemberStatus[];
   weather: WeatherData | null;
   nowIso: string;
-  /** 게시판(메모)에서 상단 고정한 글 중 최근 고정 순 최대 2건 — 없으면 이 영역 자체를
-   * 렌더하지 않는다(자리 미리 확보 안 함, placeholder 없이 그냥 빈 여백 그대로 유지). */
+  /** 게시판(메모)에서 상단 고정한 글 — 카드형 배너(PinnedNoticeBanner)로 표시. 없으면
+   * 이 영역 자체를 렌더하지 않는다(자리 미리 확보 안 함, placeholder 없이 빈 여백 유지). */
   pinnedMemos: Notice[];
   workspaceId: string;
   currentUserId: string;
@@ -75,8 +76,8 @@ export function HomeHeader({
       <div className="flex items-start justify-between gap-4">
         {/* 왼쪽: 날씨 — 위치 → 기온+아이콘 → 최저/최고 순 배치 */}
         <div className="flex min-w-0 flex-col gap-1">
-          <span className={`truncate text-[10px] ${mirror.muted}`}>
-            {weather ? `${weather.location} · ${weather.description}` : "서울"}
+          <span className={`truncate text-[11px] ${mirror.muted}`}>
+            {weather ? weather.location : "서울 강동구"}
           </span>
           <div className="flex items-baseline gap-1.5">
             <span className={`text-[40px] font-light leading-none ${mirror.primary}`}>
@@ -85,7 +86,7 @@ export function HomeHeader({
             {weather && <span className="text-[26px] leading-none">{weather.icon}</span>}
           </div>
           {weather && weather.tempMinC !== null && weather.tempMaxC !== null && (
-            <span className={`text-[10px] ${mirror.muted}`}>
+            <span className={`text-[11px] ${mirror.muted}`}>
               최저 {weather.tempMinC}° · 최고 {weather.tempMaxC}°
             </span>
           )}
@@ -124,28 +125,7 @@ export function HomeHeader({
         ))}
       </div>
 
-      {pinnedMemos.length > 0 && (
-        <div className="flex flex-col gap-1">
-          {pinnedMemos.map((memo) => {
-            const author = memo.created_by ? membersById[memo.created_by] : null;
-            return (
-              <button
-                key={memo.id}
-                onClick={() => setOpenMemo(memo)}
-                className="flex items-center gap-1.5 text-left"
-              >
-                <IconPin size={11} className={`shrink-0 ${mirror.muted}`} />
-                <span className={`min-w-0 flex-1 truncate text-[11px] ${mirror.muted}`}>
-                  {memo.content}
-                </span>
-                <span className={`shrink-0 text-[11px] ${mirror.muted}`}>
-                  {author?.display_name ?? "가족"}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      )}
+      <PinnedNoticeBanner memos={pinnedMemos} membersById={membersById} onSelect={setOpenMemo} />
 
       <NoticeDetailSheet
         notice={openMemo}

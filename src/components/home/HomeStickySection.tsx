@@ -47,7 +47,7 @@ export function HomeStickySection({
       </SectionLabel>
       <div className="pl-section-indent">
         {previewStickers.length === 0 ? (
-          <p className={`text-[11px] ${mirror.muted}`}>등록된 하고싶은 말이 없어요</p>
+          <p className={`text-[12px] ${mirror.muted}`}>등록된 하고싶은 말이 없어요</p>
         ) : (
           <div className="flex flex-col gap-1.5">
             <div
@@ -67,8 +67,8 @@ export function HomeStickySection({
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={s.image_url} alt="" className="h-10 w-full rounded object-cover" />
                     )}
-                    <span className={`line-clamp-2 text-[12px] ${mirror.secondary}`}>{s.content}</span>
-                    <span className={`text-[9px] ${mirror.muted}`}>
+                    <span className={`line-clamp-2 text-[13px] ${mirror.secondary}`}>{s.content}</span>
+                    <span className={`text-[11px] ${mirror.muted}`}>
                       {author?.display_name ?? "가족"}
                     </span>
                   </button>

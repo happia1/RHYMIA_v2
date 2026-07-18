@@ -82,8 +82,9 @@ export default async function HomePage() {
       .or(`expire_at.is.null,expire_at.gt.${new Date().toISOString()}`)
       .order("created_at", { ascending: false })
       .limit(5),
-    // 가족상태 아래 "고정 메모" 영역 — 고정된(is_pinned) 메모 중 최근 고정 순 최대 2건.
-    // 탭하면 그 자리에서 상세 팝업(NoticeDetailSheet)을 여니 전체 컬럼이 필요하다.
+    // 가족상태 아래 "공지" 배너 — 고정된(is_pinned) 메모 중 최근 고정 순 최대 6건을
+    // 카드형 자동 플랩 배너(PinnedNoticeBanner)로 보여준다. 탭하면 그 자리에서 상세
+    // 팝업(NoticeDetailSheet)을 여니 전체 컬럼이 필요하다.
     supabase
       .from("notice")
       .select("*")
@@ -91,7 +92,7 @@ export default async function HomePage() {
       .eq("type", "memo")
       .eq("is_pinned", true)
       .order("created_at", { ascending: false })
-      .limit(2),
+      .limit(6),
     supabase.from("users").select("home_layout").eq("id", user.id).single(),
   ]);
 

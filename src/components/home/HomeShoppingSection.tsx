@@ -24,19 +24,19 @@ export function HomeShoppingSection({ shoppingItems }: { shoppingItems: Shopping
         className="flex flex-col gap-row pl-section-indent text-left"
       >
         {previewShopping.length === 0 ? (
-          <p className={`text-[11px] ${mirror.muted}`}>장바구니가 비어있어요</p>
+          <p className={`text-[12px] ${mirror.muted}`}>장바구니가 비어있어요</p>
         ) : (
           previewShopping.map((item) => (
             <div key={item.id} className="flex items-center gap-2">
               <span className="h-[3px] w-[3px] shrink-0 rounded-full bg-sage" />
-              <span className={`min-w-0 flex-1 truncate text-[12px] ${mirror.secondary}`}>
+              <span className={`min-w-0 flex-1 truncate text-[13px] ${mirror.secondary}`}>
                 {item.name}
               </span>
             </div>
           ))
         )}
         {restCount > 0 && (
-          <span className={`self-end text-[11px] ${mirror.muted}`}>외 {restCount}개</span>
+          <span className={`self-end text-[12px] ${mirror.muted}`}>외 {restCount}개</span>
         )}
       </button>
     </div>

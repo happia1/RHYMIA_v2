@@ -7,10 +7,10 @@ export interface WeatherData {
   location: string;
 }
 
-// 위치는 서울로 고정 (워크스페이스별 위치 설정 기능은 범위 밖)
-const LAT = 37.5665;
-const LON = 126.978;
-const LOCATION_LABEL = "서울";
+// 위치는 서울 강동구로 고정 (워크스페이스별 위치 설정 기능은 범위 밖)
+const LAT = 37.5301;
+const LON = 127.1238;
+const LOCATION_LABEL = "서울 강동구";
 // 외부 API가 응답 없이 멈추면 홈 화면 렌더링 전체가 함께 무한 대기하게 된다 — 타임아웃으로 끊어낸다.
 const FETCH_TIMEOUT_MS = 4000;
 
