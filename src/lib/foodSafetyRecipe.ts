@@ -9,6 +9,12 @@
 const BASE_URL = "http://openapi.foodsafetykorea.go.kr/api";
 const SERVICE_ID = "COOKRCP01";
 const MANUAL_STEP_COUNT = 20;
+// 외부 정부 API가 응답 없이 멈추면(느린 네트워크/장애) 이 fetch를 기다리는 페이지
+// 렌더링 전체가 함께 무한 대기하게 된다 — 반드시 짧은 타임아웃으로 끊어내고 상위의
+// catch(() => null)로 넘겨 "레시피를 불러오지 못했어요"로만 빠지게 한다.
+// getDailyRecommendedRecipe는 이 fetch를 최대 2번 순차 호출하므로(총 8초 이내),
+// Vercel 서버리스 함수 기본 타임아웃(10초) 안에 들어오도록 4초로 잡는다.
+const FETCH_TIMEOUT_MS = 4000;
 
 export interface NormalizedRecipeStep {
   text: string;
@@ -102,7 +108,10 @@ async function fetchRows(
   const segments = [BASE_URL, apiKey, SERVICE_ID, "json", String(startIdx), String(endIdx)];
   if (filterSegment) segments.push(filterSegment);
 
-  const res = await fetch(segments.join("/"), { next: { revalidate: 86400 } });
+  const res = await fetch(segments.join("/"), {
+    next: { revalidate: 86400 },
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
   if (!res.ok) throw new Error(`레시피 API 응답 오류 (status ${res.status})`);
 
   const data = (await res.json()) as RawResponse;

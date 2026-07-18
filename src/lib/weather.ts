@@ -11,6 +11,8 @@ export interface WeatherData {
 const LAT = 37.5665;
 const LON = 126.978;
 const LOCATION_LABEL = "서울";
+// 외부 API가 응답 없이 멈추면 홈 화면 렌더링 전체가 함께 무한 대기하게 된다 — 타임아웃으로 끊어낸다.
+const FETCH_TIMEOUT_MS = 4000;
 
 const WEATHER_EMOJI: Record<string, string> = {
   "01d": "☀️", "01n": "🌙",
@@ -37,7 +39,7 @@ async function getTodayMinMax(apiKey: string): Promise<{ min: number | null; max
   try {
     const res = await fetch(
       `https://api.openweathermap.org/data/2.5/forecast?lat=${LAT}&lon=${LON}&units=metric&appid=${apiKey}`,
-      { next: { revalidate: 600 } }
+      { next: { revalidate: 600 }, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) }
     );
     if (!res.ok) return { min: null, max: null };
 
@@ -66,7 +68,7 @@ export async function getCurrentWeather(): Promise<WeatherData | null> {
     const [res, minMax] = await Promise.all([
       fetch(
         `https://api.openweathermap.org/data/2.5/weather?lat=${LAT}&lon=${LON}&units=metric&lang=kr&appid=${apiKey}`,
-        { next: { revalidate: 600 } }
+        { next: { revalidate: 600 }, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) }
       ),
       getTodayMinMax(apiKey),
     ]);
