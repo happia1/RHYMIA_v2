@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { Nanum_Pen_Script } from "next/font/google";
 import "./globals.css";
-import { ThemeProvider } from "@/components/ui/ThemeProvider";
 import { ToastProvider } from "@/components/ui/Toast";
 
 const geistSans = localFont({
@@ -50,10 +49,13 @@ export const metadata: Metadata = {
 
 // viewportFit: "cover" — 이게 없으면 iOS Safari에서 env(safe-area-inset-*)가 전부 0으로
 // 취급돼(globals.css의 --dock-h 계산 포함) 노치/홈 인디케이터 영역을 반영할 수 없다.
+// themeColor: 다크 단일 테마(globals.css --bg-page, manifest.ts의 theme_color)와 맞춰
+// 브라우저 자체 UI(안드로이드 크롬 주소창 등)도 항상 이 색으로 통일.
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  themeColor: "#141417",
 };
 
 export default function RootLayout({
@@ -63,20 +65,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html:
-              "try{var t=localStorage.getItem('fridge-theme');if(t==='light'||t==='dark'){document.documentElement.setAttribute('data-theme',t);}}catch(e){}",
-          }}
-        />
-      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${handwriting.variable} antialiased`}
       >
-        <ThemeProvider>
-          <ToastProvider>{children}</ToastProvider>
-        </ThemeProvider>
+        <ToastProvider>{children}</ToastProvider>
       </body>
     </html>
   );

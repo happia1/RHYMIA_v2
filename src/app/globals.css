@@ -3,31 +3,35 @@
 @tailwind utilities;
 
 :root {
-  --background: #f5f4f0;
-  --foreground: #1a1a18;
+  --background: #141417;
+  --foreground: #ffffff;
 
-  /* 앱 전체 테마 토큰 — 라이트(기본값). 식탁/일정/게시판/설정 등 모든 탭이
-     이 변수들을 참조하는 cream/ink/stone/border-light/surface Tailwind 토큰을
-     통해 다크 모드를 반영한다 (tailwind.config.ts 참고). */
-  --bg-page: #F5F4F0;
-  --bg-surface: #FFFFFF;
-  --text-primary: #1A1A18;
-  --text-secondary: #888780;
-  --text-muted: #B4B2A9;
-  --hairline: #E8E6E0;
+  /* [AZ 1번 교체] 2026-07-19: 테마 단일화 — 다크를 유일 테마로 고정. 라이트 테마와
+     설정의 전환 UI(ThemeProvider/ThemeToggle, data-theme 속성, prefers-color-scheme
+     분기)는 전부 제거했지만, 앱 전체(식탁/일정/게시판/설정 등)가 참조하는 이 CSS 변수
+     아키텍처 자체는 그대로 유지한다 — 라이트를 재도입할 일이 생기면 아래 각 변수 값만
+     라이트 값으로 복원하면 되고(과거 라이트 값은 각 줄 옆 주석에 남겨둠), 그 값을
+     참조하는 tailwind.config.ts의 cream/ink/stone/border-light/surface 토큰이나 컴포넌트
+     코드는 전혀 손댈 필요가 없다. */
+  --bg-page: #141417; /* 라이트: #F5F4F0 */
+  --bg-surface: #1C1C20; /* 라이트: #FFFFFF */
+  --text-primary: #FFFFFF; /* 라이트: #1A1A18 */
+  --text-secondary: #8A8A92; /* 라이트: #888780 */
+  --text-muted: #5C5C64; /* 라이트: #B4B2A9 */
+  --hairline: #26262C; /* 라이트: #E8E6E0 */
   --accent-honey: #E8A04A;
   --accent-sage: #5BAD7F;
   /* 버튼 전용 표면 — 배경/텍스트를 항상 짝으로 관리해서 하드코딩된 bg-white가
      테마 변수 기반 텍스트와 어긋나 안 보이게 되는 문제를 막는다. */
-  --btn-surface-bg: #FFFFFF;
-  --btn-surface-text: #1A1A18;
+  --btn-surface-bg: #26262C; /* 라이트: #FFFFFF */
+  --btn-surface-text: #FFFFFF; /* 라이트: #1A1A18 */
   /* 입력 필드 전용 — <input>/<textarea>는 배경 지정이 없으면 브라우저가
      항상 흰색으로 렌더링해서, 다크 모드의 밝은 텍스트와 만나면 안 보이게 된다.
      반드시 이 4개를 세트로만 쓸 것 (배경/텍스트/플레이스홀더/테두리 개별 하드코딩 금지). */
-  --input-bg: #FFFFFF;
-  --input-text: #1A1A18;
-  --input-placeholder: #B4B2A9;
-  --input-border: #E8E6E0;
+  --input-bg: #1C1C21; /* 라이트: #FFFFFF */
+  --input-text: #FFFFFF; /* 라이트: #1A1A18 */
+  --input-placeholder: #5C5C64; /* 라이트: #B4B2A9 */
+  --input-border: #34343C; /* 라이트: #E8E6E0 */
   /* 섹션 라벨의 [아이콘 14px + gap-1.5(6px)]과 내용 시작점을 맞추기 위한 들여쓰기 */
   --section-indent: 20px;
   /* 하단 DockBar가 실제로 차지하는 높이 — 아이콘/라벨이 들어가는 64px 고정 영역 +
@@ -36,92 +40,21 @@
      `h-[calc(100dvh-var(--dock-h))]`와 DockBar 자신의 높이가 반드시 이 변수 하나만
      참조해야 아이패드에서 하단이 잘리지 않는다. */
   --dock-h: calc(64px + env(safe-area-inset-bottom));
-  /* 내 루틴 24시간 원형 차트 — 상태별 파스텔 팔레트 (라이트 기본값) */
-  --routine-work: #AEC6EA;
-  --routine-class: #CBB8EA;
-  --routine-exercise: #ABE0C2;
-  --routine-study: #F2CE96;
-  --routine-rest: #A6DFDF;
-  --routine-sleep: #BFC3EA;
-  --routine-commute: #EABBA6;
-  --routine-custom: #EAB0CB;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg-page: #141417;
-    --bg-surface: #1C1C20;
-    --text-primary: #FFFFFF;
-    --text-secondary: #8A8A92;
-    --text-muted: #5C5C64;
-    --hairline: #26262C;
-    --btn-surface-bg: #26262C;
-    --btn-surface-text: #FFFFFF;
-    --input-bg: #1C1C21;
-    --input-text: #FFFFFF;
-    --input-placeholder: #5C5C64;
-    --input-border: #34343C;
-    --routine-work: #5D82B3;
-    --routine-class: #8A6BB3;
-    --routine-exercise: #4FA173;
-    --routine-study: #C79544;
-    --routine-rest: #4CA3A3;
-    --routine-sleep: #6569B3;
-    --routine-commute: #B87857;
-    --routine-custom: #B35C85;
-  }
-}
-
-:root[data-theme="light"] {
-  --bg-page: #F5F4F0;
-  --bg-surface: #FFFFFF;
-  --text-primary: #1A1A18;
-  --text-secondary: #888780;
-  --text-muted: #B4B2A9;
-  --hairline: #E8E6E0;
-  --btn-surface-bg: #FFFFFF;
-  --btn-surface-text: #1A1A18;
-  --input-bg: #FFFFFF;
-  --input-text: #1A1A18;
-  --input-placeholder: #B4B2A9;
-  --input-border: #E8E6E0;
-  --routine-work: #AEC6EA;
-  --routine-class: #CBB8EA;
-  --routine-exercise: #ABE0C2;
-  --routine-study: #F2CE96;
-  --routine-rest: #A6DFDF;
-  --routine-sleep: #BFC3EA;
-  --routine-commute: #EABBA6;
-  --routine-custom: #EAB0CB;
-}
-
-:root[data-theme="dark"] {
-  --bg-page: #141417;
-  --bg-surface: #1C1C20;
-  --text-primary: #FFFFFF;
-  --text-secondary: #8A8A92;
-  --text-muted: #5C5C64;
-  --hairline: #26262C;
-  --btn-surface-bg: #26262C;
-  --btn-surface-text: #FFFFFF;
-  --input-bg: #1C1C21;
-  --input-text: #FFFFFF;
-  --input-placeholder: #5C5C64;
-  --input-border: #34343C;
-  --routine-work: #5D82B3;
-  --routine-class: #8A6BB3;
-  --routine-exercise: #4FA173;
-  --routine-study: #C79544;
-  --routine-rest: #4CA3A3;
-  --routine-sleep: #6569B3;
-  --routine-commute: #B87857;
-  --routine-custom: #B35C85;
+  /* 내 루틴 24시간 원형 차트 — 상태별 파스텔 팔레트 */
+  --routine-work: #5D82B3; /* 라이트: #AEC6EA */
+  --routine-class: #8A6BB3; /* 라이트: #CBB8EA */
+  --routine-exercise: #4FA173; /* 라이트: #ABE0C2 */
+  --routine-study: #C79544; /* 라이트: #F2CE96 */
+  --routine-rest: #4CA3A3; /* 라이트: #A6DFDF */
+  --routine-sleep: #6569B3; /* 라이트: #BFC3EA */
+  --routine-commute: #B87857; /* 라이트: #EABBA6 */
+  --routine-custom: #B35C85; /* 라이트: #EAB0CB */
 }
 
 body {
   color: var(--text-primary);
   background: var(--bg-page);
-  color-scheme: light dark;
+  color-scheme: dark;
 }
 
 /* 체크박스/라디오는 배경 지정이 없으면 OS 기본 렌더링에 의존해 테마와

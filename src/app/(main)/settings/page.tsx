@@ -6,7 +6,6 @@ import { listHomePhotos } from "@/lib/homePhotos.server";
 import { mirror } from "@/lib/homeTheme";
 import { CopyLinkButton } from "@/components/ui/CopyLinkButton";
 import { AvatarUploader } from "@/components/settings/AvatarUploader";
-import { ThemeToggle } from "@/components/settings/ThemeToggle";
 import { ShareLinkSection } from "@/components/settings/ShareLinkSection";
 import { MemberList } from "@/components/settings/MemberList";
 import { NutritionDisplayToggle } from "@/components/settings/NutritionDisplayToggle";
@@ -59,11 +58,6 @@ export default async function SettingsPage() {
             avatarImageUrl={me?.avatar_image_url ?? null}
           />
         </div>
-      </section>
-
-      <section className="flex flex-col gap-3">
-        <span className="text-[12px] font-medium text-stone">화면 모드</span>
-        <ThemeToggle />
       </section>
 
       <section className="flex flex-col gap-3">

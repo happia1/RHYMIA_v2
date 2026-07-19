@@ -1,4 +1,4 @@
-/** 상태별 24h 원형 차트 색상 — globals.css의 --routine-* 변수(라이트/다크 대응)를 가리킨다. */
+/** 상태별 24h 원형 차트 색상 — globals.css의 --routine-* 변수(다크 단일 테마 값)를 가리킨다. */
 export const STATUS_COLOR_VAR: Record<string, string> = {
   업무: "--routine-work",
   수업: "--routine-class",

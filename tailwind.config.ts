@@ -12,8 +12,9 @@ const config: Config = {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
-        // 다크 모드 대응: CSS 변수를 참조하므로 앱 전체(식탁/일정/게시판/설정 포함)에서
-        // 자동으로 테마가 반영된다 (src/app/globals.css 참고).
+        // CSS 변수를 참조하므로 앱 전체(식탁/일정/게시판/설정 포함)에서 값이 자동 반영된다
+        // (src/app/globals.css 참고, 현재는 다크 단일 값 — 라이트 재도입 시 그 변수 값만
+        // 복원하면 됨).
         cream: "var(--bg-page)",
         surface: "var(--bg-surface)",
         ink: "var(--text-primary)",
