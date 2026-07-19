@@ -30,6 +30,22 @@ const handwriting = Nanum_Pen_Script({
 export const metadata: Metadata = {
   title: "fridge",
   description: "5초 안에 오늘 우리 집의 상태를 이해할 수 있는 가족 홈 대시보드",
+  // manifest.ts는 Next.js가 자동으로 <link rel="manifest">를 넣어주지만, iOS Safari는
+  // 매니페스트의 icons를 홈 화면 아이콘으로 안 쓰고 apple-touch-icon만 본다 — 그래서
+  // 별도로 지정. appleWebApp이 "홈 화면에 추가"로 실행됐을 때 상단 상태바를 앱 콘텐츠
+  // 위로 반투명하게 겹치는 black-translucent 스타일을 적용한다.
+  icons: {
+    icon: [
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: "/icons/apple-touch-icon.png",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Fridge",
+  },
 };
 
 // viewportFit: "cover" — 이게 없으면 iOS Safari에서 env(safe-area-inset-*)가 전부 0으로
