@@ -175,7 +175,10 @@ export function HomeTabletHome({
   );
 
   return (
-    <div className="relative h-full">
+    // pt-10: 우상단 TabletTopBar(설정/알림)는 absolute라 이 패딩과 무관하게 컨테이너 맨
+    // 위에 그대로 붙어 있고, 이 패딩은 일반 흐름 콘텐츠(날씨·시계 행)만 그만큼 아래로
+    // 밀어낸다 — 그래서 독바와 함께 탑바가 뜰 때 시계 위에 반쯤 겹치던 문제가 없어진다.
+    <div className="relative h-full pt-10">
       <TabletTopBar />
 
       {layout === "tablet-landscape" && (

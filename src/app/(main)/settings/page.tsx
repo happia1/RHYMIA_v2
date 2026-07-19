@@ -61,7 +61,7 @@ export default async function SettingsPage() {
       </section>
 
       <section className="flex flex-col gap-3">
-        <span className="text-[14px] font-medium text-stone">홈 화면 사진</span>
+        <span className="text-[14px] font-medium text-stone">우리가족 앨범</span>
         <HomePhotoManager workspaceId={workspaceId} initialPhotos={homePhotos} />
       </section>
 

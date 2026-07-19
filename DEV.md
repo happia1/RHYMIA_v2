@@ -1783,6 +1783,8 @@ supabase/
   add_schedule_recurrence.sql                                2026-07-12 신규: schedule.recur_type/recur_calendar/recur_until 컬럼 추가 (반복 일정용, 실행 필요)
   add_meal_nutrition.sql                                     2026-07-12 신규: meal.kcal_min/kcal_max/macro_carb/macro_protein/macro_fat/nutrition_source 컬럼 추가 (끼니 영양 정보(추정)용, 실행 필요 — 사용자가 직접 실행 예정)
   add_nutrition_display_setting.sql                          2026-07-12 신규: family_workspace.nutrition_display_enabled BOOLEAN DEFAULT true 컬럼 추가 (실행 필요 — 사용자가 직접 실행 예정)
+  add_recipe_note.sql                                        레시피 노트/즐겨찾기용 recipe_note 테이블 추가 (실행 필요 — 사용자가 직접 실행 예정, 아래 "알려진 이슈" 참고)
+  add_home_photos_storage.sql                                태블릿 홈 중앙 포토 프레임용 home-photos Storage 버킷 + RLS(퍼블릭 읽기, 워크스페이스 멤버만 업로드/삭제) — 지금까지 이 표에 빠져 있던 걸 2026-07-19에 뒤늦게 발견(실행 필요 — 미실행 상태라 사진 업로드가 "버킷 없음"으로 실패하는 게 거의 확실, 아래 "알려진 이슈" 참고)
 middleware.ts                                              프로젝트 루트, 모든 요청에 대해 세션 갱신 (updateSession 위임)
 agent/                                                     2026-07-08 신규: Next.js와 분리된 Python 에이전트 서버 (별도 실행/배포 대상, 아래 "일정 파싱 에이전트 로컬 실행" 참고)
   main.py                                                  FastAPI 진입점 — POST /process-schedule, /extract-text(전부 AGENT_API_KEY 설정 시 X-API-Key 헤더 검증 + image_base64 약 8MB 초과 시 413), GET /health(인증 제외). /estimate-nutrition은 2026-07-19에 제거(끼니 영양 추정은 이제 Next.js src/lib/nutritionEstimate.ts가 담당 — 위 "인증"/"진행 현황" 섹션의 2026-07-19 항목 참고)
@@ -1916,6 +1918,7 @@ agent/                                                     2026-07-08 신규: Ne
   - 홈 "가족 상태" 아바타 탭 → 하루 뷰 딥링크가 해당 멤버를 정확히 선택한 채로 열리는지
 - [ ] 2026-07-11 장바구니 "장보기 완료" 폼 단순화 — 사용자가 준 UX 스펙(구매처/금액 두 입력만)을 그대로 따르면서, 기존에 있던 영수증 첨부 버튼과 "재고에 추가" on/off 토글을 이 폼에서 뺐음(재고 추가는 토글 없이 항상 실행). 스펙에 없던 기존 기능을 제거하는 판단이라 **사용자 확인 필요** — 영수증 첨부를 다시 이 폼에 넣거나 재고 추가를 다시 선택 가능하게 되돌리고 싶으면 알려줄 것. 이 환경엔 로그인된 브라우저가 없어 기록 탭의 달력/검색/상세 UI도 `tsc`/`lint`/컴파일 확인까지만 했고 실제 화면 확인은 못 함
 - [ ] `supabase/add_recipe_note.sql`(레시피 노트/즐겨찾기, `recipe_note` 테이블) 아직 라이브 DB에 미실행(사용자가 직접 실행 예정) — 실행 전까지는 끼니 등록 화면 "레시피 찾아보기"의 즐겨찾기 별 토글/내 레시피 노트/최근 본 레시피 섹션이 전부 실패함(테이블 없음 에러)
+- [ ] `supabase/add_home_photos_storage.sql`(`home-photos` Storage 버킷 + RLS) 아직 라이브 DB에 미실행으로 보임 — 이 파일이 "프로젝트 구조"/실행 체크리스트 어디에도 기록돼 있지 않았던 걸 2026-07-19에 뒤늦게 발견함(태블릿 홈 포토 프레임 기능을 만들 때 SQL 파일만 생성하고 추적을 빠뜨린 것으로 보임). 미실행 상태에서는 설정 탭 "우리가족 앨범"에서 사진 업로드 시 버킷이 없어(또는 RLS 정책이 없어) 실패함 — `HomePhotoManager.tsx`가 실패 원인을 `console.error`로 남기니 브라우저 콘솔에서 정확한 에러(버킷 없음/RLS 위반)를 확인 후, SQL Editor에서 이 파일을 실행하면 해결될 것으로 예상(재실행해도 안전한 스크립트)
 - [ ] `supabase/add_managed_avatar_storage.sql`(managed 멤버 프로필 사진 스토리지 정책) 아직 라이브 DB에 미실행(사용자가 직접 실행 예정) — 실행 전까지는 managed 멤버 사진 업로드가 스토리지 정책 위반으로 실패함(버킷 자체는 이미 있으니 "bucket not found"가 아니라 RLS/정책 관련 에러로 나타날 것)
 - [ ] 2026-07-18 자동 로그인 미들웨어 쿠키 유실 버그 수정(위 "인증" 섹션 참고) — 브라우저 완전 종료 후 재접속 시 실제로 로그인이 유지되는지 이 환경에선 검증 불가, 사용자가 직접 확인 필요
 - [ ] 2026-07-18 홈/식탁/일정 UI 조정(공지 배너 좌우 스와이프/테두리 블록, 뭐먹지 이동 버튼, 메뉴 고르기 4칩, 주간 뷰 재구성 등) + managed 멤버 프로필 사진 업로드 + 초대 링크 미가입자 흐름 — 전부 `tsc --noEmit`/`eslint` 클린까지만 확인, 로그인된 브라우저가 없어 실제 터치 제스처감·레이아웃·업로드 플로우는 미확인. 특히 확인이 필요한 것들: 공지 배너 좌우 스와이프 제스처(터치 중 정지 포함), 홈 뭐먹지 카드 `<`/`>` 버튼 탭 영역, 주간 뷰 기간 2단 그리드가 홀수 개일 때 실제로 마지막 칸이 비는지, 초대 링크 화면의 회원가입/로그인 버튼이 실제로 `redirect` 파라미터를 들고 로그인 페이지로 이동해 완료 후 초대 링크로 되돌아오는지
