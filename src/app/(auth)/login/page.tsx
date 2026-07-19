@@ -3,10 +3,9 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { IconFridge, IconMessageCircleFilled, IconBrandGoogle } from "@tabler/icons-react";
-import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/Toast";
 import { Input } from "@/components/ui/Input";
-import { completeEmailAuth } from "./actions";
+import { signInAction, signUpAction } from "./actions";
 
 const KEEP_LOGIN_KEY = "fridge_keep_login";
 
@@ -72,25 +71,25 @@ function LoginForm() {
     }
 
     setIsSubmitting(true);
-    const supabase = createClient({ persistSession: keepLoggedIn });
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    });
-    setIsSubmitting(false);
-
-    if (signInError) {
-      setError("이메일 또는 비밀번호가 올바르지 않아요.");
-      return;
-    }
-
     try {
-      await completeEmailAuth(redirectParam);
+      // 로그인 자체(signInWithPassword)와 세션 쿠키 설정을 전부 서버 액션에서 수행 —
+      // 서버 Set-Cookie로 내려가야 iOS Safari의 "JS(document.cookie)로 쓴 쿠키는 최대
+      // 7일" 캡을 안 받는다(모바일에서 "로그인 상태 유지"를 켜도 며칠 만에 풀리던 문제의
+      // 표준 회피 패턴).
+      const result = await signInAction({
+        email: email.trim(),
+        password,
+        keepLoggedIn,
+        redirectTo: redirectParam,
+      });
+      if (result && !result.ok) setError(result.message);
     } catch (err) {
       if (isRedirectError(err)) throw err;
       setError(
         err instanceof Error ? err.message : "로그인 처리 중 오류가 발생했어요."
       );
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -111,29 +110,27 @@ function LoginForm() {
     }
 
     setIsSubmitting(true);
-    const supabase = createClient({ persistSession: keepLoggedIn });
-    const { data, error: signUpError } = await supabase.auth.signUp({
-      email: email.trim(),
-      password,
-    });
-    setIsSubmitting(false);
-
-    if (signUpError) {
-      setError(signUpError.message);
-      return;
-    }
-
-    if (data.session) {
-      try {
-        await completeEmailAuth(redirectParam);
-      } catch (err) {
-        if (isRedirectError(err)) throw err;
-        setError(
-          err instanceof Error ? err.message : "로그인 처리 중 오류가 발생했어요."
-        );
+    try {
+      const result = await signUpAction({
+        email: email.trim(),
+        password,
+        keepLoggedIn,
+        redirectTo: redirectParam,
+      });
+      if (result && !result.ok) {
+        setError(result.message);
+        return;
       }
-    } else {
-      setNotice("가입을 완료하려면 이메일함에서 인증 링크를 확인해주세요.");
+      if (result?.needsEmailConfirmation) {
+        setNotice("가입을 완료하려면 이메일함에서 인증 링크를 확인해주세요.");
+      }
+    } catch (err) {
+      if (isRedirectError(err)) throw err;
+      setError(
+        err instanceof Error ? err.message : "로그인 처리 중 오류가 발생했어요."
+      );
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -186,15 +183,24 @@ function LoginForm() {
         )}
 
         {mode === "login" && (
-          <label className="flex items-center gap-2 px-1 text-[13px] text-stone">
-            <input
-              type="checkbox"
-              checked={keepLoggedIn}
-              onChange={(e) => handleKeepLoggedInChange(e.target.checked)}
-              className="h-4 w-4 accent-sage"
-            />
-            로그인 상태 유지
-          </label>
+          <div className="flex flex-col gap-1 px-1">
+            <label className="flex items-center gap-2 text-[13px] text-stone">
+              <input
+                type="checkbox"
+                checked={keepLoggedIn}
+                onChange={(e) => handleKeepLoggedInChange(e.target.checked)}
+                className="h-4 w-4 accent-sage"
+              />
+              로그인 상태 유지
+            </label>
+            {/* iOS는 세션 쿠키를 앱이 완전히 종료되거나 얼마 안 지나 정리해버리는 경우가
+                많아, 껐을 때는 실제로 그럴 수 있다는 걸 미리 알려준다. */}
+            {!keepLoggedIn && (
+              <p className="text-[11px] text-[var(--text-muted)]">
+                모바일에서는 앱을 닫으면 다시 로그인해야 할 수 있어요
+              </p>
+            )}
+          </div>
         )}
 
         {error && <p className="text-[12px] text-terra">{error}</p>}

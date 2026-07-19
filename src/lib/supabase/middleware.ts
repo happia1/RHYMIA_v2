@@ -1,8 +1,15 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { PERSIST_COOKIE_NAME, persistenceOverride } from "@/lib/supabase/authPersistence";
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
+
+  // 로그인 액션이 심어둔 마커 — 이 요청의 세션이 "로그인 상태 유지"였는지를 알려준다
+  // (authPersistence.ts 참고). 이게 없으면 아래 setAll이 토큰을 갱신할 때마다
+  // @supabase/ssr 기본값(400일)으로 인증 쿠키를 다시 써서, 세션 쿠키로 로그인한
+  // 사용자가 미들웨어 갱신 한 번만으로 조용히 장기 로그인으로 격상돼버린다.
+  const keepLoggedIn = request.cookies.has(PERSIST_COOKIE_NAME);
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,7 +25,10 @@ export async function updateSession(request: NextRequest) {
           );
           supabaseResponse = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
+            supabaseResponse.cookies.set(name, value, {
+              ...options,
+              ...persistenceOverride(keepLoggedIn),
+            })
           );
         },
       },

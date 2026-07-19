@@ -33,7 +33,8 @@ export default async function JoinWorkspacePage({
   // 비로그인 상태 — 예전엔 곧장 /login으로 튕겨서 초대 링크 자체를 잃어버렸다(로그인 후
   // 기본 목적지인 /home으로 가버림). 대신 어느 가족에 초대됐는지 먼저 보여주고, 로그인/
   // 회원가입 버튼에 이 페이지 경로를 redirect 파라미터로 실어 보낸다 — 완료되면 로그인
-  // 페이지(completeEmailAuth)가 그 경로로 되돌려보내 자동으로 이 화면(→ 참여 폼)까지 이어진다.
+  // 페이지(signInAction/signUpAction의 afterAuth)가 그 경로로 되돌려보내 자동으로 이
+  // 화면(→ 참여 폼)까지 이어진다.
   if (!user) {
     const returnTo = `/workspace/join/${workspaceId}`;
     return (

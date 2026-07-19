@@ -2,11 +2,16 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+import { PERSIST_COOKIE_NAME } from "@/lib/supabase/authPersistence";
 
 export async function signOut() {
   const supabase = await createClient();
   await supabase.auth.signOut();
+  // 로그인 시 심어둔 "로그인 상태 유지" 마커도 함께 정리 — 안 지우면 다음 로그인 전까지
+  // 남아 있다가 미들웨어가 엉뚱한 지속성 판단을 할 수 있다.
+  (await cookies()).delete(PERSIST_COOKIE_NAME);
   redirect("/login");
 }
 

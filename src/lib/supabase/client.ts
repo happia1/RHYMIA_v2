@@ -1,51 +1,15 @@
 import { createBrowserClient } from "@supabase/ssr";
 
-/**
- * "로그인 상태 유지" 체크 해제 시 브라우저 세션 쿠키(만료 시각 없음 → 브라우저를
- * 완전히 종료하면 삭제됨)로 직접 관리한다. @supabase/ssr 0.12.0은 내부적으로
- * cookieOptions.maxAge를 넘겨도 항상 자체 기본값(400일)으로 덮어써버려서,
- * 세션 쿠키를 만들려면 cookies.getAll/setAll을 완전히 우리가 구현해야 한다.
- */
-function parseDocumentCookies(): { name: string; value: string }[] {
-  return document.cookie
-    .split("; ")
-    .filter(Boolean)
-    .map((pair) => {
-      const idx = pair.indexOf("=");
-      return {
-        name: idx === -1 ? pair : pair.slice(0, idx),
-        value: idx === -1 ? "" : decodeURIComponent(pair.slice(idx + 1)),
-      };
-    });
-}
-
-function writeSessionCookie(name: string, value: string) {
-  const secure = window.location.protocol === "https:" ? "; Secure" : "";
-  // max-age/expires를 생략하면 브라우저 세션 쿠키가 되어, 브라우저를
-  // 완전히 종료했을 때 자동으로 삭제된다.
-  document.cookie = `${name}=${encodeURIComponent(value)}; path=/; SameSite=Lax${secure}`;
-}
-
-export function createClient(options?: { persistSession?: boolean }) {
-  const persistSession = options?.persistSession ?? true;
-
-  if (persistSession) {
-    return createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-  }
-
+/** 브라우저 전용 Supabase 클라이언트 — 이미 로그인된 상태에서 클라이언트 컴포넌트가
+ * Storage 업로드/직접 테이블 조회 등에 쓰는 용도. 로그인/회원가입은 이제
+ * `(auth)/login/actions.ts`의 signInAction/signUpAction(서버 액션)에서 처리해 Set-Cookie로
+ * 세션을 심는다 — iOS Safari가 document.cookie(JS)로 쓰는 쿠키에만 거는 7일 캡을 피하기
+ * 위해서다. 예전엔 여기서 signIn까지 하면서 "로그인 상태 유지"를 끈 경우 브라우저 세션
+ * 쿠키를 직접 document.cookie로 구워야 했지만(parseDocumentCookies/writeSessionCookie),
+ * 그 로그인 책임 자체가 서버로 옮겨가면서 이 클라이언트엔 그 로직이 더 이상 필요 없다. */
+export function createClient() {
   return createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll: parseDocumentCookies,
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => writeSessionCookie(name, value));
-        },
-      },
-    }
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 }
