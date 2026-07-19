@@ -1,5 +1,5 @@
 import { requireWorkspaceContext } from "@/lib/workspace";
-import { getWorkspaceMembers } from "@/lib/members";
+import { getWorkspaceMembers } from "@/lib/members.server";
 import { BoardSection } from "@/components/home/BoardSection";
 import type { NoticeComment } from "@/types";
 

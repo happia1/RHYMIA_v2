@@ -8,9 +8,9 @@ import {
   DEFAULT_STATUS_EMOJI,
 } from "@/lib/routineUtils";
 import { getCurrentWeather } from "@/lib/weather";
-import { getWorkspaceMembers } from "@/lib/members";
+import { getWorkspaceMembers } from "@/lib/members.server";
 import { getOverdueTodos } from "@/app/(main)/schedule/actions";
-import { listHomePhotos } from "@/lib/homePhotos";
+import { listHomePhotos } from "@/lib/homePhotos.server";
 import { mirror } from "@/lib/homeTheme";
 import { resolveHomeLayout } from "@/lib/homeLayout";
 import { HomeHeader, type FamilyMemberStatus } from "@/components/home/HomeHeader";

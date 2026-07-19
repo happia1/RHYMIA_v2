@@ -14,7 +14,8 @@ import type { NormalizedRecipe } from "@/lib/foodSafetyRecipe";
 const FREQUENT_MENU_MIN_DAYS = 7;
 
 // "메뉴 고르기" 배너 — 설명 문구 없이 4가지 방식을 바로 칩으로 나열, 탭하면 그 모드로 시트가 연다.
-const DECISION_MODES: { mode: DecisionMode; label: string; icon: typeof IconDice5 }[] = [
+// 태블릿 식탁 탭(FoodTabletHome)의 "오늘의 제안" 칩도 이 배열을 그대로 재사용한다.
+export const DECISION_MODES: { mode: DecisionMode; label: string; icon: typeof IconDice5 }[] = [
   { mode: "roulette", label: "룰렛 돌리기", icon: IconDice5 },
   { mode: "worldcup", label: "이상형 월드컵", icon: IconTrophy },
   { mode: "ladder", label: "사다리", icon: IconLadder },

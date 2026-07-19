@@ -2,7 +2,7 @@ import Link from "next/link";
 import { IconArrowLeft } from "@tabler/icons-react";
 import { requireWorkspaceContext } from "@/lib/workspace";
 import { mapWorkspaceMembers } from "@/lib/members";
-import { listHomePhotos } from "@/lib/homePhotos";
+import { listHomePhotos } from "@/lib/homePhotos.server";
 import { mirror } from "@/lib/homeTheme";
 import { CopyLinkButton } from "@/components/ui/CopyLinkButton";
 import { AvatarUploader } from "@/components/settings/AvatarUploader";

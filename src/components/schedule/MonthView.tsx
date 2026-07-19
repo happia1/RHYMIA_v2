@@ -15,6 +15,7 @@ import { AddEventSheet } from "@/components/schedule/AddEventSheet";
 import { ScheduleDetailSheet } from "@/components/schedule/ScheduleDetailSheet";
 import { TodoSheet } from "@/components/schedule/TodoSheet";
 import { DaySheet } from "@/components/schedule/DaySheet";
+import { DaySheetContent } from "@/components/schedule/DaySheetContent";
 import { KeywordLegend } from "@/components/schedule/KeywordLegend";
 import { MemberFilterRow } from "@/components/schedule/MemberFilterRow";
 import { getLastYearHighlights, toggleTodoDone } from "@/app/(main)/schedule/actions";
@@ -267,6 +268,16 @@ export function MonthView({
     return map;
   }, [schedules]);
 
+  // 태블릿 미니 달력의 도트 — 모바일처럼 기간/하루짜리를 밴드·라인으로 구분해 그리지 않고
+  // (공간이 좁아 그럴 자리가 없음), 그날 일정이 하나라도 걸쳐 있으면 점 하나만 찍는다.
+  const hasScheduleByDate = useMemo(() => {
+    const set = new Set<string>();
+    for (const date of cells) {
+      if (date && schedules.some((s) => scheduleOverlapsDay(s, date))) set.add(date);
+    }
+    return set;
+  }, [cells, schedules]);
+
   const selectedSchedules = useMemo(
     () => schedules.filter((s) => scheduleOverlapsDay(s, selectedDate)),
     [schedules, selectedDate]
@@ -369,8 +380,10 @@ export function MonthView({
 
       {/* 기본 상태: 달력이 남는 높이 전부(100%)를 씀 — 페이지 스크롤 없음(요구사항 1).
           날짜 탭: 50%로 압축 애니메이션(요구사항 2), 하단 절반엔 DaySheet(고정 위치, 자체
-          슬라이드 트랜지션). 시트 닫힘: 다시 100%로(요구사항 3). */}
-      <div className="min-h-0 flex-1">
+          슬라이드 트랜지션). 시트 닫힘: 다시 100%로(요구사항 3). 1024px 이상은 이 압축+
+          슬라이드 시트 구조 자체를 안 쓰고 아래 별도 태블릿 블록(좌 미니 달력 + 우 고정
+          패널)으로 대체한다. */}
+      <div className="min-h-0 flex-1 lg:hidden">
         <div
           className="flex h-full flex-col overflow-hidden"
           style={{ height: sheetOpen ? "50%" : "100%", transition: COMPRESS_TRANSITION }}
@@ -538,6 +551,93 @@ export function MonthView({
         </div>
       </div>
 
+      {/* 태블릿(1024px~): 좌 미니 달력(도트만, 밴드/라벨 없음) + 우 고정 상세 패널 — 날짜를
+          선택해도 시트가 슬라이드하지 않고 우측 패널 내용만 바뀐다. DaySheetContent를
+          모바일 DaySheet와 그대로 공유(마커·+·수정 문법 동일), 활동 제안은 여기서만
+          "한 줄"로 노출(showActivitySuggestion). */}
+      <div className="hidden min-h-0 flex-1 lg:flex lg:gap-8">
+        <div className="flex w-[42%] flex-col">
+          <div
+            key={`tablet-${anchorDate}`}
+            {...handlers}
+            style={swipeCalendarNavStyle({ dragging, ...swipeNav })}
+            className="flex flex-col"
+          >
+            <div className="grid grid-cols-7 pb-1 text-center">
+              {WEEKDAY_LABELS.map((wd, i) => (
+                <span
+                  key={wd}
+                  className={`text-[11px] ${
+                    i === 6 ? "text-terra" : i === 5 ? "text-ocean" : "text-[var(--text-muted)]"
+                  }`}
+                >
+                  {wd}
+                </span>
+              ))}
+            </div>
+            <div className="grid grid-cols-7 gap-y-2 text-center">
+              {cells.map((date, i) => {
+                if (!date) return <div key={`tablet-empty-${i}`} />;
+                const isToday = date === todayStr;
+                const isSelected = date === selectedDate;
+                const holiday = getHoliday(date);
+                const weekendClass = weekendColorClass(date, holiday);
+                return (
+                  <button
+                    key={date}
+                    onClick={() => setSelectedDate(date)}
+                    className="flex flex-col items-center gap-1 py-1"
+                  >
+                    <span
+                      className={`flex h-7 w-7 items-center justify-center rounded-full text-[13px] ${
+                        isToday
+                          ? "bg-honey/15 font-medium text-honey"
+                          : isSelected
+                          ? "font-medium text-honey ring-1 ring-honey/40"
+                          : weekendClass
+                          ? `font-medium ${weekendClass}`
+                          : "text-ink"
+                      }`}
+                    >
+                      {Number(date.slice(-2))}
+                    </span>
+                    <span
+                      className={`h-[4px] w-[4px] rounded-full ${
+                        hasScheduleByDate.has(date) ? "bg-honey" : "bg-transparent"
+                      }`}
+                    />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        <div className="w-px shrink-0 bg-border-light" />
+
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <DaySheetContent
+            date={selectedDate}
+            schedules={selectedSchedules}
+            membersById={membersById}
+            highlightId={highlightId}
+            onOpenSchedule={setDetailSchedule}
+            onAddSchedule={() => setAddNewOpen(true)}
+            todos={checklistItems}
+            onToggleTodo={handleToggleTodo}
+            onOpenTodoEdit={(t) => setTodoSheetTarget({ mode: "edit", todo: t })}
+            onAddTodo={() => setTodoSheetTarget({ mode: "add", date: selectedDate })}
+            lastYearHighlights={lastYearForSelectedDate}
+            onOpenLastYear={setPrefillEvent}
+            workspaceId={workspaceId}
+            activitySuggestion={activitySuggestion}
+            activityCandidates={activityCandidates}
+            showActivitySuggestion
+          />
+        </div>
+      </div>
+
+      <div className="lg:hidden">
       <DaySheet
         open={sheetOpen}
         date={selectedDate}
@@ -557,6 +657,7 @@ export function MonthView({
         activitySuggestion={activitySuggestion}
         activityCandidates={activityCandidates}
       />
+      </div>
 
       <AddEventSheet
         open={!!prefillEvent || !!editingSchedule || addNewOpen}

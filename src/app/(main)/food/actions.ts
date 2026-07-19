@@ -232,7 +232,9 @@ export async function addFridgeItem(
 
   if (error) throw new Error(error.message);
 
+  // 태블릿 식탁 탭도 냉장고 재고를 보여주므로(FoodTabletHome) 그쪽도 함께 무효화.
   revalidatePath("/food/add");
+  revalidatePath("/food");
 }
 
 export async function deleteFridgeItem(itemId: string) {
@@ -240,6 +242,7 @@ export async function deleteFridgeItem(itemId: string) {
   const { error } = await supabase.from("fridge_item").delete().eq("id", itemId);
   if (error) throw new Error(error.message);
   revalidatePath("/food/add");
+  revalidatePath("/food");
 }
 
 /** "늘 먹던 메뉴" 콜드스타트 판정용 — 서로 다른 날짜 기준 끼니 기록 일수를 센다.

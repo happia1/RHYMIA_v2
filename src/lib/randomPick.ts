@@ -6,3 +6,12 @@ export function pickDeterministic<T>(pool: T[], seed: string): T {
   for (const ch of seed) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
   return pool[hash % pool.length];
 }
+
+/** 문자열 시드로부터 [min, max] 범위 안의 결정론적 숫자를 뽑는다 — 게시판 태블릿 뷰의
+ * 스티커 랜덤 틸트처럼 "리렌더마다 값이 바뀌면 안 되는" 시각 효과에 쓴다. */
+export function seededRange(seed: string, min: number, max: number): number {
+  let hash = 0;
+  for (const ch of seed) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  const ratio = (hash % 1000) / 1000;
+  return min + ratio * (max - min);
+}

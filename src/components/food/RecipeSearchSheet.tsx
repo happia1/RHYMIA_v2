@@ -1,15 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import {
-  IconSearch,
-  IconArticle,
-  IconBrandYoutube,
-  IconToolsKitchen2,
-  IconStar,
-  IconStarFilled,
-  IconLink,
-} from "@tabler/icons-react";
+import { IconSearch, IconArticle, IconBrandYoutube, IconLink } from "@tabler/icons-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Input, Textarea } from "@/components/ui/Input";
 import { searchRecipeBlogs, searchInternalRecipes, type RecipeBlogResult } from "@/lib/recipeSearch";
@@ -19,54 +11,12 @@ import {
   recordRecipeViewed,
 } from "@/app/(main)/food/actions";
 import { RecipeDetailSheet } from "@/components/food/RecipeDetailSheet";
+import { RecipeRow } from "@/components/food/RecipeRow";
 import type { NormalizedRecipe } from "@/lib/foodSafetyRecipe";
 
 type TabId = "internal" | "blog" | "youtube";
 const TAB_LABEL: Record<TabId, string> = { internal: "레시피", blog: "블로그", youtube: "유튜브" };
 const MAX_LOCAL_RECENT = 30;
-
-/** 레시피(내부) 목록 한 줄 — 검색 결과/내 레시피 노트/최근 본 레시피 세 목록이 공유한다.
- * 탭하면 상세 시트(RecipeDetailSheet)를 열고, 별은 그 자리에서 즐겨찾기를 토글한다. */
-function RecipeRow({
-  recipe,
-  isFavorite,
-  onToggleFavorite,
-  onOpen,
-  divider,
-}: {
-  recipe: NormalizedRecipe;
-  isFavorite: boolean;
-  onToggleFavorite: () => void;
-  onOpen: () => void;
-  divider: boolean;
-}) {
-  return (
-    <div className={`flex items-center gap-2 py-2 ${divider ? "border-t border-border-light" : ""}`}>
-      <button onClick={onOpen} className="flex min-w-0 flex-1 items-center gap-3 text-left">
-        <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-cream">
-          {recipe.image ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={recipe.image} alt="" className="h-full w-full object-cover" />
-          ) : (
-            <IconToolsKitchen2 size={20} className="text-[var(--text-muted)]" />
-          )}
-        </div>
-        <span className="line-clamp-2 min-w-0 flex-1 text-[13px] font-medium text-ink">{recipe.name}</span>
-      </button>
-      <button
-        onClick={onToggleFavorite}
-        aria-label={isFavorite ? "레시피 노트에서 빼기" : "레시피 노트에 저장"}
-        className="shrink-0 p-1.5 -m-1.5"
-      >
-        {isFavorite ? (
-          <IconStarFilled size={18} className="text-honey" />
-        ) : (
-          <IconStar size={18} className="text-[var(--text-muted)]" />
-        )}
-      </button>
-    </div>
-  );
-}
 
 /** 끼니 등록/수정 화면의 "레시피 찾아보기" — 소스별 탭([레시피(내부) | 블로그 | 유튜브])으로
  * 나뉘어 있고, 설정되지 않은 소스는 탭 자체가 안 보인다(blogEnabled/internalEnabled 게이트,

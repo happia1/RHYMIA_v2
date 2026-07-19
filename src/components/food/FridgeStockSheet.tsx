@@ -8,7 +8,8 @@ import { useShoppingSheet } from "@/components/shopping/ShoppingSheetContext";
 import { addFridgeItem, deleteFridgeItem } from "@/app/(main)/food/actions";
 import type { FridgeCategory, FridgeItem } from "@/types";
 
-const FRIDGE_CATEGORIES: { value: FridgeCategory; label: string }[] = [
+// 태블릿 식탁 탭(FoodTabletHome)의 냉장고 묘사 UI도 이 라벨 매핑을 그대로 재사용한다.
+export const FRIDGE_CATEGORIES: { value: FridgeCategory; label: string }[] = [
   { value: "cold", label: "냉장" },
   { value: "frozen", label: "냉동" },
   { value: "room", label: "상온" },

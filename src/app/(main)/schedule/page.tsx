@@ -1,6 +1,6 @@
 import { requireWorkspaceContext } from "@/lib/workspace";
 import { toDateStr, getWeekDates } from "@/lib/date";
-import { getWorkspaceMembers } from "@/lib/members";
+import { getWorkspaceMembers } from "@/lib/members.server";
 import { ScheduleTabs } from "@/components/schedule/ScheduleTabs";
 import { ScheduleDayView } from "@/components/schedule/ScheduleDayView";
 import { MonthView } from "@/components/schedule/MonthView";
