@@ -92,7 +92,12 @@ export default async function FoodPage({
     // 개수 배지, 장바구니 아코디언 미리보기. 모바일 레이아웃은 안 쓰지만 셋 다
     // 가벼운 조회라 뷰 종류를 가리지 않고 그냥 함께 가져온다.
     getSchedulesForRange(workspaceId, weekDates[0], weekDates[6]),
-    getRecipeNotes(workspaceId),
+    // recipe_note 테이블(supabase/add_recipe_note.sql)이 아직 라이브 DB에 없으면
+    // "relation does not exist" 에러로 throw하는데(getRecipeNotes 자체는 의도적으로
+    // throw — 즐겨찾기 토글 등에서는 실패를 명확히 알아야 함), 이 페이지 최초 로드에서까지
+    // 그대로 던지면 식탁 탭 전체가 서버 에러로 죽는다. 위 recommendedRecipe와 같은 이유로
+    // catch해 빈 목록으로 폴백.
+    getRecipeNotes(workspaceId).catch(() => ({ favorites: [], recent: [] })),
     getShoppingItems(workspaceId),
   ]);
 
