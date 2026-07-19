@@ -1,14 +1,11 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { IconSparkles, IconDice5, IconTrophy, IconLadder, IconUsers } from "@tabler/icons-react";
 import { SectionLabel } from "@/components/home/SectionLabel";
 import { MealDecisionSheet, type Mode as DecisionMode } from "@/components/food/MealDecisionSheet";
-import { RecipeDetailSheet } from "@/components/food/RecipeDetailSheet";
 import { buildCandidatePool } from "@/lib/mealUtils";
 import type { MealVote } from "@/types";
-import type { NormalizedRecipe } from "@/lib/foodSafetyRecipe";
 
 // "자주 찾는 메뉴"는 서로 다른 날짜 7일 이상의 끼니 기록이 쌓여야 의미 있는 통계라 콜드스타트를 건다.
 const FREQUENT_MENU_MIN_DAYS = 7;
@@ -26,20 +23,18 @@ interface Slide {
   key: string;
   title: string;
   body?: string;
-  action?: { label: string; onClick: () => void };
 }
 
-/** "오늘의 제안" — 전폭 카드 3장(자주 찾는 메뉴/메뉴 고르기/추천 레시피)을 가로 스와이프
- * 배너로 보여준다. 스마트미러 톤 유지가 목적이라 카드에 배경/그림자를 주지 않고(박스감 최소),
- * 배너 안에서 설명과 액션 영역만 헤어라인으로 구획한다. */
+/** "오늘의 제안" — 전폭 카드 2장(자주 찾는 메뉴/메뉴 고르기)을 가로 스와이프 배너로
+ * 보여준다. 스마트미러 톤 유지가 목적이라 카드에 배경/그림자를 주지 않고(박스감 최소),
+ * 배너 안에서 설명과 액션 영역만 헤어라인으로 구획한다. "추천 레시피" 카드는 여기 있었으나
+ * 식탁 탭 하단 "레시피" 섹션(RecipeSection)으로 옮겨 한 곳에 모았다. */
 export function SuggestionSection({
   workspaceId,
   selectedDate,
   frequentMenus,
   trackingDays,
   activeVote,
-  recommendedRecipe,
-  recipeEnabled,
 }: {
   workspaceId: string;
   selectedDate: string;
@@ -47,16 +42,9 @@ export function SuggestionSection({
   /** 서로 다른 날짜 기준 끼니 기록 일수 — getMealTrackingDayCount(food/actions.ts) */
   trackingDays: number;
   activeVote: MealVote | null;
-  /** 오늘의 추천 레시피(식품안전나라, 날짜 시드로 매일 갱신) — 게이트가 꺼져 있거나 조회
-   * 실패 시 null. */
-  recommendedRecipe: NormalizedRecipe | null;
-  /** FOOD_SAFETY_API_KEY 설정 여부 — 꺼져 있으면 배너에 "준비 중"만 표시. */
-  recipeEnabled: boolean;
 }) {
-  const router = useRouter();
   const [decisionOpen, setDecisionOpen] = useState(false);
   const [decisionMode, setDecisionMode] = useState<DecisionMode>("roulette");
-  const [recipeOpen, setRecipeOpen] = useState(false);
   const [index, setIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const frequentMenuUnlocked = trackingDays >= FREQUENT_MENU_MIN_DAYS;
@@ -66,12 +54,6 @@ export function SuggestionSection({
     if (!el || el.clientWidth === 0) return;
     setIndex(Math.round(el.scrollLeft / el.clientWidth));
   };
-
-  const recipeBody = !recipeEnabled
-    ? "준비 중"
-    : recommendedRecipe
-    ? recommendedRecipe.name
-    : "잠시 후 다시 시도해주세요";
 
   const openDecision = (mode: DecisionMode) => {
     setDecisionMode(mode);
@@ -89,16 +71,6 @@ export function SuggestionSection({
     {
       key: "roulette",
       title: "메뉴 고르기",
-    },
-    {
-      key: "recipe",
-      title: "추천 레시피",
-      body: recipeBody,
-      action: recipeEnabled
-        ? recommendedRecipe
-          ? { label: "레시피 보기", onClick: () => setRecipeOpen(true) }
-          : { label: "다시 시도", onClick: () => router.refresh() }
-        : undefined,
     },
   ];
 
@@ -128,19 +100,7 @@ export function SuggestionSection({
                 ))}
               </div>
             ) : (
-              <>
-                <span className="text-[16px] text-ink">{slide.body}</span>
-                {slide.action && (
-                  <div className="border-t border-border-light pt-1.5">
-                    <button
-                      onClick={slide.action.onClick}
-                      className="text-[14px] font-medium text-honey"
-                    >
-                      {slide.action.label}
-                    </button>
-                  </div>
-                )}
-              </>
+              <span className="text-[16px] text-ink">{slide.body}</span>
             )}
           </div>
         ))}
@@ -165,13 +125,6 @@ export function SuggestionSection({
         candidatePool={buildCandidatePool(frequentMenus)}
         activeVote={activeVote}
         initialMode={decisionMode}
-      />
-
-      <RecipeDetailSheet
-        recipe={recommendedRecipe}
-        open={recipeOpen}
-        onClose={() => setRecipeOpen(false)}
-        selectedDate={selectedDate}
       />
     </section>
   );

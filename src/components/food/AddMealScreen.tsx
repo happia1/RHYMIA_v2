@@ -22,12 +22,10 @@ import { mirror } from "@/lib/homeTheme";
 import { createClient } from "@/lib/supabase/client";
 import { compressImage } from "@/lib/imageCompress";
 import { fetchYoutubeOembed, youtubeThumbnailUrl } from "@/lib/youtube";
-import { createMeal, updateMeal, copyRecipeImageToStorage } from "@/app/(main)/food/actions";
+import { createMeal, updateMeal } from "@/app/(main)/food/actions";
 import { MEAL_TAGS } from "@/lib/mealUtils";
 import { FridgeStockSheet } from "@/components/food/FridgeStockSheet";
-import { RecipeSearchSheet } from "@/components/food/RecipeSearchSheet";
 import { RecentMenuSection } from "@/components/food/RecentMenuSection";
-import type { NormalizedRecipe } from "@/lib/foodSafetyRecipe";
 import type { FridgeItem, Meal, MealType } from "@/types";
 
 const MEAL_TYPES: MealType[] = ["집밥", "외식", "배달"];
@@ -65,8 +63,6 @@ export function AddMealScreen({
   prefillMemo,
   fridgeItems,
   existingMeal,
-  recipeSearchEnabled = false,
-  foodSafetyEnabled = false,
 }: {
   workspaceId: string;
   defaultDate: string;
@@ -80,12 +76,6 @@ export function AddMealScreen({
   prefillMemo?: string;
   fridgeItems: FridgeItem[];
   existingMeal?: Meal;
-  /** NAVER_CLIENT_ID/SECRET 설정 여부(isRecipeSearchEnabled) — 꺼져 있으면 "레시피 찾아보기"의
-   * 블로그 탭을 숨긴다. */
-  recipeSearchEnabled?: boolean;
-  /** FOOD_SAFETY_API_KEY 설정 여부(isFoodSafetyRecipeEnabled) — 꺼져 있으면 "레시피 찾아보기"의
-   * 레시피(내부) 탭을 숨긴다. */
-  foodSafetyEnabled?: boolean;
 }) {
   const { showToast } = useToast();
   const [tag, setTag] = useState(existingMeal?.tag ?? MEAL_TAGS[0]);
@@ -111,7 +101,6 @@ export function AddMealScreen({
   const [recipeLinkOpen, setRecipeLinkOpen] = useState(false);
   const [recipeLinkDraft, setRecipeLinkDraft] = useState("");
   const [isFetchingRecipe, setIsFetchingRecipe] = useState(false);
-  const [recipeSearchOpen, setRecipeSearchOpen] = useState(false);
   const [fridgeOpen, setFridgeOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const cameraFileInputRef = useRef<HTMLInputElement>(null);
@@ -183,28 +172,6 @@ export function AddMealScreen({
     setRecipeUrl(meal.recipe_url);
     setSelectedIngredients(meal.ingredients);
     showToast(`"${meal.main_menu}" 메뉴를 불러왔어요.`);
-  };
-
-  // "레시피 찾아보기" 시트의 레시피(내부) 탭에서 검색 결과를 골랐을 때 — 추천 레시피 상세의
-  // "오늘 메뉴로 추가하기"와 동일한 채우기 규칙(메뉴명/이미지 복사/재료/조리 요약)을 그
-  // 자리에서 바로 적용한다(페이지 이동 없이, 이미 끼니 등록 화면 "안"이므로).
-  const handleFillFromRecipe = async (recipe: NormalizedRecipe) => {
-    setMainMenu(recipe.name);
-    setSelectedIngredients(recipe.ingredients);
-    const summary = recipe.steps
-      .slice(0, 3)
-      .map((s) => s.text)
-      .join("\n");
-    if (summary) setMemo(summary);
-
-    if (recipe.image) {
-      const result = await copyRecipeImageToStorage(recipe.image);
-      if (result.ok) setImageUrl(result.url);
-      else showToast("레시피 사진은 가져오지 못했지만 나머지 내용은 채워드렸어요.");
-    }
-
-    setRecipeSearchOpen(false);
-    showToast(`"${recipe.name}" 레시피를 불러왔어요.`);
   };
 
   const toggleIngredient = (name: string) => {
@@ -422,14 +389,23 @@ export function AddMealScreen({
               <IconFridge size={16} className="text-honey" />
               집에 뭐 있지
             </button>
-            <button
-              onClick={() => setRecipeSearchOpen(true)}
+            {/* 레시피 찾아보기는 이제 식탁 탭 하단 "레시피" 섹션 하나로 합쳐졌다 —
+                여기서는 그 섹션이 검색 시트를 바로 연 채로 열리게 연결만 한다. */}
+            <Link
+              href={`/food?date=${defaultDate}&openRecipe=1`}
               className="flex items-center justify-center gap-2 border-l border-border-light py-2.5 pl-3 text-[16px] text-stone"
             >
               <IconSearch size={16} className="text-honey" />
               레시피 찾아보기
-            </button>
+            </Link>
           </div>
+          <button
+            onClick={() => setRecipeLinkOpen(true)}
+            className="flex items-center justify-center gap-1.5 self-start text-[13px] text-[var(--text-muted)]"
+          >
+            <IconLink size={13} />
+            레시피 링크 직접 붙여넣기
+          </button>
         </section>
 
         <section className={`flex flex-col gap-2 ${SECTION_DIVIDER}`}>
@@ -499,27 +475,6 @@ export function AddMealScreen({
           </button>
         </div>
       </BottomSheet>
-
-      <RecipeSearchSheet
-        open={recipeSearchOpen}
-        onClose={() => setRecipeSearchOpen(false)}
-        workspaceId={workspaceId}
-        defaultQuery={mainMenu}
-        memo={memo}
-        onMemoChange={setMemo}
-        blogEnabled={recipeSearchEnabled}
-        internalEnabled={foodSafetyEnabled}
-        onSaveBlogLink={(url) => {
-          setRecipeUrl(url);
-          setRecipeSearchOpen(false);
-          showToast("레시피 링크를 저장했어요.");
-        }}
-        onFillFromRecipe={handleFillFromRecipe}
-        onOpenLinkPaste={() => {
-          setRecipeSearchOpen(false);
-          setRecipeLinkOpen(true);
-        }}
-      />
     </TabPageFrame>
   );
 }

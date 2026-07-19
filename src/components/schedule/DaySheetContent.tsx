@@ -1,6 +1,7 @@
 "use client";
 
 import { IconPlus } from "@tabler/icons-react";
+import { toDateStr } from "@/lib/date";
 import { getHoliday } from "@/lib/holidays";
 import { solarToLunar } from "@/lib/lunar";
 import { getKeywordColor } from "@/lib/scheduleKeywords";
@@ -66,6 +67,7 @@ export function DaySheetContent({
   activitySuggestion,
   activityCandidates,
   showActivitySuggestion = false,
+  emphasizeToday = false,
 }: {
   date: string;
   schedules: ExpandedSchedule[];
@@ -85,10 +87,14 @@ export function DaySheetContent({
   /** 태블릿 월간 뷰 우측 패널에서만 true — 모바일 데이 시트는 사용자 요청으로 계속 숨김
    * (DaySheet.tsx 쪽 기본값 유지, 여기서는 호출부가 명시적으로 켜야만 노출). */
   showActivitySuggestion?: boolean;
+  /** 태블릿 우측 패널이 날짜 미선택 기본 상태(오늘)를 보여줄 때만 true — 헤더에 "오늘"을
+   * 덧붙인다. 모바일 데이 시트는 항상 명시적으로 탭해서 여는 화면이라 대상이 아니다. */
+  emphasizeToday?: boolean;
 }) {
   const holiday = getHoliday(date);
   const { main, lunarLabel } = formatHeaderParts(date);
   const dateColorClass = weekendColorClass(date, holiday);
+  const isToday = emphasizeToday && date === toDateStr(new Date());
   const periodSchedules = schedules.filter(isPeriodSchedule);
   const singleDaySchedules = schedules.filter((s) => !isPeriodSchedule(s));
 
@@ -96,6 +102,7 @@ export function DaySheetContent({
     <>
       <div className="mb-3 flex items-baseline justify-between">
         <span className="flex items-baseline gap-1.5">
+          {isToday && <span className="text-[18px] font-medium text-honey">오늘 ·</span>}
           <span className={`text-[18px] font-medium ${dateColorClass ?? "text-ink"}`}>{main}</span>
           {lunarLabel && <span className="text-[13px] text-stone">{lunarLabel}</span>}
         </span>

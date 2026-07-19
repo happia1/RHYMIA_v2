@@ -18,12 +18,16 @@ type TabId = "internal" | "blog" | "youtube";
 const TAB_LABEL: Record<TabId, string> = { internal: "레시피", blog: "블로그", youtube: "유튜브" };
 const MAX_LOCAL_RECENT = 30;
 
-/** 끼니 등록/수정 화면의 "레시피 찾아보기" — 소스별 탭([레시피(내부) | 블로그 | 유튜브])으로
- * 나뉘어 있고, 설정되지 않은 소스는 탭 자체가 안 보인다(blogEnabled/internalEnabled 게이트,
- * 유튜브는 외부 링크만 열면 되므로 게이트 불필요 — 항상 노출). 레시피(내부) 탭은 검색어가
- * 없으면 "내 레시피 노트"(즐겨찾기)와 "최근 본 레시피"를 보여주고, 검색어를 입력하면 검색
- * 결과로 교체된다. 항목을 탭하면(별 제외) 상세 시트를 거쳐 "이 레시피로 채우기"로 이어진다
- * (직접 채우기 버튼을 목록에 두지 않음 — 상세를 한 번 보고 결정하도록). */
+/** "레시피 찾아보기" — 소스별 탭([레시피(내부) | 블로그 | 유튜브])으로 나뉘어 있고, 설정되지
+ * 않은 소스는 탭 자체가 안 보인다(blogEnabled/internalEnabled 게이트, 유튜브는 외부 링크만
+ * 열면 되므로 게이트 불필요 — 항상 노출). 레시피(내부) 탭은 검색어가 없으면 "내 레시피
+ * 노트"(즐겨찾기)와 "최근 본 레시피"를 보여주고, 검색어를 입력하면 검색 결과로 교체된다.
+ * 항목을 탭하면(별 제외) 상세 시트를 거쳐 "채우기/오늘 메뉴로 추가"로 이어진다.
+ * 끼니 등록 화면 "안"(onFillFromRecipe 등 전달)과 식탁 탭 "레시피" 섹션(단독, selectedDate만
+ * 전달) 양쪽에서 재사용한다 — 끼니 등록 화면 전용 콜백(onFillFromRecipe/onSaveBlogLink/
+ * onOpenLinkPaste/memo)이 없으면 그 자리에서 채우는 대신 각각 자연스러운 기본 동작으로
+ * 대체한다("오늘 메뉴로 추가하기"는 /food/add로 이동, 블로그 저장·메모·링크 붙여넣기는
+ * 그 맥락이 없어 버튼 자체를 숨김). */
 export function RecipeSearchSheet({
   open,
   onClose,
@@ -33,6 +37,7 @@ export function RecipeSearchSheet({
   onMemoChange,
   blogEnabled,
   internalEnabled,
+  selectedDate,
   onSaveBlogLink,
   onFillFromRecipe,
   onOpenLinkPaste,
@@ -41,16 +46,19 @@ export function RecipeSearchSheet({
   onClose: () => void;
   workspaceId: string;
   defaultQuery: string;
-  memo: string;
-  onMemoChange: (value: string) => void;
+  memo?: string;
+  onMemoChange?: (value: string) => void;
   /** NAVER_CLIENT_ID/SECRET 설정 여부 — 꺼져 있으면 블로그 탭 자체를 숨긴다. */
   blogEnabled: boolean;
   /** FOOD_SAFETY_API_KEY 설정 여부 — 꺼져 있으면 레시피(내부) 탭 자체를 숨긴다. */
   internalEnabled: boolean;
-  onSaveBlogLink: (url: string) => void;
-  onFillFromRecipe: (recipe: NormalizedRecipe) => void;
-  /** "레시피 링크 붙여넣기" 보조 액션 — 누르면 이 시트를 닫고 그 시트를 연다(AddMealScreen이 관리). */
-  onOpenLinkPaste: () => void;
+  /** 끼니 등록 화면 밖(식탁 탭 "레시피" 섹션)에서 단독으로 열렸을 때만 필요 — 상세의
+   * "오늘 메뉴로 추가하기"가 이동할 날짜. */
+  selectedDate?: string;
+  onSaveBlogLink?: (url: string) => void;
+  onFillFromRecipe?: (recipe: NormalizedRecipe) => void;
+  /** "레시피 링크 붙여넣기" 보조 액션 — 끼니 등록 화면 안에서 열렸을 때만 전달(AddMealScreen이 관리). */
+  onOpenLinkPaste?: () => void;
 }) {
   const availableTabs = useMemo<TabId[]>(
     () => (["internal", "blog", "youtube"] as TabId[]).filter(
@@ -303,13 +311,15 @@ export function RecipeSearchSheet({
                 </button>
               </div>
 
-              <Textarea
-                value={memo}
-                onChange={(e) => onMemoChange(e.target.value)}
-                placeholder="레시피 보면서 메모해두기 (선택)"
-                rows={2}
-                className="rounded-xl bg-cream p-3 text-[16px]"
-              />
+              {onMemoChange && (
+                <Textarea
+                  value={memo ?? ""}
+                  onChange={(e) => onMemoChange(e.target.value)}
+                  placeholder="레시피 보면서 메모해두기 (선택)"
+                  rows={2}
+                  className="rounded-xl bg-cream p-3 text-[16px]"
+                />
+              )}
 
               <div className="flex flex-col gap-3">
                 {blogSearching && (
@@ -336,12 +346,14 @@ export function RecipeSearchSheet({
                         <span className="truncate text-[13px] text-[var(--text-muted)]">{r.blogName}</span>
                       </div>
                     </a>
-                    <button
-                      onClick={() => onSaveBlogLink(r.link)}
-                      className="self-start text-[14px] font-medium text-honey"
-                    >
-                      이 레시피 저장
-                    </button>
+                    {onSaveBlogLink && (
+                      <button
+                        onClick={() => onSaveBlogLink(r.link)}
+                        className="self-start text-[14px] font-medium text-honey"
+                      >
+                        이 레시피 저장
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -350,13 +362,15 @@ export function RecipeSearchSheet({
 
           {tab === "youtube" && (
             <div className="flex flex-col gap-4">
-              <Textarea
-                value={memo}
-                onChange={(e) => onMemoChange(e.target.value)}
-                placeholder="레시피 보면서 메모해두기 (선택)"
-                rows={2}
-                className="rounded-xl bg-cream p-3 text-[16px]"
-              />
+              {onMemoChange && (
+                <Textarea
+                  value={memo ?? ""}
+                  onChange={(e) => onMemoChange(e.target.value)}
+                  placeholder="레시피 보면서 메모해두기 (선택)"
+                  rows={2}
+                  className="rounded-xl bg-cream p-3 text-[16px]"
+                />
+              )}
               <button
                 onClick={openYoutubeSearch}
                 className="flex h-11 items-center justify-center gap-1.5 rounded-2xl bg-ink text-[17px] font-medium text-cream"
@@ -368,23 +382,30 @@ export function RecipeSearchSheet({
           )}
         </div>
 
-        <button
-          onClick={onOpenLinkPaste}
-          className="flex shrink-0 items-center justify-center gap-1.5 border-t border-border-light pt-3 text-[14px] font-medium text-[var(--text-muted)]"
-        >
-          <IconLink size={14} />
-          레시피 링크 붙여넣기
-        </button>
+        {onOpenLinkPaste && (
+          <button
+            onClick={onOpenLinkPaste}
+            className="flex shrink-0 items-center justify-center gap-1.5 border-t border-border-light pt-3 text-[14px] font-medium text-[var(--text-muted)]"
+          >
+            <IconLink size={14} />
+            레시피 링크 붙여넣기
+          </button>
+        )}
       </div>
 
       <RecipeDetailSheet
         recipe={detailRecipe}
         open={!!detailRecipe}
         onClose={() => setDetailRecipe(null)}
-        onFillFromRecipe={(r) => {
-          setDetailRecipe(null);
-          onFillFromRecipe(r);
-        }}
+        selectedDate={selectedDate}
+        onFillFromRecipe={
+          onFillFromRecipe
+            ? (r) => {
+                setDetailRecipe(null);
+                onFillFromRecipe(r);
+              }
+            : undefined
+        }
       />
     </BottomSheet>
   );

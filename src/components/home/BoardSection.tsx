@@ -279,7 +279,7 @@ export function BoardSection({
           {posts.length === 0 ? (
             <p className="text-[16px] text-[var(--text-muted)]">등록된 글이 없어요</p>
           ) : (
-            <div className="grid min-h-0 flex-1 grid-cols-[240px_1fr] gap-5">
+            <div className="grid min-h-0 flex-1 grid-cols-[3fr_7fr] gap-5">
               <div className="scrollbar-hide flex flex-col overflow-y-auto">
                 {posts.map((p) => (
                   <button

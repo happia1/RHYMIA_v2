@@ -2,17 +2,16 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { IconFridge, IconShoppingCart, IconToolsKitchen2 } from "@tabler/icons-react";
+import { IconFridge, IconShoppingCart } from "@tabler/icons-react";
 import { mirror } from "@/lib/homeTheme";
-import { SectionLabel } from "@/components/home/SectionLabel";
+import { useDeviceLayout } from "@/lib/useDeviceLayout";
 import { useToast } from "@/components/ui/Toast";
 import { WeekCalendar } from "@/components/food/WeekCalendar";
 import { MealEmptyState } from "@/components/food/MealEmptyState";
 import { MealListSection, type MealRow } from "@/components/food/MealListSection";
 import { MealNutritionSummary } from "@/components/food/MealNutritionSummary";
 import { SuggestionSection } from "@/components/food/SuggestionSection";
-import { RecipeDetailSheet } from "@/components/food/RecipeDetailSheet";
-import { RecipeNoteSheet } from "@/components/food/RecipeNoteSheet";
+import { RecipeSection } from "@/components/food/RecipeSection";
 import { FRIDGE_CATEGORIES } from "@/components/food/FridgeStockSheet";
 import { ShoppingTabbedPanel } from "@/components/shopping/ShoppingTabbedPanel";
 import { addFridgeItem, deleteFridgeItem } from "@/app/(main)/food/actions";
@@ -24,50 +23,6 @@ const ZONE_ICON: Record<FridgeCategory, string> = { frozen: "❄️", cold: "�
 // 아코디언이 접혔을 때도 칸이 통째로 비어 보이지 않게, 칸별로 이만큼만 미리 보여주고
 // 나머지는 "외 N개"로 요약한다.
 const COLLAPSED_PREVIEW_COUNT = 2;
-
-function TabletRecipeSection({
-  recipeEnabled,
-  recommendedRecipe,
-  recipeNotesCount,
-  onOpenRecipe,
-  onOpenNotes,
-}: {
-  recipeEnabled: boolean;
-  recommendedRecipe: NormalizedRecipe | null;
-  recipeNotesCount: number;
-  onOpenRecipe: () => void;
-  onOpenNotes: () => void;
-}) {
-  const body = !recipeEnabled ? "준비 중" : recommendedRecipe ? recommendedRecipe.name : "잠시 후 다시 시도해주세요";
-  return (
-    <div className="flex flex-col gap-1.5">
-      <SectionLabel icon={<IconToolsKitchen2 size={14} />}>레시피</SectionLabel>
-      <div className="flex items-center gap-2.5">
-        <button
-          onClick={onOpenRecipe}
-          disabled={!recipeEnabled || !recommendedRecipe}
-          className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
-        >
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-cream">
-            {recommendedRecipe?.image ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={recommendedRecipe.image} alt="" className="h-full w-full object-cover" />
-            ) : (
-              <IconToolsKitchen2 size={20} className={mirror.muted} />
-            )}
-          </div>
-          <span className="flex min-w-0 flex-col">
-            <span className={`text-[12px] ${mirror.muted}`}>오늘의 추천</span>
-            <span className={`truncate text-[16px] font-semibold ${mirror.primary}`}>{body}</span>
-          </span>
-        </button>
-        <button onClick={onOpenNotes} className="shrink-0 text-[13px] font-medium text-honey">
-          레시피 노트 {recipeNotesCount} ›
-        </button>
-      </div>
-    </div>
-  );
-}
 
 function FridgeCompartment({
   zone,
@@ -165,11 +120,12 @@ function FridgeCompartment({
 
 /** 태블릿 전용 식탁 탭 레이아웃 — fridge_tablet_suite.jsx 스펙. 좌열은 모바일 식탁 탭과
  * 완전히 같은 컴포넌트를 그대로 렌더한다(주간 스트립=WeekCalendar, 끼니 카드
- * 리스트=MealListSection, 오늘의 제안=SuggestionSection — 전부 태블릿 전용 재구현 없이
- * 모바일과 동일한 데이터/컴포넌트 재사용, "레시피 노트" 진입점만 모바일엔 없는 태블릿
- * 추가 요소). 우열은 냉장고 묘사 + 장바구니 아코디언(기본 8:2, 장바구니 탭 시 4:6) —
- * 펼친 장바구니는 ShoppingTabbedPanel(장볼 것/기록 탭 전체)을 그대로 인라인으로 꽂아
- * 넣는다(모바일 전역 시트와 동일 컴포넌트). */
+ * 리스트=MealListSection, 오늘의 제안=SuggestionSection, 레시피=RecipeSection — 전부
+ * 태블릿 전용 재구현 없이 모바일과 동일한 데이터/컴포넌트 재사용). 우열은 가로/세로 방향에
+ * 따라 구조가 다르다 — 가로: 상단 탭([집에 뭐 있지 | 뭐 사야하지])으로 선택된 쪽이 전체
+ * 높이를 씀. 세로: 기존 아코디언(기본 8:2, 장바구니 탭 시 4:6) — 펼친 장바구니는
+ * ShoppingTabbedPanel(장볼 것/기록 탭 전체)을 그대로 인라인으로 꽂아 넣는다(모바일 전역
+ * 시트와 동일 컴포넌트). */
 export function FoodTabletHome({
   workspaceId,
   selectedDate,
@@ -185,6 +141,8 @@ export function FoodTabletHome({
   recommendedRecipe,
   recipeEnabled,
   recipeNotesCount,
+  blogSearchEnabled,
+  autoOpenRecipeSearch = false,
   fridgeItems,
   cartItems,
 }: {
@@ -202,14 +160,18 @@ export function FoodTabletHome({
   recommendedRecipe: NormalizedRecipe | null;
   recipeEnabled: boolean;
   recipeNotesCount: number;
+  blogSearchEnabled: boolean;
+  autoOpenRecipeSearch?: boolean;
   fridgeItems: FridgeItem[];
   cartItems: ShoppingItem[];
 }) {
+  const { layout } = useDeviceLayout();
+  const isLandscape = layout === "tablet-landscape";
   const { showToast } = useToast();
   const [items, setItems] = useState(fridgeItems);
+  // 세로(아코디언)에서는 "펼쳐진 쪽", 가로(상단 탭)에서는 "선택된 탭" — 둘 다 같은
+  // fridge/cart 선택 상태라 변수 하나를 공유한다.
   const [expanded, setExpanded] = useState<"fridge" | "cart">("fridge");
-  const [recipeOpen, setRecipeOpen] = useState(false);
-  const [notesOpen, setNotesOpen] = useState(false);
 
   const fridgeOpen = expanded === "fridge";
   const cartActive = cartItems.filter((c) => !c.expense_id && !c.is_purchased);
@@ -237,8 +199,41 @@ export function FoodTabletHome({
 
   const byZone = (zone: FridgeCategory) => items.filter((i) => i.category === zone);
 
+  const fridgeCompartments = (collapsed: boolean) => (
+    <div className={`flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border ${mirror.hairline}`}>
+      <div className="flex min-h-0 flex-[1.4]">
+        <FridgeCompartment
+          zone="frozen"
+          label={FRIDGE_CATEGORIES.find((c) => c.value === "frozen")!.label}
+          items={byZone("frozen")}
+          collapsed={collapsed}
+          onDelete={handleDeleteFridgeItem}
+          onAdd={(name) => handleAddFridgeItem("frozen", name)}
+        />
+        <div className={`w-px shrink-0 ${mirror.hairlineBg}`} />
+        <FridgeCompartment
+          zone="cold"
+          label={FRIDGE_CATEGORIES.find((c) => c.value === "cold")!.label}
+          items={byZone("cold")}
+          collapsed={collapsed}
+          onDelete={handleDeleteFridgeItem}
+          onAdd={(name) => handleAddFridgeItem("cold", name)}
+        />
+      </div>
+      <div className={`min-h-0 flex-1 border-t ${mirror.hairline}`}>
+        <FridgeCompartment
+          zone="room"
+          label={FRIDGE_CATEGORIES.find((c) => c.value === "room")!.label}
+          items={byZone("room")}
+          collapsed={collapsed}
+          onDelete={handleDeleteFridgeItem}
+          onAdd={(name) => handleAddFridgeItem("room", name)}
+        />
+      </div>
+    </div>
+  );
+
   return (
-    <>
       <div className="flex h-full gap-8">
         <div className="flex w-[42%] flex-col gap-4 overflow-y-auto">
           <WeekCalendar weekDates={weekDates} selectedDate={selectedDate} datesWithMeals={datesWithMeals} />
@@ -276,118 +271,117 @@ export function FoodTabletHome({
             frequentMenus={frequentMenus}
             trackingDays={trackingDays}
             activeVote={blockingVote}
-            recommendedRecipe={recommendedRecipe}
-            recipeEnabled={recipeEnabled}
           />
 
-          <TabletRecipeSection
+          <RecipeSection
+            workspaceId={workspaceId}
+            selectedDate={selectedDate}
             recipeEnabled={recipeEnabled}
             recommendedRecipe={recommendedRecipe}
             recipeNotesCount={recipeNotesCount}
-            onOpenRecipe={() => setRecipeOpen(true)}
-            onOpenNotes={() => setNotesOpen(true)}
+            blogSearchEnabled={blogSearchEnabled}
+            autoOpenSearch={autoOpenRecipeSearch}
           />
         </div>
 
         <div className={`w-px shrink-0 ${mirror.hairlineBg}`} />
 
-        <div className="flex min-h-0 flex-1 flex-col gap-3">
-          {/* 냉장고 */}
-          <div
-            onClick={() => setExpanded("fridge")}
-            style={{ flexGrow: fridgeOpen ? 8 : 4, flexBasis: 0 }}
-            className="flex min-h-0 cursor-pointer flex-col transition-[flex-grow] duration-300 ease-out"
-          >
-            <div className="flex shrink-0 items-center justify-between pb-2">
-              <div className={`flex items-center gap-1.5 ${mirror.label}`}>
+        {isLandscape ? (
+          // 가로: 아코디언 대신 상단 탭 — 선택된 탭이 우측 전체 높이를 그대로 쓴다(뭐
+          // 사야하지 탭의 기록 달력이 아코디언 압축으로 잘리지 않게 하려는 목적).
+          <div className="flex min-h-0 flex-1 flex-col gap-3">
+            <div className="flex shrink-0 gap-2">
+              <button
+                onClick={() => setExpanded("fridge")}
+                className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-[14px] font-medium ${
+                  fridgeOpen ? "bg-honey/15 text-honey" : mirror.muted
+                }`}
+              >
                 <IconFridge size={14} />
-                <span>집에 뭐 있지</span>
-              </div>
-              {!fridgeOpen && <span className={`text-[13px] ${mirror.muted}`}>▸ 펼치기</span>}
-            </div>
-            <div className={`flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border ${mirror.hairline}`}>
-              <div className="flex min-h-0 flex-[1.4]">
-                <FridgeCompartment
-                  zone="frozen"
-                  label={FRIDGE_CATEGORIES.find((c) => c.value === "frozen")!.label}
-                  items={byZone("frozen")}
-                  collapsed={!fridgeOpen}
-                  onDelete={handleDeleteFridgeItem}
-                  onAdd={(name) => handleAddFridgeItem("frozen", name)}
-                />
-                <div className={`w-px shrink-0 ${mirror.hairlineBg}`} />
-                <FridgeCompartment
-                  zone="cold"
-                  label={FRIDGE_CATEGORIES.find((c) => c.value === "cold")!.label}
-                  items={byZone("cold")}
-                  collapsed={!fridgeOpen}
-                  onDelete={handleDeleteFridgeItem}
-                  onAdd={(name) => handleAddFridgeItem("cold", name)}
-                />
-              </div>
-              <div className={`min-h-0 flex-1 border-t ${mirror.hairline}`}>
-                <FridgeCompartment
-                  zone="room"
-                  label={FRIDGE_CATEGORIES.find((c) => c.value === "room")!.label}
-                  items={byZone("room")}
-                  collapsed={!fridgeOpen}
-                  onDelete={handleDeleteFridgeItem}
-                  onAdd={(name) => handleAddFridgeItem("room", name)}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* 장바구니 */}
-          <div
-            onClick={() => setExpanded("cart")}
-            style={{ flexGrow: fridgeOpen ? 2 : 6, flexBasis: 0 }}
-            className="flex min-h-0 cursor-pointer flex-col overflow-hidden transition-[flex-grow] duration-300 ease-out"
-          >
-            <div className="flex shrink-0 items-center justify-between pb-2">
-              <div className={`flex items-center gap-1.5 ${mirror.label}`}>
+                집에 뭐 있지
+              </button>
+              <button
+                onClick={() => setExpanded("cart")}
+                className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-[14px] font-medium ${
+                  !fridgeOpen ? "bg-honey/15 text-honey" : mirror.muted
+                }`}
+              >
                 <IconShoppingCart size={14} />
-                <span>뭐 사야하지</span>
-              </div>
-              {fridgeOpen && <span className={`text-[13px] ${mirror.muted}`}>▸ 펼치기</span>}
+                뭐 사야하지
+              </button>
             </div>
+
             {fridgeOpen ? (
-              <div className="flex items-center gap-4 overflow-hidden">
-                {cartActive.slice(0, 3).map((c) => (
-                  <span key={c.id} className={`flex shrink-0 items-center gap-1.5 text-[15px] ${mirror.primary}`}>
-                    <span className="h-1 w-1 shrink-0 rounded-full bg-sage" />
-                    {c.name}
-                  </span>
-                ))}
-                {cartActive.length > 3 && (
-                  <span className={`shrink-0 text-[14px] ${mirror.muted}`}>외 {cartActive.length - 3}개</span>
-                )}
-                {cartActive.length === 0 && (
-                  <span className={`text-[14px] ${mirror.muted}`}>장바구니가 비어있어요</span>
-                )}
-              </div>
+              fridgeCompartments(false)
             ) : (
-              <div onClick={(e) => e.stopPropagation()} className="flex min-h-0 flex-1 flex-col">
+              <div className={`flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border p-3 ${mirror.hairline}`}>
                 <ShoppingTabbedPanel workspaceId={workspaceId} />
               </div>
             )}
           </div>
-        </div>
+        ) : (
+          <div className="flex min-h-0 flex-1 flex-col gap-3">
+            {/* 냉장고 */}
+            <div
+              onClick={() => setExpanded("fridge")}
+              style={{ flexGrow: fridgeOpen ? 8 : 4, flexBasis: 0 }}
+              className="flex min-h-0 cursor-pointer flex-col transition-[flex-grow] duration-300 ease-out"
+            >
+              <div className="flex shrink-0 items-center justify-between pb-2">
+                <div className={`flex items-center gap-1.5 ${mirror.label}`}>
+                  <IconFridge size={14} />
+                  <span>집에 뭐 있지</span>
+                </div>
+                {!fridgeOpen && <span className={`text-[13px] ${mirror.muted}`}>▸ 펼치기</span>}
+              </div>
+              {fridgeCompartments(!fridgeOpen)}
+            </div>
+
+            {/* 장바구니 — 집에 뭐 있지와 동일한 라운드 테두리 컨테이너 적용 */}
+            <div
+              onClick={() => setExpanded("cart")}
+              style={{ flexGrow: fridgeOpen ? 2 : 6, flexBasis: 0 }}
+              className="flex min-h-0 cursor-pointer flex-col overflow-hidden transition-[flex-grow] duration-300 ease-out"
+            >
+              <div className="flex shrink-0 items-center justify-between pb-2">
+                <div className={`flex items-center gap-1.5 ${mirror.label}`}>
+                  <IconShoppingCart size={14} />
+                  <span>뭐 사야하지</span>
+                </div>
+                {fridgeOpen && <span className={`text-[13px] ${mirror.muted}`}>▸ 펼치기</span>}
+              </div>
+              <div
+                className={`flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border ${mirror.hairline} ${
+                  fridgeOpen ? "p-2" : "p-3"
+                }`}
+              >
+                {fridgeOpen ? (
+                  // 접힘 요약 규칙(첫 2개 + 외 N개)을 냉장고 칸과 동일하게 맞춘다.
+                  <div className="flex items-center gap-3 overflow-hidden">
+                    {cartActive.slice(0, COLLAPSED_PREVIEW_COUNT).map((c) => (
+                      <span key={c.id} className={`flex shrink-0 items-center gap-1.5 text-[13px] ${mirror.secondary}`}>
+                        <span className="h-1 w-1 shrink-0 rounded-full bg-sage" />
+                        {c.name}
+                      </span>
+                    ))}
+                    {cartActive.length > COLLAPSED_PREVIEW_COUNT && (
+                      <span className={`shrink-0 text-[12px] ${mirror.muted}`}>
+                        외 {cartActive.length - COLLAPSED_PREVIEW_COUNT}개
+                      </span>
+                    )}
+                    {cartActive.length === 0 && (
+                      <span className={`text-[13px] ${mirror.muted}`}>장바구니가 비어있어요</span>
+                    )}
+                  </div>
+                ) : (
+                  <div onClick={(e) => e.stopPropagation()} className="flex min-h-0 flex-1 flex-col">
+                    <ShoppingTabbedPanel workspaceId={workspaceId} />
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
-
-      <RecipeDetailSheet
-        recipe={recommendedRecipe}
-        open={recipeOpen}
-        onClose={() => setRecipeOpen(false)}
-        selectedDate={selectedDate}
-      />
-
-      <RecipeNoteSheet
-        open={notesOpen}
-        onClose={() => setNotesOpen(false)}
-        workspaceId={workspaceId}
-        selectedDate={selectedDate}
-      />
-    </>
   );
 }

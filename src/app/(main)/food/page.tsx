@@ -6,10 +6,12 @@ import { getWorkspaceMembers } from "@/lib/members.server";
 import { getMealTrackingDayCount, getRecipeNotes } from "@/app/(main)/food/actions";
 import { getShoppingItems } from "@/app/(main)/shopping/actions";
 import { isFoodSafetyRecipeEnabled, getDailyRecommendedRecipe } from "@/lib/foodSafetyRecipe";
+import { isRecipeSearchEnabled } from "@/lib/recipeSearch";
 import { WeekCalendar } from "@/components/food/WeekCalendar";
 import { MealEmptyState } from "@/components/food/MealEmptyState";
 import { MealVoteCard } from "@/components/food/MealVoteCard";
 import { SuggestionSection } from "@/components/food/SuggestionSection";
+import { RecipeSection } from "@/components/food/RecipeSection";
 import { FoodTabActions } from "@/components/food/FoodTabActions";
 import { MealListSection, type MealRow } from "@/components/food/MealListSection";
 import { MealNutritionSummary } from "@/components/food/MealNutritionSummary";
@@ -22,14 +24,15 @@ import type { FridgeItem } from "@/types";
 export default async function FoodPage({
   searchParams,
 }: {
-  searchParams: Promise<{ date?: string }>;
+  searchParams: Promise<{ date?: string; openRecipe?: string }>;
 }) {
-  const { date } = await searchParams;
+  const { date, openRecipe } = await searchParams;
   const { supabase, user, workspaceId } = await requireWorkspaceContext();
 
   const selectedDate = date ?? toDateStr(new Date());
   const weekDates = getWeekDates(new Date(selectedDate));
   const recipeEnabled = isFoodSafetyRecipeEnabled();
+  const blogSearchEnabled = isRecipeSearchEnabled();
 
   const [
     members,
@@ -162,8 +165,18 @@ export default async function FoodPage({
                 frequentMenus={frequentMenus}
                 trackingDays={trackingDays}
                 activeVote={blockingVote}
-                recommendedRecipe={recommendedRecipe}
+              />
+
+              <div className="h-px w-full shrink-0 bg-border-light" />
+
+              <RecipeSection
+                workspaceId={workspaceId}
+                selectedDate={selectedDate}
                 recipeEnabled={recipeEnabled}
+                recommendedRecipe={recommendedRecipe}
+                recipeNotesCount={recipeNotes.favorites.length}
+                blogSearchEnabled={blogSearchEnabled}
+                autoOpenSearch={openRecipe === "1"}
               />
             </ScrollRegion>
           </>
@@ -185,6 +198,8 @@ export default async function FoodPage({
               recommendedRecipe={recommendedRecipe}
               recipeEnabled={recipeEnabled}
               recipeNotesCount={recipeNotes.favorites.length}
+              blogSearchEnabled={blogSearchEnabled}
+              autoOpenRecipeSearch={openRecipe === "1"}
               fridgeItems={(fridgeItems as FridgeItem[]) ?? []}
               cartItems={cartItems}
             />

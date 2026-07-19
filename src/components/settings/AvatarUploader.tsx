@@ -4,6 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { updateAvatarImage, clearAvatarImage } from "@/app/(main)/settings/actions";
 import { Avatar } from "@/components/ui/Avatar";
+import { ImageCropSheet } from "@/components/ui/ImageCropSheet";
 import { AVATAR_SIZE } from "@/lib/uiTokens";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -24,9 +25,10 @@ export function AvatarUploader({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState(avatarImageUrl);
   const [error, setError] = useState("");
+  const [cropFile, setCropFile] = useState<File | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
@@ -42,15 +44,16 @@ export function AvatarUploader({
       return;
     }
 
+    setCropFile(file);
+  };
+
+  const handleCropConfirm = async (blob: Blob) => {
+    setCropFile(null);
     const supabase = createClient();
-    // Supabase Storage 키는 공백/한글 등 비-ASCII 문자를 포함하면 "Invalid key" 에러로
-    // 거부한다 (원본 파일명을 그대로 붙이면 실패). 확장자만 남기고 나머지는 안전하게 생성한다.
-    const extMatch = file.name.match(/\.([a-zA-Z0-9]+)$/);
-    const ext = extMatch ? extMatch[1].toLowerCase() : "png";
-    const path = `${userId}/${Date.now()}.${ext}`;
+    const path = `${userId}/${Date.now()}.jpg`;
     const { error: uploadError } = await supabase.storage
       .from("avatars")
-      .upload(path, file, { upsert: true });
+      .upload(path, blob, { upsert: true, contentType: "image/jpeg" });
 
     if (uploadError) {
       console.error("[AvatarUploader] storage upload failed:", uploadError);
@@ -123,6 +126,14 @@ export function AvatarUploader({
           className="hidden"
         />
       </div>
+
+      <ImageCropSheet
+        open={!!cropFile}
+        file={cropFile}
+        shape="circle"
+        onCancel={() => setCropFile(null)}
+        onConfirm={handleCropConfirm}
+      />
     </div>
   );
 }

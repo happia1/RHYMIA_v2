@@ -1,7 +1,5 @@
 import { requireWorkspaceContext } from "@/lib/workspace";
 import { toDateStr } from "@/lib/date";
-import { isRecipeSearchEnabled } from "@/lib/recipeSearch";
-import { isFoodSafetyRecipeEnabled } from "@/lib/foodSafetyRecipe";
 import { AddMealScreen } from "@/components/food/AddMealScreen";
 import type { FridgeItem } from "@/types";
 
@@ -37,8 +35,6 @@ export default async function AddMealPage({
       prefillIngredients={recipeIngredients?.split(",").filter(Boolean)}
       prefillMemo={recipeMemo}
       fridgeItems={(fridgeItems as FridgeItem[]) ?? []}
-      recipeSearchEnabled={isRecipeSearchEnabled()}
-      foodSafetyEnabled={isFoodSafetyRecipeEnabled()}
     />
   );
 }

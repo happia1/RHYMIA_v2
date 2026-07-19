@@ -5,6 +5,7 @@ import { IconPin } from "@tabler/icons-react";
 import { SheetHeader, SheetHeaderAction } from "@/components/ui/SheetHeader";
 import { Avatar } from "@/components/ui/Avatar";
 import { Input, Textarea } from "@/components/ui/Input";
+import { ImageLightbox } from "@/components/ui/ImageLightbox";
 import { formatPostTimestamp } from "@/lib/date";
 import { AVATAR_SIZE } from "@/lib/uiTokens";
 import { updateNotice, deleteNotice, addNoticeComment } from "@/app/(main)/board/actions";
@@ -47,6 +48,7 @@ export function NoticeDetailContent({
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editContent, setEditContent] = useState("");
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const authorOf = (userId: string | null) => (userId && membersById[userId]) || null;
@@ -55,6 +57,7 @@ export function NoticeDetailContent({
   useEffect(() => {
     setIsEditingDetail(false);
     setDeleteConfirmOpen(false);
+    setLightboxOpen(false);
     setCommentDraft("");
     setEditTitle(notice.title ?? "");
     setEditContent(notice.content);
@@ -164,7 +167,12 @@ export function NoticeDetailContent({
             )}
             {notice.image_url && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={notice.image_url} alt="" className="max-h-56 w-full rounded-xl object-cover" />
+              <img
+                src={notice.image_url}
+                alt=""
+                onClick={() => setLightboxOpen(true)}
+                className="max-h-56 w-auto max-w-full cursor-zoom-in rounded-xl object-contain"
+              />
             )}
             <p
               className={`whitespace-pre-wrap text-ink ${
@@ -244,6 +252,10 @@ export function NoticeDetailContent({
         currentUserId={currentUserId}
         existingNotice={editingSticky}
       />
+
+      {lightboxOpen && (
+        <ImageLightbox imageUrl={notice.image_url} onClose={() => setLightboxOpen(false)} />
+      )}
     </>
   );
 }

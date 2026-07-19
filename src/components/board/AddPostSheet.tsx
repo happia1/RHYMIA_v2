@@ -91,13 +91,14 @@ export function AddPostSheet({
 
     setIsUploadingImage(true);
     try {
-      const supabase = createClient();
-      const extMatch = file.name.match(/\.([a-zA-Z0-9]+)$/);
-      const ext = extMatch ? extMatch[1].toLowerCase() : "png";
+      const compressedDataUrl = await compressImage(file);
+      const blob = await (await fetch(compressedDataUrl)).blob();
+      const ext = blob.type === "image/png" ? "png" : "jpg";
       const path = `${currentUserId}/${Date.now()}.${ext}`;
+      const supabase = createClient();
       const { error: uploadError } = await supabase.storage
         .from("notice-images")
-        .upload(path, file, { upsert: true });
+        .upload(path, blob, { upsert: true, contentType: blob.type });
       if (uploadError) throw uploadError;
 
       const { data } = supabase.storage.from("notice-images").getPublicUrl(path);

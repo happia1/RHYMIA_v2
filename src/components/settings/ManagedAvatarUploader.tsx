@@ -4,8 +4,8 @@ import { useRef, useState, useTransition } from "react";
 import { IconCamera, IconPhoto } from "@tabler/icons-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Avatar } from "@/components/ui/Avatar";
+import { ImageCropSheet } from "@/components/ui/ImageCropSheet";
 import { createClient } from "@/lib/supabase/client";
-import { compressImage } from "@/lib/imageCompress";
 import { updateManagedMemberAvatar } from "@/app/(main)/settings/actions";
 import { MANAGED_AVATAR_TEXT_COLOR } from "@/lib/members";
 
@@ -31,11 +31,12 @@ export function ManagedAvatarUploader({
   const [preview, setPreview] = useState(avatarImageUrl);
   const [error, setError] = useState("");
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [cropFile, setCropFile] = useState<File | null>(null);
   const [isPending, startTransition] = useTransition();
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const albumInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
@@ -51,16 +52,18 @@ export function ManagedAvatarUploader({
       return;
     }
 
+    setCropFile(file);
+  };
+
+  const handleCropConfirm = async (blob: Blob) => {
+    setCropFile(null);
     try {
-      const compressedDataUrl = await compressImage(file);
-      const blob = await (await fetch(compressedDataUrl)).blob();
-      const ext = blob.type === "image/png" ? "png" : "jpg";
-      const path = `managed/${workspaceId}/${memberId}/${Date.now()}.${ext}`;
+      const path = `managed/${workspaceId}/${memberId}/${Date.now()}.jpg`;
 
       const supabase = createClient();
       const { error: uploadError } = await supabase.storage
         .from("avatars")
-        .upload(path, blob, { upsert: true, contentType: blob.type });
+        .upload(path, blob, { upsert: true, contentType: "image/jpeg" });
 
       if (uploadError) {
         console.error("[ManagedAvatarUploader] storage upload failed:", uploadError);
@@ -170,6 +173,14 @@ export function ManagedAvatarUploader({
           </button>
         </div>
       </BottomSheet>
+
+      <ImageCropSheet
+        open={!!cropFile}
+        file={cropFile}
+        shape="circle"
+        onCancel={() => setCropFile(null)}
+        onConfirm={handleCropConfirm}
+      />
     </div>
   );
 }

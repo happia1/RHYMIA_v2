@@ -1,13 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
 import { getKeywordColor } from "@/lib/scheduleKeywords";
 import { formatYearMonth, addMonths } from "@/lib/date";
 import { useSwipeCalendarNav, swipeCalendarNavStyle } from "@/components/schedule/useSwipeCalendarNav";
-import { getHoliday } from "@/lib/holidays";
+import {
+  MonthCalendarGrid,
+  MAX_BAND_ROWS,
+  dowOf,
+  type BandEntry,
+  type LabelOccurrence,
+} from "@/components/schedule/MonthCalendarGrid";
 import { addDaysToDateStr, type ExpandedSchedule } from "@/lib/recurrence";
 import { type MemberInfo } from "@/lib/scheduleTargets";
 import { isPeriodSchedule } from "@/lib/scheduleFormat";
@@ -24,36 +30,11 @@ import { pickDeterministic } from "@/lib/randomPick";
 import { useDeviceLayout } from "@/lib/useDeviceLayout";
 import type { Todo } from "@/types";
 
-const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
-// 기간 밴드는 겹쳐도 최대 이 줄 수까지만 라인으로 그린다 — 넘치는 일정은 라인은 없지만
-// 조합 라벨 텍스트(예: "여름특강/유치원방학")에는 이름이 계속 포함된다.
-const MAX_BAND_ROWS = 2;
-// 라인 두께·줄 간격 — 실제 렌더 크기(h-[2px], gap 2px)와 반드시 일치해야 라벨/라인 스택
-// 높이 계산이 어긋나지 않는다.
-const BAND_LINE_H = 2;
-const BAND_LINE_GAP = 2;
-const LINE_STACK_H = MAX_BAND_ROWS * BAND_LINE_H + (MAX_BAND_ROWS - 1) * BAND_LINE_GAP;
-// 라인 스택과 라벨 사이 간격.
-const BAND_LABEL_GAP = 2.5;
-// 라벨 한 줄을 위해 항상 미리 예약해두는 세로 공간(라벨이 없는 날에도 동일하게 예약) —
-// 이래야 라벨 유무와 무관하게 모든 셀의 행 높이가 완전히 똑같이 유지된다(레이어 분리).
-// 시트가 열려 압축 모드일 땐 이 공간 자체를 0으로 접어 "도트+라인만" 남긴다.
-const BAND_LABEL_ZONE_H = 11;
 // 달력 ↔ 데이 시트 전환 애니메이션 지속시간 — DaySheet(useSwipeDownToClose 기반 슬라이드)와
 // 같은 값을 써서 "압축"과 "시트 등장"이 같은 박자로 움직이게 한다.
 const COMPRESS_TRANSITION = "height 200ms cubic-bezier(0.4, 0, 0.2, 1)";
 
 type TodoSheetTarget = { mode: "add"; date: string } | { mode: "edit"; todo: Todo };
-
-type BandEntry = {
-  color: string;
-  lane: number;
-  isStart: boolean;
-  isEnd: boolean;
-  title: string;
-};
-
-type LabelOccurrence = { title: string; color: string; spanCells: number };
 
 function scheduleOverlapsDay(s: ExpandedSchedule, date: string) {
   const end = s.date_end ?? s.date_start;
@@ -72,11 +53,6 @@ function ymd(year: number, month: number, day: number) {
   return `${year}-${pad2(month + 1)}-${pad2(day)}`;
 }
 
-// 0=일 ... 6=토 (JS Date와 동일 규약).
-function dowOf(dateStr: string) {
-  return new Date(`${dateStr}T00:00:00.000Z`).getUTCDay();
-}
-
 function isMonday(dateStr: string) {
   return dowOf(dateStr) === 1;
 }
@@ -93,15 +69,6 @@ function daysBetween(a: string, b: string) {
   const da = new Date(`${a}T00:00:00.000Z`).getTime();
   const db = new Date(`${b}T00:00:00.000Z`).getTime();
   return Math.round((db - da) / 86400000);
-}
-
-// 요일/공휴일 색 — 다크 배경에서 눈에 편한 저채도 톤을 쓰기 위해 원색 대신 기존 브랜드
-// 토큰(ocean/terra)을 재사용한다. 토요일은 ocean(파랑 계열), 일요일·공휴일은 terra(빨강
-// 계열) — 우선순위는 호출부에서 today/selected보다 낮게 적용.
-function weekendColorClass(dateStr: string, holiday: string | null) {
-  if (holiday || dowOf(dateStr) === 0) return "text-terra";
-  if (dowOf(dateStr) === 6) return "text-ocean";
-  return null;
 }
 
 // 완료 항목은 하단으로 — Array.sort는 안정 정렬이라 같은 is_done끼리는 원래 순서(등록순)를 유지한다.
@@ -139,6 +106,9 @@ export function MonthView({
   const initialHighlightMatch = highlightId ? schedules.find((s) => s.id === highlightId) : undefined;
   const [selectedDate, setSelectedDate] = useState(initialHighlightMatch?.date_start ?? anchorDate);
   const [sheetOpen, setSheetOpen] = useState(Boolean(initialHighlightMatch));
+  // 태블릿 우측 패널 전용 — 아직 아무 날짜도 직접 고르지 않은 기본 상태인지(오늘 표시)
+  // 추적한다. 딥링크로 특정 일정을 갖고 들어온 경우는 이미 "선택된" 상태로 취급.
+  const [hasManualSelection, setHasManualSelection] = useState(Boolean(initialHighlightMatch));
   const [highlights, setHighlights] = useState<ExpandedSchedule[]>([]);
   const [prefillEvent, setPrefillEvent] = useState<ExpandedSchedule | null>(null);
   const [editingSchedule, setEditingSchedule] = useState<ExpandedSchedule | null>(null);
@@ -270,16 +240,6 @@ export function MonthView({
     return map;
   }, [schedules]);
 
-  // 태블릿 미니 달력의 도트 — 모바일처럼 기간/하루짜리를 밴드·라인으로 구분해 그리지 않고
-  // (공간이 좁아 그럴 자리가 없음), 그날 일정이 하나라도 걸쳐 있으면 점 하나만 찍는다.
-  const hasScheduleByDate = useMemo(() => {
-    const set = new Set<string>();
-    for (const date of cells) {
-      if (date && schedules.some((s) => scheduleOverlapsDay(s, date))) set.add(date);
-    }
-    return set;
-  }, [cells, schedules]);
-
   const selectedSchedules = useMemo(
     () => schedules.filter((s) => scheduleOverlapsDay(s, selectedDate)),
     [schedules, selectedDate]
@@ -355,6 +315,20 @@ export function MonthView({
     if (sheetOpen) setSheetOpen(false);
   };
 
+  // 태블릿 좌측 하단 "오늘" 버튼 — 지금 보고 있는 달이 이번 달이 아니면 먼저 이번 달로
+  // 이동(그러면 selectedDate 초기값이 오늘로 다시 맞춰짐), 이미 이번 달이면 선택일만
+  // 오늘로 바꾸고 우측 상세 패널을 스크롤 맨 위로 되돌린다.
+  const rightPanelRef = useRef<HTMLDivElement>(null);
+  const handleTodayClick = () => {
+    const isCurrentMonth = year === now.getFullYear() && month === now.getMonth();
+    if (!isCurrentMonth) {
+      router.push(`/schedule?view=month&date=${todayStr}`);
+      return;
+    }
+    setSelectedDate(todayStr);
+    rightPanelRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   // 좌우 스와이프로 이전/다음 달 이동 — 기존 <> 버튼과 같은 목적지(URL)를 그대로 재사용.
   // 데이 시트가 열려 있을 땐 날짜 선택/스크롤 제스처와 겹치지 않도록 비활성화.
   const { dragging, handlers, ...swipeNav } = useSwipeCalendarNav({
@@ -372,15 +346,19 @@ export function MonthView({
     >
       <div className="flex shrink-0 items-center justify-between">
         <KeywordLegend />
-        <div className="flex items-center gap-4">
-          <Link href={`/schedule?view=month&date=${addMonths(anchorDate, -1)}`} aria-label="이전 달">
-            <IconChevronLeft size={20} className="text-stone" />
-          </Link>
-          <span className="text-[18px] font-medium text-ink">{formatYearMonth(anchorDate)}</span>
-          <Link href={`/schedule?view=month&date=${addMonths(anchorDate, 1)}`} aria-label="다음 달">
-            <IconChevronRight size={20} className="text-stone" />
-          </Link>
-        </div>
+        {/* 태블릿은 월 표기를 좌측 달력 칼럼 중앙 상단으로 옮겨서(아래 태블릿 블록 참고)
+            여기 상단 바에서는 중복 표시하지 않는다. */}
+        {layout === "mobile" && (
+          <div className="flex items-center gap-4">
+            <Link href={`/schedule?view=month&date=${addMonths(anchorDate, -1)}`} aria-label="이전 달">
+              <IconChevronLeft size={20} className="text-stone" />
+            </Link>
+            <span className="text-[18px] font-medium text-ink">{formatYearMonth(anchorDate)}</span>
+            <Link href={`/schedule?view=month&date=${addMonths(anchorDate, 1)}`} aria-label="다음 달">
+              <IconChevronRight size={20} className="text-stone" />
+            </Link>
+          </div>
+        )}
         <MemberFilterRow members={members} target={target} />
       </div>
 
@@ -401,159 +379,25 @@ export function MonthView({
             className="flex h-full flex-col"
             style={swipeCalendarNavStyle({ dragging, ...swipeNav })}
           >
-            <div className="grid shrink-0 grid-cols-7 pb-1 text-center">
-              {WEEKDAY_LABELS.map((wd, i) => (
-                <span
-                  key={wd}
-                  className={`text-[13px] ${
-                    i === 6 ? "text-terra" : i === 5 ? "text-ocean" : "text-[var(--text-muted)]"
-                  }`}
-                >
-                  {wd}
-                </span>
-              ))}
-            </div>
-
-            <div
-              className="grid flex-1 grid-cols-7 gap-y-1 text-center"
-              style={{ gridTemplateRows: `repeat(${weekRows}, minmax(0, 1fr))` }}
-              onClick={handleCalendarAreaTap}
-            >
-              {cells.map((date, i) => {
-              if (!date) return <div key={`empty-${i}`} />;
-              const dotSchedules = dotsByDate[date] ?? [];
-              const cellBands = (bandsByDate[date] ?? []).slice().sort((a, b) => a.lane - b.lane);
-              const labelOccurrences = labelsByDate[date] ?? [];
-              const grocery = dotSchedules.find((s) => s.is_grocery && s.amount);
-              const isToday = date === todayStr;
-              const isSelected = sheetOpen && date === selectedDate;
-              const holiday = getHoliday(date);
-              const weekendClass = weekendColorClass(date, holiday);
-
-              // 라벨은 최대 1개 — 그 위치(시작일/주 첫 셀)에 걸친 기간이 하나면 자기 이름,
-              // 둘 이상이면 "이름/이름" 조합(요구사항 6, 줄별 개별 표기 없음).
-              let labelNode: React.ReactNode = null;
-              // 텍스트 기준점은 항상 그 주에서 기간이 차지하는 구간의 왼쪽 끝(시작 셀의
-              // 좌측) — 부모 day-grid의 text-center가 상속돼 절대 위치 오버레이 안에서도
-              // 글자가 중앙 정렬되는 버그가 있었다(박스 위치는 left:0로 고정해도 text-align은
-              // 별개라 그 안의 텍스트만 가운데로 쏠림) → text-left로 명시 오버라이드.
-              // 폭도 "occ.spanCells * 100%"(칸 수 그대로)를 다 쓰면 말줄임표(...)가 렌더될
-              // 여백이 없어 텍스트가 셀 경계에서 그냥 잘려 사라져 보였다 → 4px 여백을 빼
-              // 실제 가용 폭을 살짝 좁혀 "..."이 항상 보이게 한다.
-              if (labelOccurrences.length === 1) {
-                const occ = labelOccurrences[0];
-                labelNode = (
-                  <span
-                    className="pointer-events-none absolute left-0 truncate text-left text-[10px] leading-none"
-                    style={{
-                      bottom: LINE_STACK_H + BAND_LABEL_GAP,
-                      width: `calc(${occ.spanCells * 100}% - 4px)`,
-                      color: occ.color,
-                      opacity: 0.55,
-                    }}
-                  >
-                    {occ.title}
-                  </span>
-                );
-              } else if (labelOccurrences.length >= 2) {
-                // 단일 라벨과 동일한 규칙 — 합쳐진 라벨도 그 중 가장 넓게 뻗는 기간의
-                // spanCells를 폭으로 써야 그 주에서 실제로 쓸 수 있는 라인 폭만큼 보인다.
-                // 이전엔 무조건 한 칸(셀 1개) 폭으로 고정돼 있어서 "여름특강/유치원방학"처럼
-                // 합쳐진 이름이 길면 실제 밴드 라인보다 훨씬 먼저 잘렸다.
-                const maxSpanCells = Math.max(...labelOccurrences.map((occ) => occ.spanCells));
-                labelNode = (
-                  <span
-                    className="pointer-events-none absolute left-0 truncate text-left text-[10px] leading-none"
-                    style={{
-                      bottom: LINE_STACK_H + BAND_LABEL_GAP,
-                      width: `calc(${maxSpanCells * 100}% - 4px)`,
-                    }}
-                  >
-                    {labelOccurrences.map((occ, oi) => (
-                      <span key={oi}>
-                        {oi > 0 && <span className="text-stone">/</span>}
-                        <span style={{ color: occ.color, opacity: 0.55 }}>{occ.title}</span>
-                      </span>
-                    ))}
-                  </span>
-                );
-              }
-
-              return (
-                <button
-                  key={date}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (date === selectedDate && sheetOpen) {
-                      setSheetOpen(false);
-                    } else {
-                      setSelectedDate(date);
-                      setSheetOpen(true);
-                    }
-                  }}
-                  className={`flex flex-col items-center justify-center gap-0.5 ${sheetOpen ? "py-0" : "py-1"}`}
-                >
-                  {/* 날짜 숫자 크기는 압축 여부와 무관하게 항상 동일 — 압축은 아래 부가 영역만 줄인다. */}
-                  <span
-                    className={`flex h-6 w-6 items-center justify-center rounded-full text-[16px] ${
-                      isToday
-                        ? "bg-honey/15 font-medium text-honey"
-                        : isSelected
-                        ? "font-medium text-honey ring-1 ring-honey/40"
-                        : weekendClass
-                        ? `font-medium ${weekendClass}`
-                        : "text-ink"
-                    }`}
-                  >
-                    {Number(date.slice(-2))}
-                  </span>
-                  <div className="flex gap-1" style={{ minHeight: sheetOpen ? 4 : 6 }}>
-                    {dotSchedules.slice(0, 3).map((s) => (
-                      <span
-                        key={s.id}
-                        className="h-[4px] w-[4px] rounded-full"
-                        style={{ backgroundColor: getKeywordColor(s.keyword_main) }}
-                      />
-                    ))}
-                  </div>
-                  {grocery && !sheetOpen && (
-                    <span className="text-[11px] text-[var(--text-muted)]">
-                      {grocery.amount!.toLocaleString()}
-                    </span>
-                  )}
-                  {/* 라인은 텍스트 유무와 무관하게 항상 같은 두께로 렌더(레이어 분리) — 라벨은
-                      별도 position:absolute 오버레이라 이 컨테이너의 문서 흐름(높이 계산)에는
-                      전혀 관여하지 않는다. 라벨 한 줄분 공간(BAND_LABEL_ZONE_H)은 라벨이
-                      실제로 있든 없든 항상 동일하게 예약해둬 셀마다 행 높이가 달라지지
-                      않는다. 시트가 열려 압축되면 이 예약 공간을 0으로 접어 라벨을 완전히
-                      숨기고 도트+라인만 남긴다(요구사항 2).
-                      flex-col-reverse: lane 0(그룹 내 가장 긴 기간, "맨 아래 레인")이 배열의
-                      첫 항목이라 역방향 배치에서 셀 최하단에 오고, 그 위로 lane 1이 쌓인다.
-                      그날 실제로 활성인 lane만 렌더하므로(고정 슬롯 아님) 겹침 없는 날엔
-                      자동으로 셀 최하단에 온다(요구사항 5). */}
-                  <span
-                    className="relative flex w-full flex-col-reverse"
-                    style={{
-                      height: (sheetOpen ? 0 : BAND_LABEL_ZONE_H) + LINE_STACK_H,
-                      paddingTop: sheetOpen ? 0 : BAND_LABEL_ZONE_H,
-                      gap: BAND_LINE_GAP,
-                    }}
-                  >
-                    {cellBands.map((band) => (
-                      <span
-                        key={band.lane}
-                        className={`h-[2px] ${band.isStart ? "rounded-l-full" : ""} ${
-                          band.isEnd ? "rounded-r-full" : ""
-                        }`}
-                        style={{ backgroundColor: band.color, opacity: 0.55 }}
-                      />
-                    ))}
-                    {!sheetOpen && labelNode}
-                  </span>
-                </button>
-              );
-            })}
-            </div>
+            <MonthCalendarGrid
+              cells={cells}
+              weekRows={weekRows}
+              todayStr={todayStr}
+              highlightedDate={sheetOpen ? selectedDate : null}
+              dotsByDate={dotsByDate}
+              bandsByDate={bandsByDate}
+              labelsByDate={labelsByDate}
+              compressed={sheetOpen}
+              onContainerClick={handleCalendarAreaTap}
+              onSelectDate={(date) => {
+                if (date === selectedDate && sheetOpen) {
+                  setSheetOpen(false);
+                } else {
+                  setSelectedDate(date);
+                  setSheetOpen(true);
+                }
+              }}
+            />
           </div>
         </div>
       </div>
@@ -566,65 +410,50 @@ export function MonthView({
       {layout !== "mobile" && (
       <div className="flex min-h-0 flex-1 gap-8">
         <div className="flex w-[42%] flex-col">
+          {/* 월 표기를 이 칼럼 중앙 상단에 둔다(상단 공용 바는 태블릿에서 중복 표시 안 함) */}
+          <div className="mb-2 flex shrink-0 items-center justify-center gap-4">
+            <Link href={`/schedule?view=month&date=${addMonths(anchorDate, -1)}`} aria-label="이전 달">
+              <IconChevronLeft size={20} className="text-stone" />
+            </Link>
+            <span className="text-[18px] font-medium text-ink">{formatYearMonth(anchorDate)}</span>
+            <Link href={`/schedule?view=month&date=${addMonths(anchorDate, 1)}`} aria-label="다음 달">
+              <IconChevronRight size={20} className="text-stone" />
+            </Link>
+          </div>
+
           <div
             key={`tablet-${anchorDate}`}
             {...handlers}
             style={swipeCalendarNavStyle({ dragging, ...swipeNav })}
-            className="flex flex-col"
+            className="flex min-h-0 flex-1 flex-col"
           >
-            <div className="grid grid-cols-7 pb-1 text-center">
-              {WEEKDAY_LABELS.map((wd, i) => (
-                <span
-                  key={wd}
-                  className={`text-[13px] ${
-                    i === 6 ? "text-terra" : i === 5 ? "text-ocean" : "text-[var(--text-muted)]"
-                  }`}
-                >
-                  {wd}
-                </span>
-              ))}
-            </div>
-            <div className="grid grid-cols-7 gap-y-2 text-center">
-              {cells.map((date, i) => {
-                if (!date) return <div key={`tablet-empty-${i}`} />;
-                const isToday = date === todayStr;
-                const isSelected = date === selectedDate;
-                const holiday = getHoliday(date);
-                const weekendClass = weekendColorClass(date, holiday);
-                return (
-                  <button
-                    key={date}
-                    onClick={() => setSelectedDate(date)}
-                    className="flex flex-col items-center gap-1 py-1"
-                  >
-                    <span
-                      className={`flex h-7 w-7 items-center justify-center rounded-full text-[16px] ${
-                        isToday
-                          ? "bg-honey/15 font-medium text-honey"
-                          : isSelected
-                          ? "font-medium text-honey ring-1 ring-honey/40"
-                          : weekendClass
-                          ? `font-medium ${weekendClass}`
-                          : "text-ink"
-                      }`}
-                    >
-                      {Number(date.slice(-2))}
-                    </span>
-                    <span
-                      className={`h-[4px] w-[4px] rounded-full ${
-                        hasScheduleByDate.has(date) ? "bg-honey" : "bg-transparent"
-                      }`}
-                    />
-                  </button>
-                );
-              })}
-            </div>
+            <MonthCalendarGrid
+              cells={cells}
+              weekRows={weekRows}
+              todayStr={todayStr}
+              highlightedDate={selectedDate}
+              dotsByDate={dotsByDate}
+              bandsByDate={bandsByDate}
+              labelsByDate={labelsByDate}
+              onSelectDate={(date) => {
+                setSelectedDate(date);
+                setHasManualSelection(true);
+              }}
+            />
           </div>
+
+          <button
+            type="button"
+            onClick={handleTodayClick}
+            className="mt-2 shrink-0 self-center rounded-full bg-honey/10 px-4 py-1.5 text-[14px] font-medium text-honey"
+          >
+            오늘
+          </button>
         </div>
 
         <div className="w-px shrink-0 bg-border-light" />
 
-        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
+        <div ref={rightPanelRef} className="min-h-0 min-w-0 flex-1 overflow-y-auto">
           <DaySheetContent
             date={selectedDate}
             schedules={selectedSchedules}
@@ -642,6 +471,7 @@ export function MonthView({
             activitySuggestion={activitySuggestion}
             activityCandidates={activityCandidates}
             showActivitySuggestion
+            emphasizeToday={!hasManualSelection}
           />
         </div>
       </div>

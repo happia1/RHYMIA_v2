@@ -5,14 +5,21 @@ import { IconCamera, IconPhoto, IconX } from "@tabler/icons-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { useToast } from "@/components/ui/Toast";
 import { createClient } from "@/lib/supabase/client";
-import { compressImage } from "@/lib/imageCompress";
+import { ImageCropSheet, type CropRatioOption } from "@/components/ui/ImageCropSheet";
 import { MAX_HOME_PHOTOS, type HomePhoto } from "@/lib/homePhotos";
 
 const BUCKET = "home-photos";
 
+const HOME_PHOTO_RATIOS: CropRatioOption[] = [
+  { label: "1:1", value: 1 },
+  { label: "4:3", value: 4 / 3 },
+  { label: "16:9", value: 16 / 9 },
+];
+
 /** 태블릿 홈 중앙 포토 프레임에 쓸 사진 관리 — 별도 DB 테이블 없이 Storage 버킷에 직접
- * 업로드/삭제한다(목록은 listHomePhotos가 버킷을 그대로 나열). 카메라/앨범 선택 →
- * compressImage 압축은 끼니 등록 화면/managed 멤버 프로필 사진과 같은 패턴 재사용. */
+ * 업로드/삭제한다(목록은 listHomePhotos가 버킷을 그대로 나열). 카메라/앨범 선택 후
+ * ImageCropSheet(자유 비율 — 1:1/4:3/16:9 중 선택)에서 잘라낸 결과를 그대로 올린다.
+ * 크롭 캔버스 출력 자체가 리사이즈+재인코딩이라 별도 compressImage 호출은 필요 없다. */
 export function HomePhotoManager({
   workspaceId,
   initialPhotos,
@@ -24,10 +31,11 @@ export function HomePhotoManager({
   const [photos, setPhotos] = useState(initialPhotos);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [cropFile, setCropFile] = useState<File | null>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const albumInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
@@ -41,18 +49,20 @@ export function HomePhotoManager({
       return;
     }
 
+    setCropFile(file);
+  };
+
+  const handleCropConfirm = async (blob: Blob) => {
+    setCropFile(null);
     setIsUploading(true);
     try {
-      const compressedDataUrl = await compressImage(file);
-      const blob = await (await fetch(compressedDataUrl)).blob();
-      const ext = blob.type === "image/png" ? "png" : "jpg";
-      const name = `${Date.now()}.${ext}`;
+      const name = `${Date.now()}.jpg`;
       const path = `${workspaceId}/${name}`;
 
       const supabase = createClient();
       const { error } = await supabase.storage
         .from(BUCKET)
-        .upload(path, blob, { contentType: blob.type });
+        .upload(path, blob, { contentType: "image/jpeg" });
 
       if (error) {
         console.error("[HomePhotoManager] upload failed:", error);
@@ -153,6 +163,15 @@ export function HomePhotoManager({
           </button>
         </div>
       </BottomSheet>
+
+      <ImageCropSheet
+        open={!!cropFile}
+        file={cropFile}
+        shape="rect"
+        ratioOptions={HOME_PHOTO_RATIOS}
+        onCancel={() => setCropFile(null)}
+        onConfirm={handleCropConfirm}
+      />
     </div>
   );
 }
