@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { IconFridge, IconMessageCircleFilled, IconBrandGoogle } from "@tabler/icons-react";
 import { createClient } from "@/lib/supabase/client";
@@ -20,7 +20,19 @@ function isRedirectError(error: unknown): boolean {
   );
 }
 
+// useSearchParams()를 쓰는 부분은 Suspense 경계 없이는 Vercel 프로덕션 빌드의 정적 프리렌더
+// 단계에서 "should be wrapped in a suspense boundary" 에러로 실패한다(로컬은 FAT32라 next
+// build를 못 돌려서 이 에러가 그동안 안 보였음) — 폼 전체를 LoginForm으로 빼고 default export
+// 쪽에서 Suspense로 감싼다.
 export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-cream" />}>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const { showToast } = useToast();
   const searchParams = useSearchParams();
   // 초대 링크("OO 가족에 초대됐어요" 화면)의 회원가입/로그인 버튼이 넘겨주는 파라미터 —
