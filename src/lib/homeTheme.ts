@@ -9,5 +9,5 @@ export const mirror = {
   muted: "text-[var(--text-muted)]",
   hairline: "border-[var(--hairline)]",
   hairlineBg: "bg-[var(--hairline)]",
-  label: "text-[10px] tracking-[0.1em] text-[var(--text-muted)]",
+  label: "text-[12px] tracking-[0.1em] text-[var(--text-muted)]",
 } as const;

@@ -145,8 +145,8 @@ function LoginForm() {
     <div className="flex min-h-screen flex-col items-center justify-center bg-cream px-6">
       <div className="mb-16 flex flex-col items-center gap-2">
         <IconFridge size={40} className="text-ink" stroke={1.5} />
-        <h1 className="text-[20px] font-medium text-ink">fridge</h1>
-        <p className="text-[13px] text-stone">
+        <h1 className="text-[24px] font-medium text-ink">fridge</h1>
+        <p className="text-[16px] text-stone">
           5초 안에 오늘 우리 집의 상태를 확인해요
         </p>
       </div>
@@ -158,7 +158,7 @@ function LoginForm() {
           onChange={(e) => setEmail(e.target.value)}
           placeholder="이메일"
           autoComplete="email"
-          className="h-12 w-full rounded-2xl px-4 text-[15px]"
+          className="h-12 w-full rounded-2xl px-4 text-[18px]"
         />
         <Input
           type="password"
@@ -167,7 +167,7 @@ function LoginForm() {
           onKeyDown={(e) => e.key === "Enter" && mode === "login" && handleEmailLogin()}
           placeholder="비밀번호"
           autoComplete={mode === "login" ? "current-password" : "new-password"}
-          className="h-12 w-full rounded-2xl px-4 text-[15px]"
+          className="h-12 w-full rounded-2xl px-4 text-[18px]"
         />
 
         {mode === "signup" && (
@@ -178,13 +178,13 @@ function LoginForm() {
             onKeyDown={(e) => e.key === "Enter" && handleSignUp()}
             placeholder="비밀번호 확인"
             autoComplete="new-password"
-            className="h-12 w-full rounded-2xl px-4 text-[15px]"
+            className="h-12 w-full rounded-2xl px-4 text-[18px]"
           />
         )}
 
         {mode === "login" && (
           <div className="flex flex-col gap-1 px-1">
-            <label className="flex items-center gap-2 text-[13px] text-stone">
+            <label className="flex items-center gap-2 text-[16px] text-stone">
               <input
                 type="checkbox"
                 checked={keepLoggedIn}
@@ -196,21 +196,21 @@ function LoginForm() {
             {/* iOS는 세션 쿠키를 앱이 완전히 종료되거나 얼마 안 지나 정리해버리는 경우가
                 많아, 껐을 때는 실제로 그럴 수 있다는 걸 미리 알려준다. */}
             {!keepLoggedIn && (
-              <p className="text-[11px] text-[var(--text-muted)]">
+              <p className="text-[13px] text-[var(--text-muted)]">
                 모바일에서는 앱을 닫으면 다시 로그인해야 할 수 있어요
               </p>
             )}
           </div>
         )}
 
-        {error && <p className="text-[12px] text-terra">{error}</p>}
-        {notice && <p className="text-[12px] text-sage">{notice}</p>}
+        {error && <p className="text-[14px] text-terra">{error}</p>}
+        {notice && <p className="text-[14px] text-sage">{notice}</p>}
 
         {mode === "login" ? (
           <button
             onClick={handleEmailLogin}
             disabled={isSubmitting}
-            className="flex h-12 w-full items-center justify-center rounded-2xl bg-ink text-[15px] font-medium text-cream disabled:opacity-50"
+            className="flex h-12 w-full items-center justify-center rounded-2xl bg-ink text-[18px] font-medium text-cream disabled:opacity-50"
           >
             로그인
           </button>
@@ -218,14 +218,14 @@ function LoginForm() {
           <button
             onClick={handleSignUp}
             disabled={isSubmitting}
-            className="flex h-12 w-full items-center justify-center rounded-2xl bg-ink text-[15px] font-medium text-cream disabled:opacity-50"
+            className="flex h-12 w-full items-center justify-center rounded-2xl bg-ink text-[18px] font-medium text-cream disabled:opacity-50"
           >
             가입하기
           </button>
         )}
 
         {mode === "login" ? (
-          <p className="text-center text-[12px] text-stone">
+          <p className="text-center text-[14px] text-stone">
             아직 계정이 없나요?{" "}
             <button
               onClick={() => switchMode("signup")}
@@ -235,7 +235,7 @@ function LoginForm() {
             </button>
           </p>
         ) : (
-          <p className="text-center text-[12px] text-stone">
+          <p className="text-center text-[14px] text-stone">
             이미 계정이 있나요?{" "}
             <button
               onClick={() => switchMode("login")}
@@ -250,7 +250,7 @@ function LoginForm() {
           <>
             <div className="my-1 flex items-center gap-3">
               <span className="h-px flex-1 bg-border-light" />
-              <span className="text-[11px] text-stone">또는</span>
+              <span className="text-[13px] text-stone">또는</span>
               <span className="h-px flex-1 bg-border-light" />
             </div>
 

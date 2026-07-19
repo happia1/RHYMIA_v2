@@ -25,7 +25,7 @@ export default async function JoinWorkspacePage({
   if (!workspaceName) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-cream px-6 text-center">
-        <p className="text-[15px] text-ink">유효하지 않은 초대 링크예요.</p>
+        <p className="text-[18px] text-ink">유효하지 않은 초대 링크예요.</p>
       </div>
     );
   }
@@ -41,19 +41,19 @@ export default async function JoinWorkspacePage({
       <div className="flex min-h-screen flex-col items-center justify-center bg-cream px-6">
         <div className="mb-10 flex flex-col items-center gap-2 text-center">
           <span className="text-4xl">👋</span>
-          <h1 className="text-[20px] font-medium text-ink">{workspaceName}에 초대됐어요</h1>
-          <p className="text-[13px] text-stone">계속하려면 로그인하거나 새로 가입해주세요.</p>
+          <h1 className="text-[24px] font-medium text-ink">{workspaceName}에 초대됐어요</h1>
+          <p className="text-[16px] text-stone">계속하려면 로그인하거나 새로 가입해주세요.</p>
         </div>
         <div className="flex w-full max-w-[320px] flex-col gap-3">
           <Link
             href={`/login?mode=signup&redirect=${encodeURIComponent(returnTo)}`}
-            className="flex h-12 w-full items-center justify-center rounded-2xl bg-ink text-[15px] font-medium text-cream"
+            className="flex h-12 w-full items-center justify-center rounded-2xl bg-ink text-[18px] font-medium text-cream"
           >
             회원가입하고 참여하기
           </Link>
           <Link
             href={`/login?mode=login&redirect=${encodeURIComponent(returnTo)}`}
-            className="flex h-12 w-full items-center justify-center rounded-2xl border border-border-light text-[15px] font-medium text-ink"
+            className="flex h-12 w-full items-center justify-center rounded-2xl border border-border-light text-[18px] font-medium text-ink"
           >
             이미 계정이 있어요
           </Link>
@@ -76,10 +76,10 @@ export default async function JoinWorkspacePage({
     <div className="flex min-h-screen flex-col items-center justify-center bg-cream px-6">
       <div className="mb-10 flex flex-col items-center gap-2 text-center">
         <span className="text-4xl">👋</span>
-        <h1 className="text-[20px] font-medium text-ink">
+        <h1 className="text-[24px] font-medium text-ink">
           {workspaceName}에 참여하기
         </h1>
-        <p className="text-[13px] text-stone">가족 안에서 나를 부르는 호칭을 알려주세요.</p>
+        <p className="text-[16px] text-stone">가족 안에서 나를 부르는 호칭을 알려주세요.</p>
       </div>
 
       <form action={handleJoin} className="flex w-full max-w-[320px] flex-col gap-3">
@@ -87,12 +87,12 @@ export default async function JoinWorkspacePage({
           name="displayName"
           required
           placeholder="내 호칭 (예: 첫째)"
-          className="h-12 w-full rounded-2xl px-4 text-[15px]"
+          className="h-12 w-full rounded-2xl px-4 text-[18px]"
         />
-        {error && <p className="text-[13px] text-terra">{error}</p>}
+        {error && <p className="text-[16px] text-terra">{error}</p>}
         <button
           type="submit"
-          className="mt-2 flex h-12 w-full items-center justify-center rounded-2xl bg-ink text-[15px] font-medium text-cream"
+          className="mt-2 flex h-12 w-full items-center justify-center rounded-2xl bg-ink text-[18px] font-medium text-cream"
         >
           참여하기
         </button>

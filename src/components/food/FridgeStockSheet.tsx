@@ -65,7 +65,7 @@ export function FridgeStockSheet({
             <button
               key={c.value}
               onClick={() => setCategory(c.value)}
-              className={`rounded-full px-3.5 py-1.5 text-[13px] font-medium ${
+              className={`rounded-full px-3.5 py-1.5 text-[16px] font-medium ${
                 category === c.value ? "bg-ink text-cream" : "bg-cream text-stone"
               }`}
             >
@@ -80,12 +80,12 @@ export function FridgeStockSheet({
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleAdd()}
             placeholder="재료 이름"
-            className="h-11 flex-1 rounded-xl px-3 text-[12px]"
+            className="h-11 flex-1 rounded-xl px-3 text-[14px]"
           />
           <button
             onClick={handleAdd}
             disabled={isPending}
-            className="rounded-xl bg-ink px-4 text-[13px] font-medium text-cream"
+            className="rounded-xl bg-ink px-4 text-[16px] font-medium text-cream"
           >
             추가
           </button>
@@ -93,7 +93,7 @@ export function FridgeStockSheet({
 
         <div className="flex flex-col gap-2">
           {filtered.length === 0 && (
-            <p className="text-[13px] text-stone">등록된 재료가 없어요</p>
+            <p className="text-[16px] text-stone">등록된 재료가 없어요</p>
           )}
           {filtered.map((item) => {
             const isSelected = selectable && selectedNames?.includes(item.name);
@@ -103,7 +103,7 @@ export function FridgeStockSheet({
                 onClick={selectable ? () => onToggleItem!(item.name) : undefined}
                 className={`flex items-center justify-between ${selectable ? "cursor-pointer" : ""}`}
               >
-                <span className="flex items-center gap-2 text-[12px] text-ink">
+                <span className="flex items-center gap-2 text-[14px] text-ink">
                   {selectable && (
                     <span
                       className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
@@ -120,7 +120,7 @@ export function FridgeStockSheet({
                     e.stopPropagation();
                     startTransition(() => deleteFridgeItem(item.id));
                   }}
-                  className="text-[12px] text-stone"
+                  className="text-[14px] text-stone"
                 >
                   삭제
                 </button>
@@ -131,7 +131,7 @@ export function FridgeStockSheet({
 
         <button
           onClick={goToShoppingList}
-          className="self-start text-[13px] font-medium text-honey"
+          className="self-start text-[16px] font-medium text-honey"
         >
           부족한 건 장볼 것에 적으러 가기
         </button>

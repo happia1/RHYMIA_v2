@@ -4,9 +4,7 @@ import { getWeekDates, toDateStr } from "@/lib/date";
 import { getFrequentMenus } from "@/lib/mealUtils";
 import { getWorkspaceMembers } from "@/lib/members.server";
 import { getMealTrackingDayCount, getRecipeNotes } from "@/app/(main)/food/actions";
-import { getSchedulesForRange } from "@/app/(main)/schedule/actions";
 import { getShoppingItems } from "@/app/(main)/shopping/actions";
-import { addDaysToDateStr } from "@/lib/recurrence";
 import { isFoodSafetyRecipeEnabled, getDailyRecommendedRecipe } from "@/lib/foodSafetyRecipe";
 import { WeekCalendar } from "@/components/food/WeekCalendar";
 import { MealEmptyState } from "@/components/food/MealEmptyState";
@@ -43,7 +41,6 @@ export default async function FoodPage({
     trackingDays,
     nutritionEnabled,
     recommendedRecipe,
-    weekSchedules,
     recipeNotes,
     cartItems,
   ] = await Promise.all([
@@ -88,10 +85,6 @@ export default async function FoodPage({
     recipeEnabled
       ? getDailyRecommendedRecipe(toDateStr(new Date())).catch(() => null)
       : Promise.resolve(null),
-    // 태블릿 식탁 탭 전용(FoodTabletHome) — 주간 스트립의 일정 도트, 레시피 노트
-    // 개수 배지, 장바구니 아코디언 미리보기. 모바일 레이아웃은 안 쓰지만 셋 다
-    // 가벼운 조회라 뷰 종류를 가리지 않고 그냥 함께 가져온다.
-    getSchedulesForRange(workspaceId, weekDates[0], weekDates[6]),
     // recipe_note 테이블(supabase/add_recipe_note.sql)이 아직 라이브 DB에 없으면
     // "relation does not exist" 에러로 throw하는데(getRecipeNotes 자체는 의도적으로
     // throw — 즐겨찾기 토글 등에서는 실패를 명확히 알아야 함), 이 페이지 최초 로드에서까지
@@ -106,18 +99,6 @@ export default async function FoodPage({
   const todayVote = voteRows?.[0] ?? null;
   // 진행 중인 투표가 있으면 같은 날짜에 새 투표를 또 만들 수 없게 막는 용도 (결과 카드는 마감 여부와 무관하게 표시)
   const blockingVote = todayVote && !todayVote.is_closed ? todayVote : null;
-
-  // 태블릿 주간 스트립의 일정 도트 — 기간 일정은 이번 주 범위로 클램프해 걸치는 모든
-  // 날짜에 표시(주 시작 전부터 이어지는 기간 일정이 있을 수 있어 시작점도 클램프 필요).
-  const datesWithSchedule = new Set<string>();
-  for (const s of weekSchedules) {
-    const start = s.date_start < weekDates[0] ? weekDates[0] : s.date_start;
-    const rawEnd = s.date_end ?? s.date_start;
-    const end = rawEnd > weekDates[6] ? weekDates[6] : rawEnd;
-    for (let d = start; d <= end; d = addDaysToDateStr(d, 1)) {
-      datesWithSchedule.add(d);
-    }
-  }
 
   return (
     <TabPageFrame className="gap-4 px-4 pt-6">
@@ -158,7 +139,7 @@ export default async function FoodPage({
                     )}
                     <Link
                       href={`/food/add?date=${selectedDate}`}
-                      className="ml-auto shrink-0 text-[13px] font-medium text-honey"
+                      className="ml-auto shrink-0 text-[16px] font-medium text-honey"
                     >
                       + 끼니 추가
                     </Link>
@@ -193,8 +174,11 @@ export default async function FoodPage({
               workspaceId={workspaceId}
               selectedDate={selectedDate}
               weekDates={weekDates}
-              datesWithSchedule={datesWithSchedule}
+              datesWithMeals={datesWithMeals}
               dayMeals={(dayMeals ?? []) as MealRow[]}
+              members={members}
+              currentUserId={user.id}
+              nutritionEnabled={nutritionEnabled}
               frequentMenus={frequentMenus}
               trackingDays={trackingDays}
               blockingVote={blockingVote}

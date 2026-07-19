@@ -210,13 +210,13 @@ export function AddPostSheet({
               onChange={(e) => setContent(e.target.value)}
               placeholder="자유롭게 적어보세요"
               rows={3}
-              className="rounded-xl p-3 text-[14px]"
+              className="rounded-xl p-3 text-[17px]"
             />
             <div className="flex items-center gap-3">
               <button
                 onClick={() => imageFileInputRef.current?.click()}
                 disabled={isUploadingImage}
-                className="flex items-center gap-1.5 text-[13px] font-medium text-honey disabled:opacity-50"
+                className="flex items-center gap-1.5 text-[16px] font-medium text-honey disabled:opacity-50"
               >
                 {isUploadingImage ? (
                   <IconLoader2 size={16} className="animate-spin" />
@@ -245,7 +245,7 @@ export function AddPostSheet({
                   <button
                     key={d}
                     onClick={() => setExpireDays(d)}
-                    className={`rounded-full px-3 py-1.5 text-[13px] font-medium ${
+                    className={`rounded-full px-3 py-1.5 text-[16px] font-medium ${
                       expireDays === d ? "bg-ink text-cream" : "bg-cream text-stone"
                     }`}
                   >
@@ -261,20 +261,20 @@ export function AddPostSheet({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="제목"
-              className="h-11 rounded-xl px-3 text-[14px]"
+              className="h-11 rounded-xl px-3 text-[17px]"
             />
             <Textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder="내용을 입력하세요"
               rows={4}
-              className="rounded-xl p-3 text-[14px]"
+              className="rounded-xl p-3 text-[17px]"
             />
             <div className="flex items-center gap-3">
               <button
                 onClick={() => imageFileInputRef.current?.click()}
                 disabled={isUploadingImage}
-                className="flex items-center gap-1.5 text-[13px] font-medium text-honey disabled:opacity-50"
+                className="flex items-center gap-1.5 text-[16px] font-medium text-honey disabled:opacity-50"
               >
                 {isUploadingImage ? (
                   <IconLoader2 size={16} className="animate-spin" />
@@ -300,7 +300,7 @@ export function AddPostSheet({
             <button
               onClick={() => ocrFileInputRef.current?.click()}
               disabled={isExtractingText}
-              className="flex items-center gap-1.5 self-start text-[13px] font-medium text-honey disabled:opacity-50"
+              className="flex items-center gap-1.5 self-start text-[16px] font-medium text-honey disabled:opacity-50"
             >
               {isExtractingText ? (
                 <IconLoader2 size={16} className="animate-spin" />
@@ -316,7 +316,7 @@ export function AddPostSheet({
               className="hidden"
               onChange={handleOcrImageSelected}
             />
-            <label className="flex items-center gap-2 text-[13px] text-ink">
+            <label className="flex items-center gap-2 text-[16px] text-ink">
               <input
                 type="checkbox"
                 checked={isPinned}
@@ -334,7 +334,7 @@ export function AddPostSheet({
           onChange={handleImageSelected}
         />
 
-        {attachError && <p className="text-[12px] text-terra">{attachError}</p>}
+        {attachError && <p className="text-[14px] text-terra">{attachError}</p>}
       </div>
     </BottomSheet>
   );

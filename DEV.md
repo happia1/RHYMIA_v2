@@ -1,7 +1,19 @@
 # 개발 참조 문서
 
-## 마지막 업데이트: 2026-07-19 (iOS/모바일 로그인 지속성 보강 + 디바이스 레이아웃 분기 개선 + PWA 매니페스트)
+## 마지막 업데이트: 2026-07-19 (태블릿 폴리시 배치 + 끼니 영양 추정 Next 서버 이전 + 로그인 지속성 보강 + 디바이스 레이아웃/PWA)
 
+- 2026-07-19: 태블릿 폴리시 배치 3건 + 전역 폰트 1.2배 상향 — ① 태블릿 홈(조망 모드) 우상단
+  설정⚙️/알림🔔 진입점 복구(`TabletTopBar.tsx`, 하단 DockBar와 터치-3초노출-페이드아웃 타이머를
+  `TabletHomeRevealProvider`로 공유). ② 일정 탭 태블릿 우측 상세 패널의 가로 스크롤바 수정 —
+  `MonthView.tsx`의 우측 패널 컨테이너에 `min-w-0`가 빠져 있던 게 원인(flex-row 자식이
+  `min-w-0` 없으면 내부 텍스트의 `truncate`가 무력화돼 컨테이너를 넘어 자라는 전형적인
+  버그), 모바일 전용이던 `pb-16` 하단 여백도 태블릿에서는 제거. ③ 전역 타이포 1.2배 상향 —
+  `text-[Npx]` 523건을 스크립트로 일괄 치환(10→12·12→14·14→17·16→19 등, 반올림), 시계/온도
+  "특대" 6곳(HomeHeader.tsx/HomeTabletHome.tsx)만 1.1배로 수동 처리. 끼니 칼로리 미표시 진단
+  결과 원인은 배포 안 된 에이전트 서버 의존이었음 — 영양 추정을 Next 서버(`src/lib/
+  nutritionEstimate.ts`, Gemini 직접 호출)로 이전하고 "영양 정보 다시 계산" 버튼 추가. 상세는
+  아래 "인증"/"진행 현황" 섹션의 2026-07-19 항목들과 "알려진 이슈" 참고. 실기기 확인 전부
+  미완료(FAT32라 `next build`/브라우저 테스트 불가).
 - 2026-07-19: iOS/모바일 로그인 지속성 보강 — 로그인/회원가입을 서버 액션(`(auth)/login/actions.ts`의
   `signInAction`/`signUpAction`)으로 전환해 세션 쿠키를 서버 Set-Cookie로 심음(iOS Safari의
   JS 쿠키 7일 캡 회피). `src/lib/supabase/client.ts`의 커스텀 `document.cookie` 세션 쿠키
@@ -1067,6 +1079,38 @@
     실패 시 되돌림. **끈다고 저장된 추정치가 지워지지 않음** — 표시만 숨기는 설정.
   - 검증: `tsc --noEmit` 클린.
 
+- 2026-07-19: 끼니 칼로리 미표시 진단 + 영양 추정을 Next 서버로 이전
+  - **진단**: 프로덕션(Vercel)에서 등록한 끼니는 전부 `kcal_min`/`kcal_max`가 계속 `null`이었음.
+    원인은 위 2026-07-12 항목의 "호출 경로" — `estimateAndSaveMealNutrition()`이 별도 배포되는
+    Python 에이전트 서버(`agent/main.py`)의 `/estimate-nutrition`을 `callAgentServer()`로
+    호출하는데, 그 에이전트 서버는 "일정 파싱 에이전트 로컬 실행" 섹션에 적혀 있듯
+    **프로덕션에 배포된 적이 없다**(`NEXT_PUBLIC_AGENT_API_URL` 미설정 시 도달 불가능한
+    `localhost:8000`으로 폴백). 즉 매 끼니 저장마다 `fetch` 자체가 실패했는데,
+    `estimateAndSaveMealNutrition`의 바깥 `try/catch`가 "실패해도 끼니 저장에 영향 없어야
+    한다"는 원칙 때문에 이 실패를 완전히 조용히 삼키고 로그도 안 남겨서, 배포 후 한동안
+    눈치채지 못했다.
+  - **수정**: 영양 추정 로직 자체를 Next.js 서버로 옮겨 별도 배포가 필요한 에이전트 서버
+    의존을 없앴다. 새 `src/lib/nutritionEstimate.ts`의 `estimateMealNutrition(menuName)`이
+    Gemini REST API(`generativelanguage.googleapis.com`)를 `GEMINI_API_KEY`(서버 전용
+    환경변수)로 직접 호출 — 프롬프트/JSON 파싱/`_normalize_macros` 로직은 `agent/agent.py`의
+    `estimate_nutrition()`을 그대로 이식. `GEMINI_API_KEY` 미설정 시 예전과 동일하게 전부
+    `null`(조용히 스킵), 단 Gemini 호출 실패·응답 형식 이상 등은 `console.error`로 로그를
+    남기도록 바꿔서 다음엔 같은 문제를 조용히 놓치지 않게 함. 새 `POST /api/nutrition`
+    라우트(`requireAuthOrRespond()` 필수)는 이 함수를 인증된 HTTP 진입점으로 노출하고,
+    `food/actions.ts`의 백그라운드 추정(`estimateAndSaveMealNutrition`)은 이미 서버 코드라
+    이 라우트를 거치지 않고 `estimateMealNutrition()`을 직접 호출한다. 에이전트 쪽
+    `POST /estimate-nutrition` 엔드포인트와 `agent/agent.py`의 관련 헬퍼(`_default_nutrition`
+    등)는 전부 제거 — 에이전트 서버는 이제 일정 파싱(`/process-schedule`)·이미지 텍스트
+    추출(`/extract-text`)만 담당.
+  - **재계산 버튼**: 기존에 이미 등록됐지만 `kcal`가 `null`인 끼니를 위해, `food/actions.ts`에
+    `recalculateMealNutrition(mealId)` 서버 액션 신규(1회 재추정, 성공/실패를 `{ ok, message }`로
+    반환) — `MealDetail.tsx`가 영양 정보 블록이 비어 있을 때 그 자리에 "영양 정보 다시 계산"
+    버튼을 대신 보여주고, 누르면 이 액션을 호출해 성공 시 `revalidatePath`로 자동 갱신된다.
+  - **미확인**: 이 환경엔 `GEMINI_API_KEY`도 없고 로그인된 브라우저도 없어 `tsc --noEmit`/
+    `eslint` 클린과 Python 문법 검사(`ast.parse`)까지만 확인했음 — 실제 Gemini 응답 품질(추정
+    범위가 그럴듯한지)과 새 끼니 등록/재계산 버튼 동작은 `GEMINI_API_KEY`를 Vercel 환경변수에
+    설정한 뒤 직접 확인 필요.
+
 - 2026-07-12: 문구 변경 2건 + 일정 등록 폼 간소화(AddEventSheet)
   - **문구 변경**: 식탁 탭 하단 라인 액션(`FoodTabActions.tsx`) "현재 재고 확인"→"냉장고에 뭐있지",
     "장볼 것 입력하기"→"뭐 사야하지"로 변경. 장볼 것 시트(`GlobalShoppingSheet.tsx`) 입력란
@@ -1741,8 +1785,8 @@ supabase/
   add_nutrition_display_setting.sql                          2026-07-12 신규: family_workspace.nutrition_display_enabled BOOLEAN DEFAULT true 컬럼 추가 (실행 필요 — 사용자가 직접 실행 예정)
 middleware.ts                                              프로젝트 루트, 모든 요청에 대해 세션 갱신 (updateSession 위임)
 agent/                                                     2026-07-08 신규: Next.js와 분리된 Python 에이전트 서버 (별도 실행/배포 대상, 아래 "일정 파싱 에이전트 로컬 실행" 참고)
-  main.py                                                  FastAPI 진입점 — POST /process-schedule, /extract-text, /estimate-nutrition(2026-07-12 신규 — 끼니 영양 정보 추정)(전부 AGENT_API_KEY 설정 시 X-API-Key 헤더 검증 + image_base64 약 8MB 초과 시 413), GET /health(인증 제외)
-  agent.py                                                 LangGraph 그래프(plan/execute/refine/return_single/prepare_multi 노드) + Gemini 2.5 Flash 호출, 날짜/시간 정규화 헬퍼. estimate_nutrition()(2026-07-12 신규, 그래프 밖의 단발 LLM 호출 — 메뉴명 기준 kcal 범위/탄단지 비율 추정)
+  main.py                                                  FastAPI 진입점 — POST /process-schedule, /extract-text(전부 AGENT_API_KEY 설정 시 X-API-Key 헤더 검증 + image_base64 약 8MB 초과 시 413), GET /health(인증 제외). /estimate-nutrition은 2026-07-19에 제거(끼니 영양 추정은 이제 Next.js src/lib/nutritionEstimate.ts가 담당 — 위 "인증"/"진행 현황" 섹션의 2026-07-19 항목 참고)
+  agent.py                                                 LangGraph 그래프(plan/execute/refine/return_single/prepare_multi 노드) + Gemini 2.5 Flash 호출, 날짜/시간 정규화 헬퍼. estimate_nutrition()과 관련 헬퍼는 2026-07-19에 제거(위와 동일 사유)
   requirements.txt                                          langgraph, langchain-google-genai, fastapi, uvicorn 등
   .env.example                                              GEMINI_API_KEY, ALLOWED_ORIGINS, AGENT_API_KEY(2026-07-11 신규, 미설정 시 인증 생략)
 ```
@@ -1756,18 +1800,21 @@ agent/                                                     2026-07-08 신규: Ne
 - `OPENWEATHER_API_KEY` — 2026-07-07 추가, 홈/일정 탭 날씨 표시용
 - `NEXT_PUBLIC_AGENT_API_URL` — 2026-07-08 추가, 일정 파싱 에이전트 서버 주소 (로컬 기본값 `http://localhost:8000`). 2026-07-11부터 브라우저가 아니라 `/api/agent/*` route handler(서버)만 이 값을 읽음 — `NEXT_PUBLIC_` 접두사는 유지하지만 더 이상 클라이언트에서 직접 쓰이지 않음
 - `AGENT_API_KEY` — 2026-07-11 추가, 서버 전용(접두사 없음 — 브라우저에 노출되면 안 됨). `agent/.env`의 같은 이름 값과 동일하게 맞출 것. `/api/agent/*` route handler가 에이전트 서버에 요청을 프록시할 때 `X-API-Key` 헤더로 실어 보냄
+- `GEMINI_API_KEY` — 2026-07-19 추가, 서버 전용(접두사 없음). `src/lib/nutritionEstimate.ts`가 끼니 영양 추정(Gemini REST API 직접 호출)에 씀 — `agent/.env`의 같은 이름 키와는 완전히 별개 값(다른 프로세스, 각자 자기 `.env`를 읽음)이라 **양쪽 다** 설정해야 함. 미설정 시 조용히 스킵(칼로리 계속 안 보임, 에러 아님)
 
 `agent/.env`(Python 에이전트 서버, `agent/.env.example` 참고)에 필요한 키:
-- `GEMINI_API_KEY` — Google AI Studio에서 발급
+- `GEMINI_API_KEY` — Google AI Studio에서 발급(위 Next.js `.env.local`의 동명 키와 별개 — 일정 파싱/이미지 텍스트 추출 전용, 영양 추정은 더 이상 이 서버를 쓰지 않음)
 - `ALLOWED_ORIGINS` — CORS 허용 도메인, 콤마 구분 (로컬 기본값 `http://localhost:3000`, 배포 후 실제 Vercel 도메인 추가 필요)
 - `AGENT_API_KEY` — 2026-07-11 추가, 설정하면 `/process-schedule`/`/extract-text`에 `X-API-Key` 헤더 검증을 강제(`/health`는 제외). 미설정 시 인증 생략(로컬 개발 기본값) — 배포 환경에서는 반드시 설정하고 Next.js `.env.local`의 `AGENT_API_KEY`와 같은 값으로 맞출 것
 
 ## Vercel 배포
 
 2026-07-17 배포 준비 점검에서 정리. **이 프로젝트에서 실제로 Vercel에 배포되는 건 Next.js 앱뿐**
-— `agent/`(Python)는 별도 서비스라 Render 등 다른 곳에 따로 배포해야 하고, 그 서버의
-`GEMINI_API_KEY`/`ALLOWED_ORIGINS`/`AGENT_API_KEY`는 Vercel 프로젝트 환경변수가 아니다(위
-"`agent/.env`" 표 참고 — 헷갈리지 않도록 분리).
+— `agent/`(Python)는 별도 서비스라 Render 등 다른 곳에 따로 배포해야 하고, 그 서버 전용인
+`ALLOWED_ORIGINS`/`AGENT_API_KEY`(및 그 서버 자신의 `GEMINI_API_KEY`)는 Vercel 프로젝트
+환경변수가 아니다(위 "`agent/.env`" 표 참고 — 헷갈리지 않도록 분리). 단 `GEMINI_API_KEY`는
+2026-07-19부터 **Next.js 쪽에도 동명의 별도 키로 필요**(끼니 영양 추정, 아래 표 참고) —
+이름은 같지만 agent 서버의 것과는 별개 값이라 Vercel에 따로 등록해야 함.
 
 ### Vercel 프로젝트에 등록할 환경변수
 
@@ -1779,6 +1826,7 @@ agent/                                                     2026-07-08 신규: Ne
 | `OPENWEATHER_API_KEY` | 선택 | ❌ 불필요(서버에서만 fetch) | `getCurrentWeather()`가 `null` 반환 → 홈 날씨 카드가 "서울/-°"로 조용히 폴백(에러 아님) |
 | `NEXT_PUBLIC_AGENT_API_URL` | 선택 | 이미 있음(단, 실제로는 서버 코드만 읽음 — 아래 참고) | 미설정 시 `localhost:8000`로 폴백 → Vercel에서는 항상 연결 실패 → 이번에 추가한 "AI 도우미는 준비 중이에요" 메시지로 처리됨(정상 동작, 에이전트 서버를 아직 배포하지 않았다면 그냥 비워둬도 됨) |
 | `AGENT_API_KEY` | 선택 | ❌ 불필요 | 에이전트 서버가 `X-API-Key` 검증을 요구하도록 설정했을 때만 필요. `agent/.env`의 같은 이름 값과 일치시킬 것 |
+| `GEMINI_API_KEY` | 선택(권장) | ❌ 불필요(서버에서만 fetch) | `estimateMealNutrition()`이 전부 `null` 반환 → 끼니 칼로리/탄단지 정보가 계속 안 보임(에러 아님, "영양 정보 다시 계산" 버튼도 실패 메시지만 반복) — `agent/.env`의 같은 이름 키와는 별개 값 |
 | `NAVER_CLIENT_ID` | 선택 | ❌ 불필요 | `isRecipeSearchEnabled()`가 `false` → "블로그에서 레시피 찾기" 버튼 자체가 화면에서 숨겨짐(에러 아님) |
 | `NAVER_CLIENT_SECRET` | 선택 | ❌ 절대 금지(비밀키) | 위와 동일 |
 
@@ -1858,7 +1906,7 @@ agent/                                                     2026-07-08 신규: Ne
 - [ ] `supabase/add_meal_image.sql`(`meal-images` 버킷) 아직 라이브 DB에 미실행 — 실행 전까지는 끼니 이미지 삽입 시 업로드가 실패함(버킷이 없어 Storage 에러)
 - [ ] `supabase/add_schedule_recurrence.sql`(`recur_type`/`recur_calendar`/`recur_until`) 아직 라이브 DB에 미실행 — 실행 전까지는 `createSchedule`의 insert 자체가 실패함(컬럼 없음 에러), "반복 없음"으로만 등록해도 마찬가지이니 화면 작업 전에 먼저 실행 필요
 - [ ] `supabase/add_meal_nutrition.sql`/`supabase/add_nutrition_display_setting.sql` 아직 라이브 DB에 미실행(사용자가 직접 실행 예정) — 실행 전까지는 `createMeal`/`updateMeal`의 백그라운드 영양 추정 저장이 매번 "컬럼 없음" 에러로 조용히 실패하고(끼니 저장 자체엔 영향 없음, try/catch로 삼켜짐), 영양 정보는 계속 아무것도 표시되지 않음. `add_nutrition_display_setting.sql` 미실행 상태에서는 `getNutritionDisplayEnabled()`가 컬럼을 못 찾아 매번 기본값 `true`로 폴백(에러 아님, 표시는 그냥 항상 켜진 것처럼 동작)
-- [ ] 끼니 영양 정보 백그라운드 추정(`estimateAndSaveMealNutrition`)은 await 없이 던지는 방식이라, 지금처럼 `next dev`/전통적 Node 프로세스에선 응답 이후에도 계속 실행되지만 Vercel 같은 서버리스 배포 환경에서는 응답이 끝나며 함수 인스턴스가 정리돼 완료 전에 잘릴 수 있음 — 배포 시 Next.js `after()`(또는 별도 큐/워커)로 교체 검토 필요
+- [ ] 끼니 영양 정보 백그라운드 추정(`estimateAndSaveMealNutrition`)은 await 없이 던지는 방식이라, 지금처럼 `next dev`/전통적 Node 프로세스에선 응답 이후에도 계속 실행되지만 Vercel 같은 서버리스 배포 환경에서는 응답이 끝나며 함수 인스턴스가 정리돼 완료 전에 잘릴 수 있음 — 배포 시 Next.js `after()`(또는 별도 큐/워커)로 교체 검토 필요. (2026-07-19: 호출 자체는 이제 에이전트 서버가 아니라 Next 서버 안에서 Gemini를 직접 부르므로 최소한 "항상 실패"하던 문제는 해결됐지만, 이 fire-and-forget 타이밍 이슈 자체는 아직 남아 있음 — 끝까지 못 끝나면 여전히 칼로리가 비고, 이 경우 끼니 상세의 "영양 정보 다시 계산" 버튼으로 수동 재시도 가능)
 - [ ] 이 환경엔 로그인된 브라우저가 없어 끼니 영양 정보 기능(카드 kcal 라인/식탁 탭 하루 합계/상세 영양 섹션/설정 토글)은 `tsc --noEmit` 클린까지만 확인했고 실제 화면과 에이전트 응답 품질(추정치가 그럴듯한 범위로 나오는지, 탄단지 비율 바가 정확히 100%로 채워지는지)은 마이그레이션 실행 + 에이전트 서버(`npm run dev:all`) 기동 후 직접 확인 필요
 - [ ] 반복 일정 수정 화면 — `AddEventSheet`는 아직 신규 등록 전용이라 `updateSchedule` 액션이 없음. 가상 인스턴스를 열었을 때 "원본을 수정합니다" 안내 + `originalId` 라우팅, "이번 회만 수정"(P2) 전부 다음 작업에서 구현 예정 (`AddEventSheet.tsx` 상단 주석 참고)
 - [ ] 반복 일정 데이터 레이어(`lunar.ts`/`recurrence.ts`/`getSchedulesForRange`)는 이 환경에서 Node로 직접 실행해 핵심 시나리오(월간 클램프, 윤년, 음력 왕복, `recur_until`, 기간유지, 원본중복없음)를 검증했지만, 로그인된 브라우저가 없어 실제 화면에서 월간/연간 뷰에 가상 인스턴스가 올바르게 섞여 보이는지는 확인 못 함 — 마이그레이션 실행 후 브라우저에서 직접 확인 필요

@@ -40,12 +40,12 @@ export function ShareLinkSection({
         <button
           onClick={handleRegenerate}
           disabled={isPending}
-          className="self-start text-[12px] font-medium text-terra"
+          className="self-start text-[14px] font-medium text-terra"
         >
           링크 재발급 (기존 링크 무효화)
         </button>
       )}
-      {error && <p className="text-[12px] text-terra">{error}</p>}
+      {error && <p className="text-[14px] text-terra">{error}</p>}
     </div>
   );
 }

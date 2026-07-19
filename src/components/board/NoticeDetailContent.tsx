@@ -118,18 +118,18 @@ export function NoticeDetailContent({
 
         {deleteConfirmOpen ? (
           <div className="flex flex-col gap-3">
-            <p className="text-[13px] text-ink">정말 삭제하시겠어요?</p>
+            <p className="text-[16px] text-ink">정말 삭제하시겠어요?</p>
             <div className="flex gap-2">
               <button
                 onClick={() => setDeleteConfirmOpen(false)}
-                className="flex-1 rounded-xl bg-cream py-2.5 text-[13px] font-medium text-stone"
+                className="flex-1 rounded-xl bg-cream py-2.5 text-[16px] font-medium text-stone"
               >
                 취소
               </button>
               <button
                 onClick={handleConfirmDelete}
                 disabled={isPending}
-                className="flex flex-1 items-center justify-center rounded-xl bg-terra py-2.5 text-[13px] font-medium text-white disabled:opacity-50"
+                className="flex flex-1 items-center justify-center rounded-xl bg-terra py-2.5 text-[16px] font-medium text-white disabled:opacity-50"
               >
                 삭제하기
               </button>
@@ -141,15 +141,15 @@ export function NoticeDetailContent({
               value={editTitle}
               onChange={(e) => setEditTitle(e.target.value)}
               placeholder="제목"
-              className="h-11 rounded-xl px-3 text-[14px]"
+              className="h-11 rounded-xl px-3 text-[17px]"
             />
             <Textarea
               value={editContent}
               onChange={(e) => setEditContent(e.target.value)}
               rows={4}
-              className="rounded-xl p-3 text-[14px]"
+              className="rounded-xl p-3 text-[17px]"
             />
-            <div className="flex items-center justify-end gap-1.5 text-[11px] text-[var(--text-muted)]">
+            <div className="flex items-center justify-end gap-1.5 text-[13px] text-[var(--text-muted)]">
               <span className="font-medium">{authorOf(notice.created_by)?.display_name ?? "가족"}</span>
               <span>· {formatPostTimestamp(notice.created_at)}</span>
             </div>
@@ -157,7 +157,7 @@ export function NoticeDetailContent({
         ) : (
           <>
             {notice.type !== "sticky" && notice.is_pinned && (
-              <div className="flex items-center gap-1 text-[10px] font-medium text-honey">
+              <div className="flex items-center gap-1 text-[12px] font-medium text-honey">
                 <IconPin size={12} />
                 고정
               </div>
@@ -168,7 +168,7 @@ export function NoticeDetailContent({
             )}
             <p
               className={`whitespace-pre-wrap text-ink ${
-                notice.type === "sticky" ? "font-handwriting text-[14px]" : "text-[13px]"
+                notice.type === "sticky" ? "font-handwriting text-[17px]" : "text-[16px]"
               }`}
             >
               {notice.content}
@@ -176,17 +176,17 @@ export function NoticeDetailContent({
 
             {notice.type === "sticky" ? (
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-medium text-[var(--text-muted)]">
+                <span className="text-[13px] font-medium text-[var(--text-muted)]">
                   {authorOf(notice.created_by)?.display_name ?? "가족"}
                 </span>
                 {daysLeft(notice.expire_at) !== null && (
-                  <span className="text-[11px] text-[var(--text-muted)]">
+                  <span className="text-[13px] text-[var(--text-muted)]">
                     D-{Math.max(daysLeft(notice.expire_at)!, 0)}
                   </span>
                 )}
               </div>
             ) : (
-              <div className="flex items-center justify-end gap-1.5 text-[11px] text-[var(--text-muted)]">
+              <div className="flex items-center justify-end gap-1.5 text-[13px] text-[var(--text-muted)]">
                 <span className="font-medium">{authorOf(notice.created_by)?.display_name ?? "가족"}</span>
                 <span>· {formatPostTimestamp(notice.created_at)}</span>
               </div>
@@ -196,7 +196,7 @@ export function NoticeDetailContent({
 
         {notice.type !== "sticky" && !isEditingDetail && !deleteConfirmOpen && (
           <div className="mt-2 flex flex-col gap-3 border-t border-border-light pt-3">
-            <span className="text-[12px] font-medium text-stone">댓글</span>
+            <span className="text-[14px] font-medium text-stone">댓글</span>
             {(commentsByNotice[notice.id] ?? []).map((c) => {
               const commenter = authorOf(c.user_id);
               return (
@@ -209,10 +209,10 @@ export function NoticeDetailContent({
                     size={AVATAR_SIZE.comment}
                   />
                   <div className="flex flex-col">
-                    <span className="text-[12px] font-medium text-ink">
+                    <span className="text-[14px] font-medium text-ink">
                       {commenter?.display_name ?? "가족"}
                     </span>
-                    <span className="whitespace-pre-wrap text-[13px] text-ink">{c.content}</span>
+                    <span className="whitespace-pre-wrap text-[16px] text-ink">{c.content}</span>
                   </div>
                 </div>
               );
@@ -223,12 +223,12 @@ export function NoticeDetailContent({
                 onChange={(e) => setCommentDraft(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleComment()}
                 placeholder="댓글을 남겨보세요"
-                className="h-11 flex-1 rounded-xl px-3 text-[13px]"
+                className="h-11 flex-1 rounded-xl px-3 text-[16px]"
               />
               <button
                 onClick={handleComment}
                 disabled={isPending}
-                className="rounded-xl bg-ink px-4 py-2.5 text-[13px] font-medium text-cream"
+                className="rounded-xl bg-ink px-4 py-2.5 text-[16px] font-medium text-cream"
               >
                 등록
               </button>

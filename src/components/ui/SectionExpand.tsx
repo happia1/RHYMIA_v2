@@ -54,7 +54,7 @@ export function SectionExpand<T>({
               key={i}
               onClick={() => goTo(i)}
               aria-label={`${i + 1}페이지`}
-              className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-medium ${
+              className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[12px] font-medium ${
                 i === currentPage ? "bg-honey text-white" : "text-[var(--text-muted)]"
               }`}
             >

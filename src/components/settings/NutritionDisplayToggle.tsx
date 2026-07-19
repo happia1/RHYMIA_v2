@@ -30,7 +30,7 @@ export function NutritionDisplayToggle({
   };
 
   return (
-    <label className="flex items-center justify-between text-[13px] text-ink">
+    <label className="flex items-center justify-between text-[16px] text-ink">
       영양 정보 표시
       <CheckToggle checked={checked} onChange={handleToggle} size={22} />
     </label>

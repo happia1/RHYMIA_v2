@@ -37,8 +37,8 @@ export function MemberList({
                 textColor={m.avatar_text_color}
                 imageUrl={m.avatar_image_url}
               />
-              <span className="text-[14px] font-medium text-ink">{m.display_name}</span>
-              <span className="ml-auto shrink-0 text-[11px] text-stone">
+              <span className="text-[17px] font-medium text-ink">{m.display_name}</span>
+              <span className="ml-auto shrink-0 text-[13px] text-stone">
                 {isManaged ? "관리 프로필" : ROLE_LABEL[m.role] ?? m.role}
               </span>
               {isManaged && (
@@ -53,7 +53,7 @@ export function MemberList({
 
       <button
         onClick={() => setAdding(true)}
-        className="flex items-center justify-center gap-1.5 self-start text-[13px] font-medium text-ocean"
+        className="flex items-center justify-center gap-1.5 self-start text-[16px] font-medium text-ocean"
       >
         <IconPlus size={16} />
         구성원 추가

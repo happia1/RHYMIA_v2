@@ -44,16 +44,16 @@ export function MealVoteCard({
     return (
       <div className="flex flex-col gap-2 rounded-2xl border border-border-light p-3">
         <div className="flex items-center justify-between">
-          <span className="text-[12px] font-medium text-honey">투표 결과</span>
+          <span className="text-[14px] font-medium text-honey">투표 결과</span>
           <button onClick={dismiss} aria-label="닫기">
             <IconX size={14} className="text-[var(--text-muted)]" />
           </button>
         </div>
-        <span className="text-[16px] font-medium text-ink">{vote.candidates[winnerIndex]}</span>
+        <span className="text-[19px] font-medium text-ink">{vote.candidates[winnerIndex]}</span>
         <button
           onClick={registerWinner}
           disabled={isPending}
-          className="flex h-10 items-center justify-center gap-1 rounded-xl bg-honey text-[13px] font-medium text-white disabled:opacity-50"
+          className="flex h-10 items-center justify-center gap-1 rounded-xl bg-honey text-[16px] font-medium text-white disabled:opacity-50"
         >
           <IconCheck size={14} /> 이 메뉴로 등록
         </button>
@@ -63,21 +63,21 @@ export function MealVoteCard({
 
   return (
     <div className="flex flex-col gap-2 rounded-2xl border border-border-light p-3">
-      <span className="text-[12px] font-medium text-[var(--text-muted)]">가족 투표 진행 중</span>
+      <span className="text-[14px] font-medium text-[var(--text-muted)]">가족 투표 진행 중</span>
       {vote.candidates.map((candidate, i) => (
         <button
           key={i}
           onClick={() => cast(i)}
           disabled={isPending}
-          className={`flex items-center justify-between rounded-xl px-3 py-2 text-[13px] disabled:opacity-50 ${
+          className={`flex items-center justify-between rounded-xl px-3 py-2 text-[16px] disabled:opacity-50 ${
             myPick === i ? "bg-ink text-cream" : "bg-cream text-ink"
           }`}
         >
           <span>{candidate}</span>
-          <span className="text-[11px] opacity-70">{tally[i]}표</span>
+          <span className="text-[13px] opacity-70">{tally[i]}표</span>
         </button>
       ))}
-      <button onClick={close} className="self-end text-[11px] font-medium text-[var(--text-muted)]">
+      <button onClick={close} className="self-end text-[13px] font-medium text-[var(--text-muted)]">
         마감하고 결과보기
       </button>
     </div>

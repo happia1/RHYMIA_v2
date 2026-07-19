@@ -29,9 +29,9 @@ export function WeekCalendar({
                 isToday ? "bg-honey/15" : isSelected ? "ring-1 ring-honey/40" : ""
               }`}
             >
-              <span className="text-[10px] text-[var(--text-muted)]">{WEEKDAY_LABELS[i]}</span>
+              <span className="text-[12px] text-[var(--text-muted)]">{WEEKDAY_LABELS[i]}</span>
               <span
-                className={`text-[13px] font-medium ${isToday ? "text-honey" : "text-ink"}`}
+                className={`text-[16px] font-medium ${isToday ? "text-honey" : "text-ink"}`}
               >
                 {day}
               </span>

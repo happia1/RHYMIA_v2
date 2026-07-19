@@ -20,7 +20,7 @@ export function MealNutritionSummary({
   const hasUnestimated = estimates.length < meals.length;
 
   return (
-    <span className="text-[12px] text-[var(--text-secondary)]">
+    <span className="text-[14px] text-[var(--text-secondary)]">
       총 약 {total.toLocaleString()}kcal{hasUnestimated ? "+" : ""} 추정
     </span>
   );

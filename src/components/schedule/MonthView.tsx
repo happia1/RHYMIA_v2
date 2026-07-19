@@ -365,14 +365,18 @@ export function MonthView({
   });
 
   return (
-    <div className="flex h-full flex-col gap-4 overflow-x-hidden pb-16">
+    <div
+      className={`flex h-full flex-col gap-4 overflow-x-hidden ${
+        layout === "mobile" ? "pb-16" : ""
+      }`}
+    >
       <div className="flex shrink-0 items-center justify-between">
         <KeywordLegend />
         <div className="flex items-center gap-4">
           <Link href={`/schedule?view=month&date=${addMonths(anchorDate, -1)}`} aria-label="이전 달">
             <IconChevronLeft size={20} className="text-stone" />
           </Link>
-          <span className="text-[15px] font-medium text-ink">{formatYearMonth(anchorDate)}</span>
+          <span className="text-[18px] font-medium text-ink">{formatYearMonth(anchorDate)}</span>
           <Link href={`/schedule?view=month&date=${addMonths(anchorDate, 1)}`} aria-label="다음 달">
             <IconChevronRight size={20} className="text-stone" />
           </Link>
@@ -401,7 +405,7 @@ export function MonthView({
               {WEEKDAY_LABELS.map((wd, i) => (
                 <span
                   key={wd}
-                  className={`text-[11px] ${
+                  className={`text-[13px] ${
                     i === 6 ? "text-terra" : i === 5 ? "text-ocean" : "text-[var(--text-muted)]"
                   }`}
                 >
@@ -440,7 +444,7 @@ export function MonthView({
                 const occ = labelOccurrences[0];
                 labelNode = (
                   <span
-                    className="pointer-events-none absolute left-0 truncate text-left text-[8px] leading-none"
+                    className="pointer-events-none absolute left-0 truncate text-left text-[10px] leading-none"
                     style={{
                       bottom: LINE_STACK_H + BAND_LABEL_GAP,
                       width: `calc(${occ.spanCells * 100}% - 4px)`,
@@ -459,7 +463,7 @@ export function MonthView({
                 const maxSpanCells = Math.max(...labelOccurrences.map((occ) => occ.spanCells));
                 labelNode = (
                   <span
-                    className="pointer-events-none absolute left-0 truncate text-left text-[8px] leading-none"
+                    className="pointer-events-none absolute left-0 truncate text-left text-[10px] leading-none"
                     style={{
                       bottom: LINE_STACK_H + BAND_LABEL_GAP,
                       width: `calc(${maxSpanCells * 100}% - 4px)`,
@@ -491,7 +495,7 @@ export function MonthView({
                 >
                   {/* 날짜 숫자 크기는 압축 여부와 무관하게 항상 동일 — 압축은 아래 부가 영역만 줄인다. */}
                   <span
-                    className={`flex h-6 w-6 items-center justify-center rounded-full text-[13px] ${
+                    className={`flex h-6 w-6 items-center justify-center rounded-full text-[16px] ${
                       isToday
                         ? "bg-honey/15 font-medium text-honey"
                         : isSelected
@@ -513,7 +517,7 @@ export function MonthView({
                     ))}
                   </div>
                   {grocery && !sheetOpen && (
-                    <span className="text-[9px] text-[var(--text-muted)]">
+                    <span className="text-[11px] text-[var(--text-muted)]">
                       {grocery.amount!.toLocaleString()}
                     </span>
                   )}
@@ -572,7 +576,7 @@ export function MonthView({
               {WEEKDAY_LABELS.map((wd, i) => (
                 <span
                   key={wd}
-                  className={`text-[11px] ${
+                  className={`text-[13px] ${
                     i === 6 ? "text-terra" : i === 5 ? "text-ocean" : "text-[var(--text-muted)]"
                   }`}
                 >
@@ -594,7 +598,7 @@ export function MonthView({
                     className="flex flex-col items-center gap-1 py-1"
                   >
                     <span
-                      className={`flex h-7 w-7 items-center justify-center rounded-full text-[13px] ${
+                      className={`flex h-7 w-7 items-center justify-center rounded-full text-[16px] ${
                         isToday
                           ? "bg-honey/15 font-medium text-honey"
                           : isSelected
@@ -620,7 +624,7 @@ export function MonthView({
 
         <div className="w-px shrink-0 bg-border-light" />
 
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
           <DaySheetContent
             date={selectedDate}
             schedules={selectedSchedules}

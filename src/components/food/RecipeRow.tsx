@@ -30,7 +30,7 @@ export function RecipeRow({
             <IconToolsKitchen2 size={20} className="text-[var(--text-muted)]" />
           )}
         </div>
-        <span className="line-clamp-2 min-w-0 flex-1 text-[13px] font-medium text-ink">{recipe.name}</span>
+        <span className="line-clamp-2 min-w-0 flex-1 text-[16px] font-medium text-ink">{recipe.name}</span>
       </button>
       <button
         onClick={onToggleFavorite}

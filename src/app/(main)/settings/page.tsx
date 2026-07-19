@@ -42,13 +42,13 @@ export default async function SettingsPage() {
           <Link href="/home" aria-label="뒤로가기">
             <IconArrowLeft size={22} className="text-ink" />
           </Link>
-          <h1 className="text-[20px] font-medium text-ink">설정</h1>
+          <h1 className="text-[24px] font-medium text-ink">설정</h1>
         </header>
-        <p className="text-[13px] text-stone">{workspace?.name}</p>
+        <p className="text-[16px] text-stone">{workspace?.name}</p>
       </div>
 
       <section className="flex flex-col gap-3">
-        <span className="text-[12px] font-medium text-stone">내 프로필</span>
+        <span className="text-[14px] font-medium text-stone">내 프로필</span>
         <div className="rounded-2xl border border-border-light bg-surface p-4">
           <AvatarUploader
             userId={user.id}
@@ -61,24 +61,24 @@ export default async function SettingsPage() {
       </section>
 
       <section className="flex flex-col gap-3">
-        <span className="text-[12px] font-medium text-stone">홈 화면 사진</span>
+        <span className="text-[14px] font-medium text-stone">홈 화면 사진</span>
         <HomePhotoManager workspaceId={workspaceId} initialPhotos={homePhotos} />
       </section>
 
       <section className="flex flex-col gap-3">
-        <span className="text-[12px] font-medium text-stone">가족 구성원</span>
+        <span className="text-[14px] font-medium text-stone">가족 구성원</span>
         <MemberList workspaceId={workspaceId} members={members} />
         {role === "owner" && (
           <>
-            <span className="text-[12px] text-stone">아래 링크로 가족을 초대하세요</span>
+            <span className="text-[14px] text-stone">아래 링크로 가족을 초대하세요</span>
             <CopyLinkButton path={`/workspace/join/${workspaceId}`} />
           </>
         )}
       </section>
 
       <section className="flex flex-col gap-3">
-        <span className="text-[12px] font-medium text-stone">외부 공유</span>
-        <p className="text-[12px] text-stone">
+        <span className="text-[14px] font-medium text-stone">외부 공유</span>
+        <p className="text-[14px] text-stone">
           읽기 전용 링크예요. 돌봄자·조부모에게 전달해보세요.
         </p>
         <p className={mirror.label}>
@@ -92,7 +92,7 @@ export default async function SettingsPage() {
       </section>
 
       <section className="flex flex-col gap-3">
-        <span className="text-[12px] font-medium text-stone">끼니</span>
+        <span className="text-[14px] font-medium text-stone">끼니</span>
         <NutritionDisplayToggle
           workspaceId={workspaceId}
           enabled={workspace?.nutrition_display_enabled ?? true}
@@ -100,12 +100,12 @@ export default async function SettingsPage() {
       </section>
 
       <section className="flex flex-col gap-3">
-        <span className="text-[12px] font-medium text-stone">플랜</span>
+        <span className="text-[14px] font-medium text-stone">플랜</span>
         <div className="rounded-2xl border border-border-light bg-surface p-4">
-          <p className="text-[14px] text-ink">
+          <p className="text-[17px] text-ink">
             {workspace?.plan === "pro" ? "Pro 플랜" : "Free 플랜"}
           </p>
-          <p className="text-[12px] text-stone">
+          <p className="text-[14px] text-stone">
             최대 {workspace?.member_limit}인까지 함께할 수 있어요
           </p>
         </div>
@@ -114,7 +114,7 @@ export default async function SettingsPage() {
       <form action={signOut}>
         <button
           type="submit"
-          className="flex h-11 w-full items-center justify-center rounded-2xl bg-surface text-[15px] font-medium text-terra"
+          className="flex h-11 w-full items-center justify-center rounded-2xl bg-surface text-[18px] font-medium text-terra"
         >
           로그아웃
         </button>

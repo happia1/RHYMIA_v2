@@ -47,7 +47,7 @@ function TextToggle({
   return (
     <button
       onClick={onClick}
-      className={`shrink-0 text-[13px] font-medium ${
+      className={`shrink-0 text-[16px] font-medium ${
         active ? "text-ink" : "text-[var(--text-muted)]"
       }`}
     >
@@ -252,13 +252,13 @@ export function AddMealScreen({
         >
           <IconArrowLeft size={22} className="text-ink" />
         </Link>
-        <h1 className="text-[15px] font-medium text-ink">
+        <h1 className="text-[18px] font-medium text-ink">
           {existingMeal ? "끼니 수정" : "끼니 추가"}
         </h1>
         <button
           onClick={handleSubmit}
           disabled={isPending}
-          className="text-[14px] font-medium text-honey disabled:opacity-40"
+          className="text-[17px] font-medium text-honey disabled:opacity-40"
         >
           저장
         </button>
@@ -288,14 +288,14 @@ export function AddMealScreen({
                 value={place}
                 onChange={(e) => setPlace(e.target.value)}
                 placeholder="장소"
-                className="h-10 flex-1 px-0 text-[13px]"
+                className="h-10 flex-1 px-0 text-[16px]"
               />
               <Input
                 variant="underline"
                 value={reservationTime}
                 onChange={(e) => setReservationTime(e.target.value)}
                 placeholder="시간"
-                className="h-10 w-20 px-0 text-[13px]"
+                className="h-10 w-20 px-0 text-[16px]"
               />
             </div>
           )}
@@ -324,7 +324,7 @@ export function AddMealScreen({
               value={mainMenu}
               onChange={(e) => setMainMenu(e.target.value)}
               placeholder="예: 된장찌개, 계란말이"
-              className="h-11 flex-1 px-0 text-[14px]"
+              className="h-11 flex-1 px-0 text-[17px]"
             />
             {imageUrl && (
               <button onClick={() => setImageUrl(null)} aria-label="이미지 제거" className="shrink-0">
@@ -367,7 +367,7 @@ export function AddMealScreen({
                   onError={() => setThumbnailError(true)}
                 />
               )}
-              <span className="min-w-0 flex-1 truncate text-[12px] text-[var(--text-muted)]">
+              <span className="min-w-0 flex-1 truncate text-[14px] text-[var(--text-muted)]">
                 {recipeTitle ?? "레시피 영상"}
               </span>
               <button
@@ -387,7 +387,7 @@ export function AddMealScreen({
               <div className="flex h-10 w-16 shrink-0 items-center justify-center rounded-lg bg-cream">
                 <IconLink size={18} className="text-[var(--text-muted)]" />
               </div>
-              <span className="min-w-0 flex-1 truncate text-[12px] text-[var(--text-muted)]">
+              <span className="min-w-0 flex-1 truncate text-[14px] text-[var(--text-muted)]">
                 레시피 블로그 저장됨
               </span>
               <button
@@ -404,7 +404,7 @@ export function AddMealScreen({
               {selectedIngredients.map((name) => (
                 <span
                   key={name}
-                  className="flex items-center gap-1 rounded-full bg-cream px-2.5 py-1 text-[12px] text-ink"
+                  className="flex items-center gap-1 rounded-full bg-cream px-2.5 py-1 text-[14px] text-ink"
                 >
                   {name}
                   <button onClick={() => toggleIngredient(name)} aria-label={`${name} 제거`}>
@@ -417,14 +417,14 @@ export function AddMealScreen({
           <div className="grid grid-cols-2">
             <button
               onClick={() => setFridgeOpen(true)}
-              className="flex items-center justify-center gap-2 py-2.5 pr-3 text-[13px] text-stone"
+              className="flex items-center justify-center gap-2 py-2.5 pr-3 text-[16px] text-stone"
             >
               <IconFridge size={16} className="text-honey" />
               집에 뭐 있지
             </button>
             <button
               onClick={() => setRecipeSearchOpen(true)}
-              className="flex items-center justify-center gap-2 border-l border-border-light py-2.5 pl-3 text-[13px] text-stone"
+              className="flex items-center justify-center gap-2 border-l border-border-light py-2.5 pl-3 text-[16px] text-stone"
             >
               <IconSearch size={16} className="text-honey" />
               레시피 찾아보기
@@ -440,7 +440,7 @@ export function AddMealScreen({
             onChange={(e) => setMemo(e.target.value)}
             rows={3}
             placeholder="자유롭게 적어보세요"
-            className="px-0 py-2 text-[12px]"
+            className="px-0 py-2 text-[14px]"
           />
         </section>
       </ScrollRegion>
@@ -461,7 +461,7 @@ export function AddMealScreen({
               setPhotoOptionsOpen(false);
               cameraFileInputRef.current?.click();
             }}
-            className="flex items-center gap-3 py-3 text-left text-[14px] text-ink"
+            className="flex items-center gap-3 py-3 text-left text-[17px] text-ink"
           >
             <IconCamera size={18} className="text-honey" />
             카메라로 찍기
@@ -471,7 +471,7 @@ export function AddMealScreen({
               setPhotoOptionsOpen(false);
               albumFileInputRef.current?.click();
             }}
-            className="flex items-center gap-3 border-t border-border-light py-3 text-left text-[14px] text-ink"
+            className="flex items-center gap-3 border-t border-border-light py-3 text-left text-[17px] text-ink"
           >
             <IconPhoto size={18} className="text-honey" />
             앨범에서 선택
@@ -481,19 +481,19 @@ export function AddMealScreen({
 
       <BottomSheet open={recipeLinkOpen} onClose={() => setRecipeLinkOpen(false)}>
         <div className="flex flex-col gap-4">
-          <span className="text-[15px] font-medium text-ink">레시피 링크 붙여넣기</span>
+          <span className="text-[18px] font-medium text-ink">레시피 링크 붙여넣기</span>
           <Input
             variant="underline"
             value={recipeLinkDraft}
             onChange={(e) => setRecipeLinkDraft(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleFetchRecipeLink()}
             placeholder="유튜브 영상 URL"
-            className="h-11 px-0 text-[14px]"
+            className="h-11 px-0 text-[17px]"
           />
           <button
             onClick={handleFetchRecipeLink}
             disabled={isFetchingRecipe || !recipeLinkDraft.trim()}
-            className="flex h-11 items-center justify-center rounded-2xl bg-ink text-[14px] font-medium text-cream disabled:opacity-50"
+            className="flex h-11 items-center justify-center rounded-2xl bg-ink text-[17px] font-medium text-cream disabled:opacity-50"
           >
             {isFetchingRecipe ? "불러오는 중..." : "가져오기"}
           </button>

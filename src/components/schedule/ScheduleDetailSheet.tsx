@@ -72,18 +72,18 @@ export function ScheduleDetailSheet({
         <div className="flex flex-col gap-3">
           {deleteConfirmOpen ? (
             <div className="flex flex-col gap-3">
-              <p className="text-[13px] text-ink">정말 삭제하시겠어요?</p>
+              <p className="text-[16px] text-ink">정말 삭제하시겠어요?</p>
               <div className="flex gap-2">
                 <button
                   onClick={() => setDeleteConfirmOpen(false)}
-                  className="flex-1 rounded-xl bg-cream py-2.5 text-[13px] font-medium text-stone"
+                  className="flex-1 rounded-xl bg-cream py-2.5 text-[16px] font-medium text-stone"
                 >
                   취소
                 </button>
                 <button
                   onClick={handleDelete}
                   disabled={isPending}
-                  className="flex flex-1 items-center justify-center rounded-xl bg-terra py-2.5 text-[13px] font-medium text-white disabled:opacity-50"
+                  className="flex flex-1 items-center justify-center rounded-xl bg-terra py-2.5 text-[16px] font-medium text-white disabled:opacity-50"
                 >
                   삭제하기
                 </button>
@@ -92,7 +92,7 @@ export function ScheduleDetailSheet({
           ) : (
             <>
               <div className="flex items-start justify-between gap-2">
-                <h2 className="min-w-0 flex-1 text-[17px] font-medium text-ink">{schedule.title}</h2>
+                <h2 className="min-w-0 flex-1 text-[20px] font-medium text-ink">{schedule.title}</h2>
                 <button
                   onClick={() => onEdit(schedule)}
                   aria-label="수정"
@@ -102,24 +102,24 @@ export function ScheduleDetailSheet({
                 </button>
               </div>
 
-              <div className="flex flex-col gap-2 text-[13px]">
+              <div className="flex flex-col gap-2 text-[16px]">
                 <div className="flex items-center justify-between">
-                  <span className="text-[12px] text-[var(--text-muted)]">날짜</span>
+                  <span className="text-[14px] text-[var(--text-muted)]">날짜</span>
                   <span className="text-ink">{shortRange(schedule)}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-[12px] text-[var(--text-muted)]">시간</span>
+                  <span className="text-[14px] text-[var(--text-muted)]">시간</span>
                   <span className="text-ink">{timeLabel(schedule)}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-[12px] text-[var(--text-muted)]">대상</span>
+                  <span className="text-[14px] text-[var(--text-muted)]">대상</span>
                   <span className="text-ink">{targetLabel(schedule.target_members, membersById)}</span>
                 </div>
                 {schedule.keyword_main && (
                   <div className="flex items-center justify-between">
-                    <span className="text-[12px] text-[var(--text-muted)]">키워드</span>
+                    <span className="text-[14px] text-[var(--text-muted)]">키워드</span>
                     <span
-                      className="rounded-full px-2 py-0.5 text-[11px] font-medium"
+                      className="rounded-full px-2 py-0.5 text-[13px] font-medium"
                       style={{
                         color: getKeywordColor(schedule.keyword_main),
                         backgroundColor: `${getKeywordColor(schedule.keyword_main)}14`,
@@ -132,13 +132,13 @@ export function ScheduleDetailSheet({
                 )}
                 {schedule.amount != null && (
                   <div className="flex items-center justify-between">
-                    <span className="text-[12px] text-[var(--text-muted)]">금액</span>
+                    <span className="text-[14px] text-[var(--text-muted)]">금액</span>
                     <span className="font-medium text-honey">{won(schedule.amount)}</span>
                   </div>
                 )}
                 {recurLabel(schedule) && (
                   <div className="flex items-center justify-between">
-                    <span className="text-[12px] text-[var(--text-muted)]">반복</span>
+                    <span className="text-[14px] text-[var(--text-muted)]">반복</span>
                     <span className="text-ink">{recurLabel(schedule)}</span>
                   </div>
                 )}
@@ -146,17 +146,17 @@ export function ScheduleDetailSheet({
 
               {schedule.memo && (
                 <div className="flex flex-col gap-1 border-t border-border-light pt-3">
-                  <span className="flex items-center gap-1 text-[12px] text-[var(--text-muted)]">
+                  <span className="flex items-center gap-1 text-[14px] text-[var(--text-muted)]">
                     <IconPaperclip size={12} />
                     메모
                   </span>
-                  <p className="whitespace-pre-wrap text-[13px] text-ink">{schedule.memo}</p>
+                  <p className="whitespace-pre-wrap text-[16px] text-ink">{schedule.memo}</p>
                 </div>
               )}
 
               <button
                 onClick={() => setDeleteConfirmOpen(true)}
-                className="self-start text-[13px] text-terra"
+                className="self-start text-[16px] text-terra"
               >
                 삭제하기
               </button>

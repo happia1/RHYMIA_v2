@@ -24,14 +24,14 @@ export function FoodTabActions({
       <div className="grid grid-cols-2">
         <button
           onClick={() => setStockOpen(true)}
-          className="flex items-center justify-center gap-2 py-2.5 pr-3 text-[13px] text-stone"
+          className="flex items-center justify-center gap-2 py-2.5 pr-3 text-[16px] text-stone"
         >
           <IconFridge size={16} className="text-honey" />
           집에 뭐 있지
         </button>
         <button
           onClick={openShoppingSheet}
-          className="flex items-center justify-center gap-2 border-l border-border-light py-2.5 pl-3 text-[13px] text-stone"
+          className="flex items-center justify-center gap-2 border-l border-border-light py-2.5 pl-3 text-[16px] text-stone"
         >
           <IconShoppingCart size={16} className="text-honey" />
           뭐 사야하지

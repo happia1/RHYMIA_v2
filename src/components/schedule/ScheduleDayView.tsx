@@ -238,7 +238,7 @@ export function ScheduleDayView({
           <button
             key={s}
             onClick={() => onChange(s)}
-            className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${
+            className={`rounded-full px-2.5 py-1 text-[13px] font-medium ${
               active ? "text-ink" : "bg-cream text-stone"
             }`}
             style={active ? { backgroundColor: `var(${colorVar})` } : undefined}
@@ -258,7 +258,7 @@ export function ScheduleDayView({
             <button
               key={m.id}
               onClick={() => switchMember(m.id)}
-              className={`text-[13px] ${
+              className={`text-[16px] ${
                 activeMemberId === m.id ? "font-medium text-ink" : "text-[var(--text-muted)]"
               }`}
             >
@@ -266,7 +266,7 @@ export function ScheduleDayView({
             </button>
           ))}
           <span className="flex-1" />
-          <label className="flex items-center gap-2 text-[11px] text-stone">
+          <label className="flex items-center gap-2 text-[13px] text-stone">
             루틴 사용
             <CheckToggle checked={routineEnabled} onChange={toggleRoutineEnabled} size={20} />
           </label>
@@ -286,7 +286,7 @@ export function ScheduleDayView({
       </div>
 
       {!routineEnabled ? (
-        <p className="py-14 text-center text-[13px] text-[var(--text-muted)]">
+        <p className="py-14 text-center text-[16px] text-[var(--text-muted)]">
           {activeMember?.display_name ?? "이 멤버"}의 루틴을 사용하지 않는 중이에요
         </p>
       ) : (
@@ -296,20 +296,20 @@ export function ScheduleDayView({
             highlightedIndex={pickedIndex}
             onSelectBlock={(idx) => (idx === null ? cancelEdit() : startEdit(idx))}
           />
-          <p className="text-center text-[12px] text-[var(--text-muted)]">
+          <p className="text-center text-[14px] text-[var(--text-muted)]">
             블록을 누르면 바로 수정할 수 있어요
           </p>
 
           <div className="flex flex-col">
             {blocks.length === 0 && !showTemplateButton && (
-              <p className="py-2 text-[13px] text-stone">등록된 시간 블록이 없어요</p>
+              <p className="py-2 text-[16px] text-stone">등록된 시간 블록이 없어요</p>
             )}
 
             {showTemplateButton && (
               <button
                 onClick={applyTemplate}
                 disabled={isPending}
-                className="mb-2 flex h-11 items-center justify-center rounded-xl border border-honey text-[13px] font-medium text-honey"
+                className="mb-2 flex h-11 items-center justify-center rounded-xl border border-honey text-[16px] font-medium text-honey"
               >
                 기본 하루로 시작하기
               </button>
@@ -335,11 +335,11 @@ export function ScheduleDayView({
                         opacity: isActive || isPicked ? 1 : 0.55,
                       }}
                     />
-                    <span className={`min-w-0 flex-1 truncate text-[14px] ${isPicked ? "text-sage" : "text-ink"}`}>
+                    <span className={`min-w-0 flex-1 truncate text-[17px] ${isPicked ? "text-sage" : "text-ink"}`}>
                       {b.label}
                     </span>
                     {!isPicked && (
-                      <span className="shrink-0 text-[12px] text-stone">
+                      <span className="shrink-0 text-[14px] text-stone">
                         {formatBlockTimeRange(b)}
                       </span>
                     )}
@@ -351,34 +351,34 @@ export function ScheduleDayView({
                         value={editForm.label}
                         onChange={(e) => setEditForm({ ...editForm, label: e.target.value })}
                         placeholder="이름"
-                        className="h-10 rounded-xl px-3 text-[13px]"
+                        className="h-10 rounded-xl px-3 text-[16px]"
                       />
                       <div className="flex gap-2">
                         <Input
                           type="time"
                           value={editForm.start}
                           onChange={(e) => setEditForm({ ...editForm, start: e.target.value })}
-                          className="h-10 flex-1 rounded-xl px-3 text-[13px]"
+                          className="h-10 flex-1 rounded-xl px-3 text-[16px]"
                         />
                         <Input
                           type="time"
                           value={editForm.end}
                           onChange={(e) => setEditForm({ ...editForm, end: e.target.value })}
-                          className="h-10 flex-1 rounded-xl px-3 text-[13px]"
+                          className="h-10 flex-1 rounded-xl px-3 text-[16px]"
                         />
                       </div>
                       <StatusPicker value={editForm.status} onChange={(s) => setEditForm({ ...editForm, status: s })} />
                       <div className="flex gap-2">
                         <button
                           onClick={deleteBlock}
-                          className="flex-1 rounded-xl bg-cream py-2 text-[12px] font-medium text-terra"
+                          className="flex-1 rounded-xl bg-cream py-2 text-[14px] font-medium text-terra"
                         >
                           삭제
                         </button>
                         <button
                           onClick={saveEdit}
                           disabled={!editForm.label.trim() || editForm.start === editForm.end}
-                          className="flex-1 rounded-xl bg-ink py-2 text-[12px] font-medium text-cream disabled:opacity-50"
+                          className="flex-1 rounded-xl bg-ink py-2 text-[14px] font-medium text-cream disabled:opacity-50"
                         >
                           저장
                         </button>
@@ -395,7 +395,7 @@ export function ScheduleDayView({
                   cancelEdit();
                   setAddingOpen(true);
                 }}
-                className="py-3 text-left text-[13px] font-medium text-honey"
+                className="py-3 text-left text-[16px] font-medium text-honey"
               >
                 + 블록 추가
               </button>
@@ -405,34 +405,34 @@ export function ScheduleDayView({
                   value={addForm.label}
                   onChange={(e) => setAddForm({ ...addForm, label: e.target.value })}
                   placeholder="이름 (예: 요가, 유치원)"
-                  className="h-10 rounded-xl px-3 text-[13px]"
+                  className="h-10 rounded-xl px-3 text-[16px]"
                 />
                 <div className="flex gap-2">
                   <Input
                     type="time"
                     value={addForm.start}
                     onChange={(e) => setAddForm({ ...addForm, start: e.target.value })}
-                    className="h-10 flex-1 rounded-xl px-3 text-[13px]"
+                    className="h-10 flex-1 rounded-xl px-3 text-[16px]"
                   />
                   <Input
                     type="time"
                     value={addForm.end}
                     onChange={(e) => setAddForm({ ...addForm, end: e.target.value })}
-                    className="h-10 flex-1 rounded-xl px-3 text-[13px]"
+                    className="h-10 flex-1 rounded-xl px-3 text-[16px]"
                   />
                 </div>
                 <StatusPicker value={addForm.status} onChange={(s) => setAddForm({ ...addForm, status: s })} />
                 <div className="flex gap-2">
                   <button
                     onClick={() => setAddingOpen(false)}
-                    className="flex-1 rounded-xl bg-cream py-2 text-[12px] font-medium text-stone"
+                    className="flex-1 rounded-xl bg-cream py-2 text-[14px] font-medium text-stone"
                   >
                     취소
                   </button>
                   <button
                     onClick={handleAddBlock}
                     disabled={!addForm.label.trim() || addForm.start === addForm.end}
-                    className="flex-1 rounded-xl bg-ink py-2 text-[12px] font-medium text-cream disabled:opacity-50"
+                    className="flex-1 rounded-xl bg-ink py-2 text-[14px] font-medium text-cream disabled:opacity-50"
                   >
                     추가
                   </button>

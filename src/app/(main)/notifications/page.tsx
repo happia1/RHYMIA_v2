@@ -34,12 +34,12 @@ export default async function NotificationsPage() {
         <Link href="/home" aria-label="뒤로가기">
           <IconArrowLeft size={22} className="text-ink" />
         </Link>
-        <h1 className="text-[20px] font-medium text-ink">알림</h1>
+        <h1 className="text-[24px] font-medium text-ink">알림</h1>
       </header>
 
       <div className="flex flex-col gap-2">
         {(notices ?? []).length === 0 && (
-          <p className="py-8 text-center text-[13px] text-stone">등록된 공지가 없어요</p>
+          <p className="py-8 text-center text-[16px] text-stone">등록된 공지가 없어요</p>
         )}
         {(notices ?? []).map((n) => {
           const author = membersById[n.created_by ?? ""];
@@ -50,14 +50,14 @@ export default async function NotificationsPage() {
               className="flex flex-col gap-1 rounded-2xl border border-border-light bg-surface p-4"
             >
               {n.title && (
-                <span className="text-[14px] font-medium text-ink">📌 {n.title}</span>
+                <span className="text-[17px] font-medium text-ink">📌 {n.title}</span>
               )}
-              <div className="flex items-center gap-1.5 text-[11px] text-stone">
+              <div className="flex items-center gap-1.5 text-[13px] text-stone">
                 <span className="font-medium">{author?.display_name ?? "가족"}</span>
                 <span>· {formatPostTimestamp(n.created_at)}</span>
               </div>
-              <p className="line-clamp-2 whitespace-pre-wrap text-[13px] text-ink">{n.content}</p>
-              <span className="mt-1 self-end text-[12px] font-medium text-ocean">
+              <p className="line-clamp-2 whitespace-pre-wrap text-[16px] text-ink">{n.content}</p>
+              <span className="mt-1 self-end text-[14px] font-medium text-ocean">
                 게시판에서 보기
               </span>
             </Link>

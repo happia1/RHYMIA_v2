@@ -43,13 +43,13 @@ export function ActivitySuggestionSection({
   return (
     <div className="flex flex-col gap-3 border-t border-border-light pt-4">
       {/* 식탁 탭 "오늘의 제안"(SuggestionSection.tsx)과 동일한 톤 — 존재감을 낮게 유지 */}
-      <p className={`text-[11px] font-medium ${mirror.muted}`}>
+      <p className={`text-[13px] font-medium ${mirror.muted}`}>
         오늘은 이런 건 어때요: {suggestion}
       </p>
 
       <button
         onClick={() => setPickerOpen((v) => !v)}
-        className="self-start text-[11px] font-medium text-honey"
+        className="self-start text-[13px] font-medium text-honey"
       >
         {pickerOpen ? "접기" : "다른 추천 골라보기"}
       </button>
@@ -59,7 +59,7 @@ export function ActivitySuggestionSection({
           <div className="flex gap-2">
             <button
               onClick={() => setMode("roulette")}
-              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-medium ${
+              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[16px] font-medium ${
                 mode === "roulette" ? "bg-ink text-cream" : "bg-cream text-stone"
               }`}
             >
@@ -68,7 +68,7 @@ export function ActivitySuggestionSection({
             </button>
             <button
               onClick={() => setMode("ladder")}
-              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-medium ${
+              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[16px] font-medium ${
                 mode === "ladder" ? "bg-ink text-cream" : "bg-cream text-stone"
               }`}
             >

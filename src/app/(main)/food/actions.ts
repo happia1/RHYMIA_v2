@@ -3,11 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { callAgentServer } from "@/lib/agentServer";
+import { estimateMealNutrition } from "@/lib/nutritionEstimate";
 import { toDateStr } from "@/lib/date";
 import { addDaysToDateStr } from "@/lib/recurrence";
 import type { NormalizedRecipe } from "@/lib/foodSafetyRecipe";
-import type { FridgeCategory, Meal, MealNutritionEstimate, MealType } from "@/types";
+import type { FridgeCategory, Meal, MealType } from "@/types";
 
 // 레시피 노트(즐겨찾기/최근 본 레시피) — 현재는 식품안전나라 내부 레시피만 지원.
 const RECIPE_NOTE_SOURCE = "foodsafety";
@@ -35,14 +35,15 @@ export interface MealInput {
 
 /** 끼니 저장 직후 호출부가 await 없이(fire-and-forget) 부르는 백그라운드 영양 추정 — 절대
  * 실패나 지연이 끼니 등록/수정 자체에 영향을 주면 안 된다는 원칙이라, 이 함수 내부에서 일어나는
- * 어떤 에러도 바깥으로 던지지 않고 조용히 삼킨다(에이전트 서버가 꺼져 있어도 그냥 영양 정보만
- * 비어있게 되는 정도). main_menu + sides를 합쳐 하나의 메뉴 문자열로 추정 요청을 보낸다. */
+ * 어떤 에러도 바깥으로 던지지 않고 조용히 삼킨다. 다만 "조용히"가 "로그도 안 남기고"를 뜻하진
+ * 않는다 — 예전엔 에이전트 서버 호출 실패가 로그 없이 그냥 삼켜져서, 그 서버가 프로덕션에
+ * 배포된 적이 없다는(→ 모든 끼니의 칼로리가 항상 비어 있던) 사실을 한동안 못 알아챘다
+ * (estimateMealNutrition 쪽으로 이전한 사유는 nutritionEstimate.ts 참고). main_menu + sides를
+ * 합쳐 하나의 메뉴 문자열로 추정한다. */
 async function estimateAndSaveMealNutrition(mealId: string, mainMenu: string, sides: string[]) {
   try {
     const menuName = [mainMenu, ...sides].filter(Boolean).join(", ");
-    const estimate = await callAgentServer<MealNutritionEstimate>("/estimate-nutrition", {
-      menu_name: menuName,
-    });
+    const estimate = await estimateMealNutrition(menuName);
     if (estimate.kcal_min == null || estimate.kcal_max == null) return;
 
     const supabase = await createClient();
@@ -57,14 +58,63 @@ async function estimateAndSaveMealNutrition(mealId: string, mainMenu: string, si
         nutrition_source: "estimate",
       })
       .eq("id", mealId);
-    if (error) return;
+    if (error) {
+      console.error("[estimateAndSaveMealNutrition] meal update failed:", error);
+      return;
+    }
 
     revalidatePath("/food");
     revalidatePath(`/food/${mealId}`);
     revalidatePath("/home");
-  } catch {
-    // 영양 정보는 부가 정보 — 실패를 사용자에게 알릴 필요 없음
+  } catch (err) {
+    console.error("[estimateAndSaveMealNutrition] failed:", err);
   }
+}
+
+/** 끼니 상세의 "영양 정보 다시 계산" 버튼 — kcal이 계속 비어 있는 기존 끼니들을 위한 1회
+ * 재추정. estimateAndSaveMealNutrition과 달리 사용자가 직접 누른 동작이라 결과를 바로
+ * 알려줘야 해서 예외를 삼키지 않고 { ok, message } 형태로 반환한다. */
+export async function recalculateMealNutrition(
+  mealId: string
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const supabase = await createClient();
+  const { data: meal, error: fetchError } = await supabase
+    .from("meal")
+    .select("main_menu, sides")
+    .eq("id", mealId)
+    .single();
+
+  if (fetchError || !meal) {
+    return { ok: false, message: "끼니 정보를 불러오지 못했어요." };
+  }
+
+  const menuName = [meal.main_menu, ...(meal.sides ?? [])].filter(Boolean).join(", ");
+  const estimate = await estimateMealNutrition(menuName);
+  if (estimate.kcal_min == null || estimate.kcal_max == null) {
+    return { ok: false, message: "영양 정보를 추정하지 못했어요. 잠시 후 다시 시도해주세요." };
+  }
+
+  const { error: updateError } = await supabase
+    .from("meal")
+    .update({
+      kcal_min: estimate.kcal_min,
+      kcal_max: estimate.kcal_max,
+      macro_carb: estimate.macro_carb,
+      macro_protein: estimate.macro_protein,
+      macro_fat: estimate.macro_fat,
+      nutrition_source: "estimate",
+    })
+    .eq("id", mealId);
+
+  if (updateError) {
+    console.error("[recalculateMealNutrition] meal update failed:", updateError);
+    return { ok: false, message: "저장에 실패했어요." };
+  }
+
+  revalidatePath("/food");
+  revalidatePath(`/food/${mealId}`);
+  revalidatePath("/home");
+  return { ok: true };
 }
 
 /** 추천 레시피 상세("오늘 메뉴로 추가하기")/레시피(내부) 검색 결과에서 고른 완성 사진을

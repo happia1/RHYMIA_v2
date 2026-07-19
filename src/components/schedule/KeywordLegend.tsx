@@ -13,7 +13,7 @@ export function KeywordLegend() {
     <div className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-0.5 text-[10px] tracking-[0.1em] text-[var(--text-muted)]"
+        className="flex items-center gap-0.5 text-[12px] tracking-[0.1em] text-[var(--text-muted)]"
       >
         키워드
         <IconChevronDown size={11} className={open ? "rotate-180" : ""} />
@@ -24,7 +24,7 @@ export function KeywordLegend() {
           <button aria-hidden onClick={() => setOpen(false)} className="fixed inset-0 z-40" />
           <div className="absolute left-0 top-full z-50 mt-1.5 flex min-w-24 flex-col gap-1.5 rounded-xl border border-border-light bg-surface p-2.5 shadow-sm">
             {KEYWORD_GROUPS.map((g) => (
-              <span key={g.main} className="flex items-center gap-1.5 text-[11px] text-stone">
+              <span key={g.main} className="flex items-center gap-1.5 text-[13px] text-stone">
                 <span
                   className="h-1.5 w-1.5 shrink-0 rounded-full"
                   style={{ backgroundColor: g.color }}

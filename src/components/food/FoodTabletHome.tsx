@@ -2,113 +2,28 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { IconToolsKitchen2 } from "@tabler/icons-react";
-import { toDateStr, WEEKDAY_LABEL } from "@/lib/date";
-import { tagOrderIndex } from "@/lib/mealUtils";
+import { IconFridge, IconShoppingCart, IconToolsKitchen2 } from "@tabler/icons-react";
 import { mirror } from "@/lib/homeTheme";
+import { SectionLabel } from "@/components/home/SectionLabel";
 import { useToast } from "@/components/ui/Toast";
-import { MealDecisionSheet, type Mode as DecisionMode } from "@/components/food/MealDecisionSheet";
+import { WeekCalendar } from "@/components/food/WeekCalendar";
+import { MealEmptyState } from "@/components/food/MealEmptyState";
+import { MealListSection, type MealRow } from "@/components/food/MealListSection";
+import { MealNutritionSummary } from "@/components/food/MealNutritionSummary";
+import { SuggestionSection } from "@/components/food/SuggestionSection";
 import { RecipeDetailSheet } from "@/components/food/RecipeDetailSheet";
 import { RecipeNoteSheet } from "@/components/food/RecipeNoteSheet";
-import { DECISION_MODES } from "@/components/food/SuggestionSection";
 import { FRIDGE_CATEGORIES } from "@/components/food/FridgeStockSheet";
+import { ShoppingTabbedPanel } from "@/components/shopping/ShoppingTabbedPanel";
 import { addFridgeItem, deleteFridgeItem } from "@/app/(main)/food/actions";
-import { buildCandidatePool } from "@/lib/mealUtils";
-import { ShoppingListPanel } from "@/components/shopping/ShoppingListPanel";
-import type { MealRow } from "@/components/food/MealListSection";
 import type { NormalizedRecipe } from "@/lib/foodSafetyRecipe";
 import type { FridgeCategory, FridgeItem, MealVote, ShoppingItem } from "@/types";
+import type { WorkspaceMemberInfo } from "@/lib/members";
 
 const ZONE_ICON: Record<FridgeCategory, string> = { frozen: "❄️", cold: "🧊", room: "🧺" };
-
-function TabletWeekStrip({
-  weekDates,
-  datesWithSchedule,
-}: {
-  weekDates: string[];
-  datesWithSchedule: Set<string>;
-}) {
-  const todayStr = toDateStr(new Date());
-  return (
-    <div className={`grid grid-cols-7 gap-1 border-b pb-3 ${mirror.hairline}`}>
-      {weekDates.map((date) => {
-        const d = new Date(`${date}T00:00:00.000Z`);
-        const day = d.getUTCDate();
-        const isToday = date === todayStr;
-        return (
-          <Link
-            key={date}
-            href={`/schedule?view=day&date=${date}`}
-            className="flex flex-col items-center gap-1 py-1"
-          >
-            <span className={`text-[9px] ${mirror.muted}`}>{WEEKDAY_LABEL[d.getUTCDay()]}</span>
-            <span className={`text-[12.5px] ${isToday ? `font-bold ${mirror.primary}` : mirror.secondary}`}>
-              {day}
-            </span>
-            <span
-              className={`h-[3.5px] w-[3.5px] rounded-full ${
-                datesWithSchedule.has(date) ? "bg-honey" : "bg-transparent"
-              }`}
-            />
-          </Link>
-        );
-      })}
-    </div>
-  );
-}
-
-function TabletMealList({ meals }: { meals: MealRow[] }) {
-  const sorted = [...meals].sort((a, b) => tagOrderIndex(a.tag) - tagOrderIndex(b.tag));
-  return (
-    <div className={`flex flex-col gap-1.5 border-b pb-3 ${mirror.hairline}`}>
-      <span className={mirror.label}>오늘 식단</span>
-      {sorted.length === 0 && <p className={`text-[12.5px] ${mirror.muted}`}>등록된 끼니가 없어요</p>}
-      {sorted.map((meal) => (
-        <Link key={meal.id} href={`/food/${meal.id}`} className="flex items-center justify-between gap-2 py-0.5">
-          <span className={`shrink-0 text-[11.5px] ${mirror.muted}`}>{meal.tag}</span>
-          <span className={`min-w-0 flex-1 truncate text-right text-[13px] ${mirror.primary}`}>
-            {meal.main_menu}
-          </span>
-        </Link>
-      ))}
-    </div>
-  );
-}
-
-function TabletSuggestionChips({
-  frequentMenus,
-  trackingDays,
-  onOpenDecision,
-}: {
-  frequentMenus: string[];
-  trackingDays: number;
-  onOpenDecision: (mode: DecisionMode) => void;
-}) {
-  const unlocked = trackingDays >= 7;
-  return (
-    <div className={`flex flex-col gap-1.5 border-b pb-3 ${mirror.hairline}`}>
-      <span className={mirror.label}>오늘의 제안</span>
-      <p className={`text-[12.5px] leading-loose ${mirror.secondary}`}>
-        자주 찾는 메뉴{" "}
-        <span className={mirror.muted}>
-          {unlocked ? frequentMenus[0] ?? "아직 기록이 없어요" : `데이터 쌓는 중 (${trackingDays}/7일)`}
-        </span>
-        <br />
-        {DECISION_MODES.map((m, i) => (
-          <span key={m.mode}>
-            {i > 0 && <span className={mirror.muted}> · </span>}
-            <button
-              onClick={() => onOpenDecision(m.mode)}
-              className={i === 0 ? "font-medium text-honey" : mirror.muted}
-            >
-              {m.label}
-            </button>
-          </span>
-        ))}
-      </p>
-    </div>
-  );
-}
+// 아코디언이 접혔을 때도 칸이 통째로 비어 보이지 않게, 칸별로 이만큼만 미리 보여주고
+// 나머지는 "외 N개"로 요약한다.
+const COLLAPSED_PREVIEW_COUNT = 2;
 
 function TabletRecipeSection({
   recipeEnabled,
@@ -126,7 +41,7 @@ function TabletRecipeSection({
   const body = !recipeEnabled ? "준비 중" : recommendedRecipe ? recommendedRecipe.name : "잠시 후 다시 시도해주세요";
   return (
     <div className="flex flex-col gap-1.5">
-      <span className={mirror.label}>레시피</span>
+      <SectionLabel icon={<IconToolsKitchen2 size={14} />}>레시피</SectionLabel>
       <div className="flex items-center gap-2.5">
         <button
           onClick={onOpenRecipe}
@@ -142,11 +57,11 @@ function TabletRecipeSection({
             )}
           </div>
           <span className="flex min-w-0 flex-col">
-            <span className={`text-[10px] ${mirror.muted}`}>오늘의 추천</span>
-            <span className={`truncate text-[13px] font-semibold ${mirror.primary}`}>{body}</span>
+            <span className={`text-[12px] ${mirror.muted}`}>오늘의 추천</span>
+            <span className={`truncate text-[16px] font-semibold ${mirror.primary}`}>{body}</span>
           </span>
         </button>
-        <button onClick={onOpenNotes} className="shrink-0 text-[11px] font-medium text-honey">
+        <button onClick={onOpenNotes} className="shrink-0 text-[13px] font-medium text-honey">
           레시피 노트 {recipeNotesCount} ›
         </button>
       </div>
@@ -179,12 +94,33 @@ function FridgeCompartment({
     if (value) onAdd(value);
   };
 
+  const previewItems = items.slice(0, COLLAPSED_PREVIEW_COUNT);
+  const restCount = items.length - previewItems.length;
+
   return (
     <div className={`flex min-h-0 flex-1 flex-col overflow-hidden ${collapsed ? "p-2" : "p-3"}`}>
-      <p className={`shrink-0 text-[10px] ${mirror.muted}`}>
+      <p className={`shrink-0 text-[12px] ${mirror.muted}`}>
         {ZONE_ICON[zone]} {label} · {items.length}
       </p>
-      {!collapsed && (
+      {collapsed ? (
+        // 접힌 상태에서도 칸이 통째로 비어 보이지 않게 첫 몇 개 + "외 N개" 요약만 남긴다.
+        <div className="mt-1 min-h-0 flex-1 overflow-hidden">
+          {previewItems.length === 0 ? (
+            <p className={`truncate text-[13px] ${mirror.muted}`}>비어있어요</p>
+          ) : (
+            <>
+              {previewItems.map((item) => (
+                <p key={item.id} className={`truncate text-[13px] ${mirror.secondary}`}>
+                  {item.name}
+                </p>
+              ))}
+              {restCount > 0 && (
+                <p className={`truncate text-[12px] ${mirror.muted}`}>외 {restCount}개</p>
+              )}
+            </>
+          )}
+        </div>
+      ) : (
         <>
           <div className="min-h-0 flex-1 overflow-y-auto">
             {items.map((item) => (
@@ -192,11 +128,11 @@ function FridgeCompartment({
                 key={item.id}
                 className={`flex items-center gap-1.5 border-t py-1 ${mirror.hairline}`}
               >
-                <span className={`min-w-0 flex-1 truncate text-[12.5px] ${mirror.primary}`}>{item.name}</span>
+                <span className={`min-w-0 flex-1 truncate text-[15px] ${mirror.primary}`}>{item.name}</span>
                 <button
                   onClick={() => onDelete(item.id)}
                   aria-label={`${item.name} 삭제`}
-                  className={`shrink-0 px-0.5 text-[10px] ${mirror.muted}`}
+                  className={`shrink-0 px-0.5 text-[12px] ${mirror.muted}`}
                 >
                   ✕
                 </button>
@@ -211,12 +147,12 @@ function FridgeCompartment({
               onKeyDown={(e) => e.key === "Enter" && submit()}
               onBlur={submit}
               placeholder="재료명"
-              className={`mt-1.5 shrink-0 border-b bg-transparent text-[11px] outline-none ${mirror.hairline} ${mirror.primary}`}
+              className={`mt-1.5 shrink-0 border-b bg-transparent text-[13px] outline-none ${mirror.hairline} ${mirror.primary}`}
             />
           ) : (
             <button
               onClick={() => setAdding(true)}
-              className={`mt-1.5 shrink-0 self-start text-[11px] ${mirror.muted}`}
+              className={`mt-1.5 shrink-0 self-start text-[13px] ${mirror.muted}`}
             >
               + 추가
             </button>
@@ -227,19 +163,22 @@ function FridgeCompartment({
   );
 }
 
-/** 태블릿 전용 식탁 탭 레이아웃 — fridge_tablet_suite.jsx 스펙. 부모(food/page.tsx)의
- * DeviceLayoutSwitch가 이미 모바일/태블릿을 갈라놓기 때문에 이 컴포넌트 자체는 별도
- * 미디어쿼리 없이 항상 렌더된 그대로 보이면 된다. 좌열은 전부
- * 기존 위젯이 쓰는 데이터/서버 액션을 그대로 재사용(주간 스트립만 신규 — 끼니가 아니라
- * 일정 유무를 점으로 보여주고 탭하면 일정 탭으로 나간다). 우열은 냉장고 묘사 + 장바구니
- * 아코디언(기본 8:2, 장바구니 탭 시 4:6) — 펼친 장바구니는 ShoppingListPanel을 그대로
- * 인라인으로 꽂아 넣는다(모바일 전역 시트와 동일 컴포넌트). */
+/** 태블릿 전용 식탁 탭 레이아웃 — fridge_tablet_suite.jsx 스펙. 좌열은 모바일 식탁 탭과
+ * 완전히 같은 컴포넌트를 그대로 렌더한다(주간 스트립=WeekCalendar, 끼니 카드
+ * 리스트=MealListSection, 오늘의 제안=SuggestionSection — 전부 태블릿 전용 재구현 없이
+ * 모바일과 동일한 데이터/컴포넌트 재사용, "레시피 노트" 진입점만 모바일엔 없는 태블릿
+ * 추가 요소). 우열은 냉장고 묘사 + 장바구니 아코디언(기본 8:2, 장바구니 탭 시 4:6) —
+ * 펼친 장바구니는 ShoppingTabbedPanel(장볼 것/기록 탭 전체)을 그대로 인라인으로 꽂아
+ * 넣는다(모바일 전역 시트와 동일 컴포넌트). */
 export function FoodTabletHome({
   workspaceId,
   selectedDate,
   weekDates,
-  datesWithSchedule,
+  datesWithMeals,
   dayMeals,
+  members,
+  currentUserId,
+  nutritionEnabled,
   frequentMenus,
   trackingDays,
   blockingVote,
@@ -252,8 +191,11 @@ export function FoodTabletHome({
   workspaceId: string;
   selectedDate: string;
   weekDates: string[];
-  datesWithSchedule: Set<string>;
+  datesWithMeals: Set<string>;
   dayMeals: MealRow[];
+  members: WorkspaceMemberInfo[];
+  currentUserId: string;
+  nutritionEnabled: boolean;
   frequentMenus: string[];
   trackingDays: number;
   blockingVote: MealVote | null;
@@ -266,18 +208,11 @@ export function FoodTabletHome({
   const { showToast } = useToast();
   const [items, setItems] = useState(fridgeItems);
   const [expanded, setExpanded] = useState<"fridge" | "cart">("fridge");
-  const [decisionOpen, setDecisionOpen] = useState(false);
-  const [decisionMode, setDecisionMode] = useState<DecisionMode>("roulette");
   const [recipeOpen, setRecipeOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
 
   const fridgeOpen = expanded === "fridge";
   const cartActive = cartItems.filter((c) => !c.expense_id && !c.is_purchased);
-
-  const openDecision = (mode: DecisionMode) => {
-    setDecisionMode(mode);
-    setDecisionOpen(true);
-  };
 
   const handleAddFridgeItem = (zone: FridgeCategory, name: string) => {
     const tempId = `temp-${Date.now()}`;
@@ -305,14 +240,46 @@ export function FoodTabletHome({
   return (
     <>
       <div className="flex h-full gap-8">
-        <div className="flex w-[42%] flex-col gap-3 overflow-y-auto">
-          <TabletWeekStrip weekDates={weekDates} datesWithSchedule={datesWithSchedule} />
-          <TabletMealList meals={dayMeals} />
-          <TabletSuggestionChips
+        <div className="flex w-[42%] flex-col gap-4 overflow-y-auto">
+          <WeekCalendar weekDates={weekDates} selectedDate={selectedDate} datesWithMeals={datesWithMeals} />
+
+          {dayMeals.length === 0 ? (
+            <MealEmptyState
+              workspaceId={workspaceId}
+              selectedDate={selectedDate}
+              frequentMenus={frequentMenus}
+              activeVote={blockingVote}
+            />
+          ) : (
+            <>
+              <MealListSection
+                meals={dayMeals}
+                members={members}
+                currentUserId={currentUserId}
+                nutritionEnabled={nutritionEnabled}
+              />
+              <div className="flex items-center gap-2 border-t border-border-light pt-2.5">
+                {nutritionEnabled && <MealNutritionSummary meals={dayMeals} />}
+                <Link
+                  href={`/food/add?date=${selectedDate}`}
+                  className="ml-auto shrink-0 text-[13px] font-medium text-honey"
+                >
+                  + 끼니 추가
+                </Link>
+              </div>
+            </>
+          )}
+
+          <SuggestionSection
+            workspaceId={workspaceId}
+            selectedDate={selectedDate}
             frequentMenus={frequentMenus}
             trackingDays={trackingDays}
-            onOpenDecision={openDecision}
+            activeVote={blockingVote}
+            recommendedRecipe={recommendedRecipe}
+            recipeEnabled={recipeEnabled}
           />
+
           <TabletRecipeSection
             recipeEnabled={recipeEnabled}
             recommendedRecipe={recommendedRecipe}
@@ -332,8 +299,11 @@ export function FoodTabletHome({
             className="flex min-h-0 cursor-pointer flex-col transition-[flex-grow] duration-300 ease-out"
           >
             <div className="flex shrink-0 items-center justify-between pb-2">
-              <span className={mirror.label}>집에 뭐 있지</span>
-              {!fridgeOpen && <span className={`text-[11px] ${mirror.muted}`}>▸ 펼치기</span>}
+              <div className={`flex items-center gap-1.5 ${mirror.label}`}>
+                <IconFridge size={14} />
+                <span>집에 뭐 있지</span>
+              </div>
+              {!fridgeOpen && <span className={`text-[13px] ${mirror.muted}`}>▸ 펼치기</span>}
             </div>
             <div className={`flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border ${mirror.hairline}`}>
               <div className="flex min-h-0 flex-[1.4]">
@@ -375,42 +345,35 @@ export function FoodTabletHome({
             className="flex min-h-0 cursor-pointer flex-col overflow-hidden transition-[flex-grow] duration-300 ease-out"
           >
             <div className="flex shrink-0 items-center justify-between pb-2">
-              <span className={mirror.label}>뭐 사야하지</span>
-              {fridgeOpen && <span className={`text-[11px] ${mirror.muted}`}>▸ 펼치기</span>}
+              <div className={`flex items-center gap-1.5 ${mirror.label}`}>
+                <IconShoppingCart size={14} />
+                <span>뭐 사야하지</span>
+              </div>
+              {fridgeOpen && <span className={`text-[13px] ${mirror.muted}`}>▸ 펼치기</span>}
             </div>
             {fridgeOpen ? (
               <div className="flex items-center gap-4 overflow-hidden">
                 {cartActive.slice(0, 3).map((c) => (
-                  <span key={c.id} className={`flex shrink-0 items-center gap-1.5 text-[12.5px] ${mirror.primary}`}>
+                  <span key={c.id} className={`flex shrink-0 items-center gap-1.5 text-[15px] ${mirror.primary}`}>
                     <span className="h-1 w-1 shrink-0 rounded-full bg-sage" />
                     {c.name}
                   </span>
                 ))}
                 {cartActive.length > 3 && (
-                  <span className={`shrink-0 text-[11.5px] ${mirror.muted}`}>외 {cartActive.length - 3}개</span>
+                  <span className={`shrink-0 text-[14px] ${mirror.muted}`}>외 {cartActive.length - 3}개</span>
                 )}
                 {cartActive.length === 0 && (
-                  <span className={`text-[12px] ${mirror.muted}`}>장바구니가 비어있어요</span>
+                  <span className={`text-[14px] ${mirror.muted}`}>장바구니가 비어있어요</span>
                 )}
               </div>
             ) : (
-              <div onClick={(e) => e.stopPropagation()} className="min-h-0 flex-1 overflow-y-auto">
-                <ShoppingListPanel workspaceId={workspaceId} />
+              <div onClick={(e) => e.stopPropagation()} className="flex min-h-0 flex-1 flex-col">
+                <ShoppingTabbedPanel workspaceId={workspaceId} />
               </div>
             )}
           </div>
         </div>
       </div>
-
-      <MealDecisionSheet
-        open={decisionOpen}
-        onClose={() => setDecisionOpen(false)}
-        workspaceId={workspaceId}
-        selectedDate={selectedDate}
-        candidatePool={buildCandidatePool(frequentMenus)}
-        activeVote={blockingVote}
-        initialMode={decisionMode}
-      />
 
       <RecipeDetailSheet
         recipe={recommendedRecipe}

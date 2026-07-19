@@ -364,7 +364,7 @@ export function ConfirmCards({
 
   return (
     <div className="flex w-full flex-col gap-2">
-      <span className="text-[11px] text-stone">
+      <span className="text-[13px] text-stone">
         {Math.min(activeIndex + 1, total)}/{total} 확인 중
       </span>
 
@@ -391,7 +391,7 @@ export function ConfirmCards({
                 <div className="flex items-center justify-between">
                   {group ? (
                     <span
-                      className="rounded-full px-2.5 py-1 text-[11px] font-medium"
+                      className="rounded-full px-2.5 py-1 text-[13px] font-medium"
                       style={{ color: group.color, backgroundColor: `${group.color}1A` }}
                     >
                       {group.main}
@@ -400,7 +400,7 @@ export function ConfirmCards({
                     <span />
                   )}
                   {isDone && (
-                    <span className="text-[11px] font-medium text-sage">
+                    <span className="text-[13px] font-medium text-sage">
                       {card.status === "registered" ? "등록됨" : "건너뜀"}
                     </span>
                   )}
@@ -413,20 +413,20 @@ export function ConfirmCards({
                     onChange={(e) => updateCard(index, { title: e.target.value })}
                     onBlur={() => setEditingIndex(null)}
                     onKeyDown={(e) => e.key === "Enter" && setEditingIndex(null)}
-                    className="rounded-lg px-2 py-1 text-[15px] font-medium"
+                    className="rounded-lg px-2 py-1 text-[18px] font-medium"
                   />
                 ) : (
                   <button
                     onClick={() => !isDone && setEditingIndex(index)}
                     disabled={isDone}
-                    className="flex items-center gap-1.5 text-left text-[15px] font-medium text-ink"
+                    className="flex items-center gap-1.5 text-left text-[18px] font-medium text-ink"
                   >
                     {card.title}
                     {!isDone && <IconPencil size={13} className="text-stone" />}
                   </button>
                 )}
 
-                <div className="flex flex-col gap-1 text-[12px] text-stone">
+                <div className="flex flex-col gap-1 text-[14px] text-stone">
                   <span>
                     {card.schedule.date_start ?? "날짜 미정"}
                     {card.schedule.date_end ? ` ~ ${card.schedule.date_end}` : ""}
@@ -441,7 +441,7 @@ export function ConfirmCards({
                   <button
                     onClick={() => updateCard(index, { targets: [], isShared: true })}
                     disabled={isDone}
-                    className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${
+                    className={`rounded-full px-2.5 py-1 text-[13px] font-medium ${
                       card.isShared ? "bg-ink text-cream" : "bg-cream text-stone"
                     }`}
                   >
@@ -452,7 +452,7 @@ export function ConfirmCards({
                       key={m.id}
                       onClick={() => toggleTarget(index, m.id)}
                       disabled={isDone}
-                      className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${
+                      className={`rounded-full px-2.5 py-1 text-[13px] font-medium ${
                         card.targets.includes(m.id) ? "bg-ink text-cream" : "bg-cream text-stone"
                       }`}
                     >
@@ -465,13 +465,13 @@ export function ConfirmCards({
                   <div className="mt-1 flex gap-2">
                     <button
                       onClick={() => handleSkip(index)}
-                      className="flex-1 rounded-xl bg-cream py-2 text-[13px] font-medium text-stone"
+                      className="flex-1 rounded-xl bg-cream py-2 text-[16px] font-medium text-stone"
                     >
                       건너뛰기
                     </button>
                     <button
                       onClick={() => handleRegisterSchedule(index)}
-                      className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-honey py-2 text-[13px] font-medium text-white"
+                      className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-honey py-2 text-[16px] font-medium text-white"
                     >
                       <IconCheck size={15} /> 등록
                     </button>
@@ -497,16 +497,16 @@ export function ConfirmCards({
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="rounded-full bg-lavender/15 px-2.5 py-1 text-[11px] font-medium text-lavender">
+                <span className="rounded-full bg-lavender/15 px-2.5 py-1 text-[13px] font-medium text-lavender">
                   루틴
                 </span>
                 {card.status === "registered" ? (
-                  <span className="text-[11px] font-medium text-sage">
+                  <span className="text-[13px] font-medium text-sage">
                     루틴 {card.registeredDayCount}개 요일에 적용했어요
                   </span>
                 ) : (
                   card.status === "skipped" && (
-                    <span className="text-[11px] font-medium text-sage">건너뜀</span>
+                    <span className="text-[13px] font-medium text-sage">건너뜀</span>
                   )
                 )}
               </div>
@@ -519,7 +519,7 @@ export function ConfirmCards({
                       key={day}
                       onClick={() => toggleRoutineDay(index, day)}
                       disabled={isDone}
-                      className={`h-7 w-7 shrink-0 rounded-full text-[11px] font-medium ${
+                      className={`h-7 w-7 shrink-0 rounded-full text-[13px] font-medium ${
                         card.days.includes(day) ? "bg-ink text-cream" : "bg-cream text-stone"
                       }`}
                     >
@@ -537,7 +537,7 @@ export function ConfirmCards({
                       key={m.id}
                       onClick={() => setRoutineTarget(index, m.id)}
                       disabled={isDone}
-                      className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${
+                      className={`rounded-full px-2.5 py-1 text-[13px] font-medium ${
                         card.targetMemberId === m.id ? "bg-ink text-cream" : "bg-cream text-stone"
                       }`}
                     >
@@ -561,20 +561,20 @@ export function ConfirmCards({
                             type="time"
                             value={b.start ?? ""}
                             onChange={(e) => updateRoutineBlock(index, bi, { start: e.target.value })}
-                            className="h-9 flex-1 rounded-lg px-2 text-[12px]"
+                            className="h-9 flex-1 rounded-lg px-2 text-[14px]"
                           />
                           <Input
                             type="time"
                             value={b.end ?? ""}
                             onChange={(e) => updateRoutineBlock(index, bi, { end: e.target.value })}
-                            className="h-9 flex-1 rounded-lg px-2 text-[12px]"
+                            className="h-9 flex-1 rounded-lg px-2 text-[14px]"
                           />
                         </div>
                         <Input
                           value={b.label}
                           onChange={(e) => updateRoutineBlock(index, bi, { label: e.target.value })}
                           placeholder="활동 이름"
-                          className="h-9 rounded-lg px-2 text-[12px]"
+                          className="h-9 rounded-lg px-2 text-[14px]"
                         />
                         <div className="flex flex-wrap gap-1">
                           {STATUS_OPTIONS.map((s) => {
@@ -584,7 +584,7 @@ export function ConfirmCards({
                               <button
                                 key={s}
                                 onClick={() => updateRoutineBlock(index, bi, { status: s })}
-                                className={`rounded-full px-2 py-1 text-[10px] font-medium ${
+                                className={`rounded-full px-2 py-1 text-[12px] font-medium ${
                                   active ? "text-ink" : "bg-cream text-stone"
                                 }`}
                                 style={active ? { backgroundColor: `var(${optionColorVar})` } : undefined}
@@ -596,7 +596,7 @@ export function ConfirmCards({
                         </div>
                         <button
                           onClick={() => setEditingBlock(null)}
-                          className="self-end text-[11px] font-medium text-honey"
+                          className="self-end text-[13px] font-medium text-honey"
                         >
                           완료
                         </button>
@@ -613,11 +613,11 @@ export function ConfirmCards({
                         className="h-2 w-2 shrink-0 rounded-full"
                         style={{ backgroundColor: `var(${colorVar})` }}
                       />
-                      <span className="w-24 shrink-0 text-[11px] text-stone">
+                      <span className="w-24 shrink-0 text-[13px] text-stone">
                         {b.start && b.end ? `${b.start}~${b.end}` : "시간 미정"}
                       </span>
-                      <span className="shrink-0 text-[14px]">{STATUS_EMOJI[b.status] ?? "✨"}</span>
-                      <span className="min-w-0 flex-1 truncate text-[12px] text-ink">{b.label}</span>
+                      <span className="shrink-0 text-[17px]">{STATUS_EMOJI[b.status] ?? "✨"}</span>
+                      <span className="min-w-0 flex-1 truncate text-[14px] text-ink">{b.label}</span>
                       {!isDone && (
                         <>
                           <button
@@ -638,18 +638,18 @@ export function ConfirmCards({
                   );
                 })}
                 {card.blocks.length === 0 && (
-                  <p className="text-[12px] text-stone">삭제된 블록이 없어요</p>
+                  <p className="text-[14px] text-stone">삭제된 블록이 없어요</p>
                 )}
               </div>
 
               {overlapWarnings.length > 0 && (
                 <div className="flex flex-col gap-1.5 rounded-xl bg-terra/10 p-2.5">
                   {overlapWarnings.map((w) => (
-                    <span key={w} className="text-[11px] text-terra">
+                    <span key={w} className="text-[13px] text-terra">
                       {w}
                     </span>
                   ))}
-                  <label className="flex items-center gap-1.5 text-[11px] text-stone">
+                  <label className="flex items-center gap-1.5 text-[13px] text-stone">
                     <input
                       type="checkbox"
                       checked={card.overwriteOnOverlap}
@@ -663,7 +663,7 @@ export function ConfirmCards({
               {card.status === "registered" && (
                 <Link
                   href="/schedule?view=day"
-                  className="self-start text-[11px] font-medium text-honey underline underline-offset-2"
+                  className="self-start text-[13px] font-medium text-honey underline underline-offset-2"
                 >
                   하루 화면에서 보기
                 </Link>
@@ -673,14 +673,14 @@ export function ConfirmCards({
                 <div className="mt-1 flex gap-2">
                   <button
                     onClick={() => handleSkip(index)}
-                    className="flex-1 rounded-xl bg-cream py-2 text-[13px] font-medium text-stone"
+                    className="flex-1 rounded-xl bg-cream py-2 text-[16px] font-medium text-stone"
                   >
                     건너뛰기
                   </button>
                   <button
                     onClick={() => handleRegisterRoutine(index)}
                     disabled={registerDisabled}
-                    className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-honey py-2 text-[13px] font-medium text-white disabled:opacity-50"
+                    className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-honey py-2 text-[16px] font-medium text-white disabled:opacity-50"
                   >
                     <IconCheck size={15} /> 등록
                   </button>

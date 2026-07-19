@@ -99,7 +99,7 @@ export function AvatarUploader({
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={isPending}
-            className="text-[13px] font-medium text-ocean"
+            className="text-[16px] font-medium text-ocean"
           >
             사진 변경
           </button>
@@ -108,13 +108,13 @@ export function AvatarUploader({
               type="button"
               onClick={handleReset}
               disabled={isPending}
-              className="text-[13px] text-stone"
+              className="text-[16px] text-stone"
             >
               기본 이미지로
             </button>
           )}
         </div>
-        {error && <p className="text-[12px] text-terra">{error}</p>}
+        {error && <p className="text-[14px] text-terra">{error}</p>}
         <input
           ref={fileInputRef}
           type="file"

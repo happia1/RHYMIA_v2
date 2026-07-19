@@ -26,7 +26,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           message ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
       >
-        <div className="rounded-full bg-ink px-4 py-2.5 text-[13px] font-medium text-cream shadow-lg">
+        <div className="rounded-full bg-ink px-4 py-2.5 text-[16px] font-medium text-cream shadow-lg">
           {message}
         </div>
       </div>

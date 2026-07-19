@@ -67,27 +67,27 @@ export function MealCard({
 
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <div className="flex items-center gap-1.5">
-          <span className="text-[9px] font-medium text-honey">{meal.tag}</span>
-          <span className="text-[9px] font-medium text-sage">{meal.type}</span>
+          <span className="text-[11px] font-medium text-honey">{meal.tag}</span>
+          <span className="text-[11px] font-medium text-sage">{meal.type}</span>
         </div>
         <div className="flex items-baseline gap-2">
-          <span className="truncate text-[13px] text-[var(--text-primary)]">
+          <span className="truncate text-[16px] text-[var(--text-primary)]">
             {meal.main_menu}
           </span>
           {meal.sides.length > 0 && (
-            <span className="truncate text-[11px] text-[var(--text-secondary)]">
+            <span className="truncate text-[13px] text-[var(--text-secondary)]">
               {meal.sides.join(", ")}
             </span>
           )}
         </div>
         {meal.type === "외식" && meal.place && (
-          <p className="truncate text-[11px] text-[var(--text-secondary)]">
+          <p className="truncate text-[13px] text-[var(--text-secondary)]">
             {meal.place}
             {meal.reservation_time ? ` · ${meal.reservation_time}` : ""}
           </p>
         )}
         {kcalMedian != null && (
-          <p className="text-[11px] text-[var(--text-secondary)]">약 {kcalMedian}kcal</p>
+          <p className="text-[13px] text-[var(--text-secondary)]">약 {kcalMedian}kcal</p>
         )}
       </div>
 
@@ -107,7 +107,7 @@ export function MealCard({
               ))}
               {overflowCount > 0 && (
                 <span
-                  className="flex items-center justify-center rounded-full bg-border-light text-[8px] font-medium text-stone"
+                  className="flex items-center justify-center rounded-full bg-border-light text-[10px] font-medium text-stone"
                   style={{ width: AVATAR_SIZE.mealCard, height: AVATAR_SIZE.mealCard }}
                 >
                   +{overflowCount}
@@ -140,18 +140,18 @@ export function MealCard({
       <div onClick={(e) => e.stopPropagation()}>
         <BottomSheet open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)}>
           <div className="flex flex-col gap-3">
-            <p className="text-[13px] text-ink">&quot;{meal.main_menu}&quot; 끼니를 삭제하시겠습니까?</p>
+            <p className="text-[16px] text-ink">&quot;{meal.main_menu}&quot; 끼니를 삭제하시겠습니까?</p>
             <div className="flex gap-2">
               <button
                 onClick={() => setDeleteConfirmOpen(false)}
-                className="flex-1 rounded-xl bg-cream py-2.5 text-[13px] font-medium text-stone"
+                className="flex-1 rounded-xl bg-cream py-2.5 text-[16px] font-medium text-stone"
               >
                 취소
               </button>
               <button
                 onClick={handleDelete}
                 disabled={isPending}
-                className="flex flex-1 items-center justify-center rounded-xl bg-terra py-2.5 text-[13px] font-medium text-white disabled:opacity-50"
+                className="flex flex-1 items-center justify-center rounded-xl bg-terra py-2.5 text-[16px] font-medium text-white disabled:opacity-50"
               >
                 삭제하기
               </button>

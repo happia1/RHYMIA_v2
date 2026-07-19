@@ -64,14 +64,14 @@ export function MealDecisionSheet({
   return (
     <BottomSheet open={open} onClose={onClose}>
       <div className="flex flex-col gap-4">
-        <h2 className="text-[17px] font-medium text-ink">대신 골라줘</h2>
+        <h2 className="text-[20px] font-medium text-ink">대신 골라줘</h2>
 
         <div className="flex gap-2">
           {MODES.map((m) => (
             <button
               key={m.value}
               onClick={() => setMode(m.value)}
-              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-medium ${
+              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[16px] font-medium ${
                 mode === m.value ? "bg-ink text-cream" : "bg-cream text-stone"
               }`}
             >
@@ -157,19 +157,19 @@ function WorldCupMode({
   if (champion) {
     return (
       <div className="flex flex-col items-center gap-4 py-4">
-        <span className="text-[12px] font-medium text-honey">우승</span>
-        <span className="text-[20px] font-medium text-ink">{champion}</span>
+        <span className="text-[14px] font-medium text-honey">우승</span>
+        <span className="text-[24px] font-medium text-ink">{champion}</span>
         <div className="flex w-full gap-2">
           <button
             onClick={reset}
-            className="flex-1 rounded-xl bg-cream py-3 text-[13px] font-medium text-stone"
+            className="flex-1 rounded-xl bg-cream py-3 text-[16px] font-medium text-stone"
           >
             다시하기
           </button>
           <button
             onClick={() => onRegister(champion)}
             disabled={isPending}
-            className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-honey py-3 text-[13px] font-medium text-white disabled:opacity-50"
+            className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-honey py-3 text-[16px] font-medium text-white disabled:opacity-50"
           >
             <IconCheck size={15} /> 등록
           </button>
@@ -183,20 +183,20 @@ function WorldCupMode({
 
   return (
     <div className="flex flex-col gap-3">
-      <span className="self-center text-[12px] font-medium text-[var(--text-muted)]">
+      <span className="self-center text-[14px] font-medium text-[var(--text-muted)]">
         {roundLabel}
       </span>
       <div className="flex items-stretch gap-3">
         <button
           onClick={() => pick(a)}
-          className="flex h-24 flex-1 items-center justify-center rounded-2xl bg-cream px-2 text-center text-[15px] font-medium text-ink"
+          className="flex h-24 flex-1 items-center justify-center rounded-2xl bg-cream px-2 text-center text-[18px] font-medium text-ink"
         >
           {a}
         </button>
-        <span className="self-center text-[12px] text-[var(--text-muted)]">VS</span>
+        <span className="self-center text-[14px] text-[var(--text-muted)]">VS</span>
         <button
           onClick={() => pick(b)}
-          className="flex h-24 flex-1 items-center justify-center rounded-2xl bg-cream px-2 text-center text-[15px] font-medium text-ink"
+          className="flex h-24 flex-1 items-center justify-center rounded-2xl bg-cream px-2 text-center text-[18px] font-medium text-ink"
         >
           {b}
         </button>
@@ -223,7 +223,7 @@ function VoteMode({
 
   if (activeVote) {
     return (
-      <p className="py-4 text-center text-[13px] text-[var(--text-muted)]">
+      <p className="py-4 text-center text-[16px] text-[var(--text-muted)]">
         이미 진행 중인 투표가 있어요. 식탁 탭에서 확인해주세요.
       </p>
     );
@@ -260,19 +260,19 @@ function VoteMode({
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-[12px] text-[var(--text-muted)]">후보 2~4개를 등록하면 가족이 식탁 탭에서 투표할 수 있어요</p>
+      <p className="text-[14px] text-[var(--text-muted)]">후보 2~4개를 등록하면 가족이 식탁 탭에서 투표할 수 있어요</p>
       {candidates.map((c, i) => (
         <div key={i} className="flex items-center gap-2">
           <Input
             value={c}
             onChange={(e) => updateCandidate(i, e.target.value)}
             placeholder={`후보 ${i + 1}`}
-            className="h-10 flex-1 rounded-xl px-3 text-[13px]"
+            className="h-10 flex-1 rounded-xl px-3 text-[16px]"
           />
           {candidates.length > 2 && (
             <button
               onClick={() => removeCandidate(i)}
-              className="text-[12px] text-stone"
+              className="text-[14px] text-stone"
               aria-label="후보 삭제"
             >
               삭제
@@ -281,7 +281,7 @@ function VoteMode({
         </div>
       ))}
       {candidates.length < 4 && (
-        <button onClick={addCandidate} className="self-start text-[12px] font-medium text-honey">
+        <button onClick={addCandidate} className="self-start text-[14px] font-medium text-honey">
           + 후보 추가
         </button>
       )}
@@ -291,7 +291,7 @@ function VoteMode({
             <button
               key={menu}
               onClick={() => fillSuggestion(menu)}
-              className="text-[12px] font-medium text-[var(--text-muted)]"
+              className="text-[14px] font-medium text-[var(--text-muted)]"
             >
               {menu}
             </button>
@@ -301,7 +301,7 @@ function VoteMode({
       <button
         onClick={handleStart}
         disabled={isPending}
-        className="flex h-11 items-center justify-center rounded-2xl bg-ink text-[14px] font-medium text-cream disabled:opacity-50"
+        className="flex h-11 items-center justify-center rounded-2xl bg-ink text-[17px] font-medium text-cream disabled:opacity-50"
       >
         투표 시작하기
       </button>

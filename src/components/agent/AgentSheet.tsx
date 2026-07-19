@@ -234,7 +234,7 @@ export function AgentSheet({
             onKeyDown={(e) => e.key === "Enter" && handleSendText()}
             placeholder="일정을 알려주세요"
             disabled={sending}
-            className="h-10 flex-1 rounded-full px-4 text-[13px]"
+            className="h-10 flex-1 rounded-full px-4 text-[16px]"
           />
           <button disabled aria-label="음성 입력 (준비 중)" className="text-stone/40">
             <IconMicrophone size={22} />
@@ -272,7 +272,7 @@ function ChatBubble({
     return (
       <div className="flex justify-end">
         {message.kind === "text" ? (
-          <div className="max-w-[75%] rounded-2xl rounded-br-md bg-ink px-3.5 py-2.5 text-[13px] text-cream">
+          <div className="max-w-[75%] rounded-2xl rounded-br-md bg-ink px-3.5 py-2.5 text-[16px] text-cream">
             {message.text}
           </div>
         ) : (
@@ -316,12 +316,12 @@ function ChatBubble({
   if (message.kind === "error") {
     return (
       <div className="flex justify-start">
-        <div className="max-w-[85%] rounded-2xl rounded-bl-md bg-cream px-3.5 py-2.5 text-[13px] text-ink">
+        <div className="max-w-[85%] rounded-2xl rounded-bl-md bg-cream px-3.5 py-2.5 text-[16px] text-ink">
           <p>{message.text}</p>
           <Link
             href="/schedule"
             onClick={onCloseSheet}
-            className="mt-1 inline-block text-[12px] font-medium text-honey underline underline-offset-2"
+            className="mt-1 inline-block text-[14px] font-medium text-honey underline underline-offset-2"
           >
             수동으로 등록하기
           </Link>
@@ -332,7 +332,7 @@ function ChatBubble({
 
   return (
     <div className="flex justify-start">
-      <div className="max-w-[75%] rounded-2xl rounded-bl-md bg-cream px-3.5 py-2.5 text-[13px] text-ink">
+      <div className="max-w-[75%] rounded-2xl rounded-bl-md bg-cream px-3.5 py-2.5 text-[16px] text-ink">
         {message.text}
       </div>
     </div>

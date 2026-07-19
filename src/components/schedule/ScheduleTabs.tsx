@@ -23,7 +23,7 @@ export function ScheduleTabs({
         <Link
           key={key}
           href={`/schedule?view=${key}&date=${anchorDate}`}
-          className={`border-b-2 pb-2 text-[13px] font-medium ${
+          className={`border-b-2 pb-2 text-[16px] font-medium ${
             view === key
               ? "border-ink text-ink"
               : "border-transparent text-[var(--text-muted)]"

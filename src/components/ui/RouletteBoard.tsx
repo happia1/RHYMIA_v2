@@ -47,7 +47,7 @@ export function RouletteBoard({
         {pool.map((item, i) => (
           <div
             key={item}
-            className={`flex h-14 items-center justify-center rounded-xl px-2 text-center text-[13px] font-medium transition-colors ${
+            className={`flex h-14 items-center justify-center rounded-xl px-2 text-center text-[16px] font-medium transition-colors ${
               highlightIndex === i ? "bg-honey text-white" : "bg-cream text-ink"
             }`}
           >
@@ -60,7 +60,7 @@ export function RouletteBoard({
         <button
           onClick={spin}
           disabled={spinning}
-          className="flex h-12 items-center justify-center rounded-2xl bg-ink text-[15px] font-medium text-cream disabled:opacity-50"
+          className="flex h-12 items-center justify-center rounded-2xl bg-ink text-[18px] font-medium text-cream disabled:opacity-50"
         >
           {spinning ? "돌아가는 중..." : "룰렛 돌리기"}
         </button>
@@ -68,14 +68,14 @@ export function RouletteBoard({
         <div className="flex gap-2">
           <button
             onClick={spin}
-            className="flex-1 rounded-xl bg-cream py-3 text-[13px] font-medium text-stone"
+            className="flex-1 rounded-xl bg-cream py-3 text-[16px] font-medium text-stone"
           >
             다시
           </button>
           <button
             onClick={() => onSelect(pool[resultIndex])}
             disabled={isPending}
-            className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-honey py-3 text-[13px] font-medium text-white disabled:opacity-50"
+            className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-honey py-3 text-[16px] font-medium text-white disabled:opacity-50"
           >
             <IconCheck size={15} /> {actionLabel}
           </button>

@@ -22,17 +22,17 @@ export function MealEmptyState({
 
   return (
     <div className="flex flex-col items-center gap-3 py-6 text-center">
-      <p className="text-[14px] text-[var(--text-muted)]">메뉴 고르는 중</p>
+      <p className="text-[17px] text-[var(--text-muted)]">메뉴 고르는 중</p>
       <div className="flex gap-2">
         <Link
           href={`/food/add?date=${selectedDate}`}
-          className="rounded-full bg-ink px-4 py-2 text-[13px] font-medium text-cream"
+          className="rounded-full bg-ink px-4 py-2 text-[16px] font-medium text-cream"
         >
           직접 등록
         </Link>
         <button
           onClick={() => setDecisionOpen(true)}
-          className="rounded-full bg-cream px-4 py-2 text-[13px] font-medium text-stone"
+          className="rounded-full bg-cream px-4 py-2 text-[16px] font-medium text-stone"
         >
           대신 골라줘
         </button>

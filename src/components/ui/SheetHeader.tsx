@@ -10,7 +10,7 @@ export function SheetHeader({
 }) {
   return (
     <div className="flex items-center justify-between gap-3">
-      <h2 className="min-w-0 flex-1 truncate text-[17px] font-medium text-ink">{title}</h2>
+      <h2 className="min-w-0 flex-1 truncate text-[20px] font-medium text-ink">{title}</h2>
       {children && <div className="flex shrink-0 items-center gap-4">{children}</div>}
     </div>
   );
@@ -38,7 +38,7 @@ export function SheetHeaderAction({
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`text-[14px] font-medium disabled:opacity-40 ${TONE_CLASS[tone]}`}
+      className={`text-[17px] font-medium disabled:opacity-40 ${TONE_CLASS[tone]}`}
     >
       {label}
     </button>

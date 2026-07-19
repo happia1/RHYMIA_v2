@@ -113,14 +113,14 @@ export function SuggestionSection({
       >
         {slides.map((slide) => (
           <div key={slide.key} className="flex w-full shrink-0 snap-start flex-col gap-1.5">
-            <span className="text-[11px] font-medium text-stone">{slide.title}</span>
+            <span className="text-[13px] font-medium text-stone">{slide.title}</span>
             {slide.key === "roulette" ? (
               <div className="flex flex-wrap gap-2">
                 {DECISION_MODES.map((m) => (
                   <button
                     key={m.mode}
                     onClick={() => openDecision(m.mode)}
-                    className="flex items-center gap-1.5 rounded-full bg-cream px-3 py-1.5 text-[12px] font-medium text-ink"
+                    className="flex items-center gap-1.5 rounded-full bg-cream px-3 py-1.5 text-[14px] font-medium text-ink"
                   >
                     <m.icon size={14} className="text-honey" />
                     {m.label}
@@ -129,12 +129,12 @@ export function SuggestionSection({
               </div>
             ) : (
               <>
-                <span className="text-[13px] text-ink">{slide.body}</span>
+                <span className="text-[16px] text-ink">{slide.body}</span>
                 {slide.action && (
                   <div className="border-t border-border-light pt-1.5">
                     <button
                       onClick={slide.action.onClick}
-                      className="text-[12px] font-medium text-honey"
+                      className="text-[14px] font-medium text-honey"
                     >
                       {slide.action.label}
                     </button>

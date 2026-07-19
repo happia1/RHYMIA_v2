@@ -76,17 +76,18 @@ export function HomeHeader({
       <div className="flex items-start justify-between gap-4">
         {/* 왼쪽: 날씨 — 위치 → 기온+아이콘 → 최저/최고 순 배치 */}
         <div className="flex min-w-0 flex-col gap-1">
-          <span className={`truncate text-[11px] ${mirror.muted}`}>
+          <span className={`truncate text-[13px] ${mirror.muted}`}>
             {weather ? weather.location : "서울 강동구"}
           </span>
           <div className="flex items-baseline gap-1.5">
-            <span className={`text-[40px] font-light leading-none ${mirror.primary}`}>
+            {/* 특대(시계·온도)는 이미 커서 전역 1.2배가 아니라 1.1배만 적용 */}
+            <span className={`text-[44px] font-light leading-none ${mirror.primary}`}>
               {weather ? `${weather.tempC}°` : "-°"}
             </span>
-            {weather && <span className="text-[26px] leading-none">{weather.icon}</span>}
+            {weather && <span className="text-[29px] leading-none">{weather.icon}</span>}
           </div>
           {weather && weather.tempMinC !== null && weather.tempMaxC !== null && (
-            <span className={`text-[11px] ${mirror.muted}`}>
+            <span className={`text-[13px] ${mirror.muted}`}>
               최저 {weather.tempMinC}° · 최고 {weather.tempMaxC}°
             </span>
           )}
@@ -95,12 +96,13 @@ export function HomeHeader({
         {/* 오른쪽: 시간 — 오른쪽 정렬, PM/AM이 시간 앞에 작게 */}
         <div className="flex shrink-0 flex-col items-end gap-1">
           <div className="flex items-baseline gap-2">
-            <span className={`text-[13px] font-medium ${mirror.secondary}`}>{period}</span>
-            <span className={`text-[56px] font-light leading-none ${mirror.primary}`}>
+            <span className={`text-[16px] font-medium ${mirror.secondary}`}>{period}</span>
+            {/* 특대(시계) — 1.1배만 */}
+            <span className={`text-[62px] font-light leading-none ${mirror.primary}`}>
               {hour12}:{String(now.getMinutes()).padStart(2, "0")}
             </span>
           </div>
-          <span className={`text-[12px] ${mirror.secondary}`}>{formatDate(now)}</span>
+          <span className={`text-[14px] ${mirror.secondary}`}>{formatDate(now)}</span>
         </div>
       </div>
 
@@ -118,7 +120,7 @@ export function HomeHeader({
               imageUrl={m.avatar_image_url}
               size={AVATAR_SIZE.mirror}
             />
-            <span className={`whitespace-nowrap text-[12px] ${mirror.secondary}`}>
+            <span className={`whitespace-nowrap text-[14px] ${mirror.secondary}`}>
               {m.display_name} {m.statusText}
             </span>
           </Link>

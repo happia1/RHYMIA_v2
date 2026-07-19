@@ -73,17 +73,17 @@ export function MealSummaryCard({ meals }: { meals: MealSummaryItem[] }) {
               >
                 <MealThumbnail meal={meal} className="h-10 w-10" />
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <span className={`text-[11px] ${mirror.muted}`}>
+                  <span className={`text-[13px] ${mirror.muted}`}>
                     {meal.tag} · {meal.type}
                     {meal.type === "외식" && meal.reservation_time
                       ? ` · ${meal.reservation_time}`
                       : ""}
                   </span>
-                  <span className={`truncate text-[14px] font-medium ${mirror.primary}`}>
+                  <span className={`truncate text-[17px] font-medium ${mirror.primary}`}>
                     {meal.main_menu}
                   </span>
                   {sidesText && (
-                    <span className={`truncate text-[12px] ${mirror.muted}`}>+ {sidesText}</span>
+                    <span className={`truncate text-[14px] ${mirror.muted}`}>+ {sidesText}</span>
                   )}
                 </div>
               </Link>

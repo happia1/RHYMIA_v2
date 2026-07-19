@@ -20,7 +20,7 @@ export function Chip({
   return (
     <button
       onClick={onClick}
-      className={`flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-full text-[12px] font-medium ${className} ${
+      className={`flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-full text-[14px] font-medium ${className} ${
         active ? "bg-ink text-cream" : "bg-surface text-stone"
       }`}
     >

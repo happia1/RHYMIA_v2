@@ -84,7 +84,7 @@ export function HomePhotoManager({
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-[12px] text-stone">
+      <p className="text-[14px] text-stone">
         태블릿 홈 화면 중앙에 무작위 순서로 돌아가며 나와요 ({photos.length}/{MAX_HOME_PHOTOS})
       </p>
       <div className="grid grid-cols-4 gap-2">
@@ -136,7 +136,7 @@ export function HomePhotoManager({
               setPickerOpen(false);
               cameraInputRef.current?.click();
             }}
-            className="flex items-center gap-3 py-3 text-left text-[14px] text-ink"
+            className="flex items-center gap-3 py-3 text-left text-[17px] text-ink"
           >
             <IconCamera size={18} className="text-honey" />
             카메라로 찍기
@@ -146,7 +146,7 @@ export function HomePhotoManager({
               setPickerOpen(false);
               albumInputRef.current?.click();
             }}
-            className="flex items-center gap-3 border-t border-border-light py-3 text-left text-[14px] text-ink"
+            className="flex items-center gap-3 border-t border-border-light py-3 text-left text-[17px] text-ink"
           >
             <IconPhoto size={18} className="text-honey" />
             앨범에서 선택

@@ -77,7 +77,7 @@ export function LadderGame({
             key={i}
             onClick={() => pickStart(i)}
             disabled={startCol !== null}
-            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[12px] font-medium disabled:opacity-40 ${
+            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[14px] font-medium disabled:opacity-40 ${
               startCol === i ? "bg-honey text-white" : "bg-cream text-stone"
             }`}
           >
@@ -117,7 +117,7 @@ export function LadderGame({
         {candidates.map((label, i) => (
           <span
             key={i}
-            className={`flex-1 truncate px-0.5 text-center text-[11px] ${
+            className={`flex-1 truncate px-0.5 text-center text-[13px] ${
               revealed && i === resultCol ? "font-medium text-honey" : "text-[var(--text-muted)]"
             }`}
           >
@@ -127,23 +127,23 @@ export function LadderGame({
       </div>
 
       {thinking && (
-        <p className="text-center text-[12px] text-[var(--text-muted)]">결과 확인 중...</p>
+        <p className="text-center text-[14px] text-[var(--text-muted)]">결과 확인 중...</p>
       )}
 
       {revealed && resultCol !== null && (
         <div className="flex flex-col items-center gap-2">
-          <span className="text-[16px] font-medium text-ink">{candidates[resultCol]}</span>
+          <span className="text-[19px] font-medium text-ink">{candidates[resultCol]}</span>
           <div className="flex w-full gap-2">
             <button
               onClick={reset}
-              className="flex-1 rounded-xl bg-cream py-2.5 text-[13px] font-medium text-stone"
+              className="flex-1 rounded-xl bg-cream py-2.5 text-[16px] font-medium text-stone"
             >
               다시
             </button>
             <button
               onClick={() => onSelect(candidates[resultCol])}
               disabled={isPending}
-              className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-honey py-2.5 text-[13px] font-medium text-white disabled:opacity-50"
+              className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-honey py-2.5 text-[16px] font-medium text-white disabled:opacity-50"
             >
               <IconCheck size={15} /> {actionLabel}
             </button>

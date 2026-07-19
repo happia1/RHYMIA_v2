@@ -170,11 +170,11 @@ export function TodoSheet({
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="할 일 제목"
-          className="h-11 rounded-xl px-3 text-[14px]"
+          className="h-11 rounded-xl px-3 text-[17px]"
         />
 
         <div className="flex flex-col gap-2">
-          <span className="text-[12px] font-medium text-stone">마감일</span>
+          <span className="text-[14px] font-medium text-stone">마감일</span>
           <div className="flex flex-wrap gap-2">
             {(
               [
@@ -187,7 +187,7 @@ export function TodoSheet({
               <button
                 key={opt.value}
                 onClick={() => setQuickPick(opt.value)}
-                className={`rounded-full px-3.5 py-1.5 text-[13px] font-medium ${
+                className={`rounded-full px-3.5 py-1.5 text-[16px] font-medium ${
                   quickPick === opt.value ? "bg-ink text-cream" : "bg-cream text-stone"
                 }`}
               >
@@ -200,7 +200,7 @@ export function TodoSheet({
               type="date"
               value={customDate}
               onChange={(e) => setCustomDate(e.target.value)}
-              className="h-11 rounded-xl px-3 text-[13px]"
+              className="h-11 rounded-xl px-3 text-[16px]"
             />
           )}
         </div>
@@ -210,10 +210,10 @@ export function TodoSheet({
           onChange={(e) => setDescription(e.target.value)}
           placeholder="설명 (선택)"
           rows={2}
-          className="rounded-xl p-3 text-[13px]"
+          className="rounded-xl p-3 text-[16px]"
         />
 
-        <label className="flex items-center justify-between text-[13px] text-ink">
+        <label className="flex items-center justify-between text-[16px] text-ink">
           알림
           <input
             type="checkbox"
@@ -223,7 +223,7 @@ export function TodoSheet({
         </label>
 
         <div className="flex flex-col gap-2">
-          <span className="text-[12px] font-medium text-stone">반복</span>
+          <span className="text-[14px] font-medium text-stone">반복</span>
           <div className="flex flex-wrap gap-2">
             {[
               { value: null, label: "없음" },
@@ -234,7 +234,7 @@ export function TodoSheet({
               <button
                 key={opt.label}
                 onClick={() => setRepeatType(opt.value)}
-                className={`rounded-full px-3.5 py-1.5 text-[13px] font-medium ${
+                className={`rounded-full px-3.5 py-1.5 text-[16px] font-medium ${
                   repeatType === opt.value ? "bg-ink text-cream" : "bg-cream text-stone"
                 }`}
               >
@@ -245,13 +245,13 @@ export function TodoSheet({
         </div>
 
         <div className="flex flex-col gap-2">
-          <span className="text-[12px] font-medium text-stone">태그 (선택)</span>
+          <span className="text-[14px] font-medium text-stone">태그 (선택)</span>
           <div className="flex flex-wrap gap-2">
             {KEYWORD_GROUPS.map((g) => (
               <button
                 key={g.main}
                 onClick={() => setTag(tag === g.main ? null : g.main)}
-                className="rounded-full px-3 py-1.5 text-[12px] font-medium"
+                className="rounded-full px-3 py-1.5 text-[14px] font-medium"
                 style={{
                   color: g.color,
                   backgroundColor: tag === g.main ? `${g.color}33` : `${g.color}14`,
@@ -265,7 +265,7 @@ export function TodoSheet({
         </div>
 
         <div className="flex flex-col gap-2">
-          <span className="text-[12px] font-medium text-stone">색상</span>
+          <span className="text-[14px] font-medium text-stone">색상</span>
           <div className="flex gap-2">
             {COLORS.map((c) => (
               <button

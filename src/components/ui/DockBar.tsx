@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { IconHome, IconToolsKitchen2, IconCalendar, IconLayoutBoard } from "@tabler/icons-react";
 import { mirror } from "@/lib/homeTheme";
-import { useDeviceLayout } from "@/lib/useDeviceLayout";
+import { useTabletHomeReveal } from "@/components/ui/TabletHomeReveal";
 
 const TABS = [
   { href: "/home", label: "홈", icon: IconHome },
@@ -14,49 +13,12 @@ const TABS = [
   { href: "/board", label: "게시판", icon: IconLayoutBoard },
 ];
 
-const REVEAL_MS = 3000;
-
-/** 태블릿 홈 화면에서만 독바를 기본적으로 숨기고, 화면 어디든 탭하면 3초간 보였다가 다시
- * 사라진다(태블릿 스펙의 "화면 탭 → 독바 표시" 동작) — 모바일이나 다른 탭에서는 이전과
- * 동일하게 항상 보인다. document 전역에 pointerdown을 듣기 때문에 탭 위치는 상관없다. */
-function useTabletHomeAutoHide(active: boolean) {
-  const [visible, setVisible] = useState(!active);
-  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    setVisible(!active);
-    return () => {
-      if (hideTimer.current) clearTimeout(hideTimer.current);
-    };
-  }, [active]);
-
-  useEffect(() => {
-    if (!active) return;
-
-    const reveal = () => {
-      setVisible(true);
-      if (hideTimer.current) clearTimeout(hideTimer.current);
-      hideTimer.current = setTimeout(() => setVisible(false), REVEAL_MS);
-    };
-
-    document.addEventListener("pointerdown", reveal);
-    return () => {
-      document.removeEventListener("pointerdown", reveal);
-      if (hideTimer.current) clearTimeout(hideTimer.current);
-      hideTimer.current = null;
-    };
-  }, [active]);
-
-  return visible;
-}
-
+/** 태블릿 홈 화면(조망 모드)에서만 독바를 기본적으로 숨기고, 화면 어디든 탭하면 3초간
+ * 보였다가 다시 사라진다 — 모바일이나 다른 탭에서는 이전과 동일하게 항상 보인다. 이
+ * 터치 반응 타이머는 우상단 설정/알림 진입점(TabletTopBar)과 공유한다(TabletHomeReveal). */
 export function DockBar() {
   const pathname = usePathname();
-  const { layout } = useDeviceLayout();
-  const isTablet = layout !== "mobile";
-
-  const isTabletHome = isTablet && pathname === "/home";
-  const visible = useTabletHomeAutoHide(isTabletHome);
+  const visible = useTabletHomeReveal();
 
   return (
     <nav
@@ -75,7 +37,7 @@ export function DockBar() {
             }`}
           >
             <Icon size={22} stroke={1.75} />
-            <span className="text-[11px] font-medium">{label}</span>
+            <span className="text-[13px] font-medium">{label}</span>
           </Link>
         );
       })}

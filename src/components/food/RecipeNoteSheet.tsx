@@ -55,13 +55,13 @@ export function RecipeNoteSheet({
     <>
       <BottomSheet open={open} onClose={onClose} fixedHeight>
         <div className="flex min-h-0 flex-1 flex-col gap-4">
-          <span className="text-[15px] font-medium text-ink">레시피 노트</span>
+          <span className="text-[18px] font-medium text-ink">레시피 노트</span>
           <div className="min-h-0 flex-1 overflow-y-auto">
             {isLoading && (
-              <p className="py-6 text-center text-[13px] text-[var(--text-muted)]">불러오는 중...</p>
+              <p className="py-6 text-center text-[16px] text-[var(--text-muted)]">불러오는 중...</p>
             )}
             {!isLoading && favorites.length === 0 && (
-              <p className="py-6 text-center text-[13px] text-[var(--text-muted)]">
+              <p className="py-6 text-center text-[16px] text-[var(--text-muted)]">
                 별을 눌러 레시피를 저장해보세요
               </p>
             )}

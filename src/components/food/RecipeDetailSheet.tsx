@@ -84,18 +84,18 @@ export function RecipeDetailSheet({
           </div>
 
           <div className="flex flex-col gap-1">
-            <span className="text-[16px] font-medium text-ink">{recipe.name}</span>
-            <span className="text-[11px] text-[var(--text-muted)]">출처: 식품안전나라</span>
+            <span className="text-[19px] font-medium text-ink">{recipe.name}</span>
+            <span className="text-[13px] text-[var(--text-muted)]">출처: 식품안전나라</span>
           </div>
 
           {recipe.ingredients.length > 0 && (
             <div className="flex flex-col gap-1.5">
-              <span className="text-[12px] font-medium text-stone">재료</span>
+              <span className="text-[14px] font-medium text-stone">재료</span>
               <div className="flex flex-wrap gap-1.5">
                 {recipe.ingredients.map((ing, i) => (
                   <span
                     key={`${ing}-${i}`}
-                    className="rounded-full bg-cream px-2.5 py-1 text-[12px] text-ink"
+                    className="rounded-full bg-cream px-2.5 py-1 text-[14px] text-ink"
                   >
                     {ing}
                   </span>
@@ -106,10 +106,10 @@ export function RecipeDetailSheet({
 
           {recipe.steps.length > 0 && (
             <div className="flex flex-col gap-3">
-              <span className="text-[12px] font-medium text-stone">조리 단계</span>
+              <span className="text-[14px] font-medium text-stone">조리 단계</span>
               {recipe.steps.map((step, i) => (
                 <div key={i} className="flex flex-col gap-2">
-                  <p className="text-[13px] leading-relaxed text-ink">{step.text}</p>
+                  <p className="text-[16px] leading-relaxed text-ink">{step.text}</p>
                   {step.image && (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -124,7 +124,7 @@ export function RecipeDetailSheet({
           )}
 
           {recipe.tip && (
-            <p className="rounded-xl bg-cream px-3 py-2.5 text-[12px] text-stone">
+            <p className="rounded-xl bg-cream px-3 py-2.5 text-[14px] text-stone">
               💡 {recipe.tip}
             </p>
           )}
@@ -132,7 +132,7 @@ export function RecipeDetailSheet({
           <button
             onClick={handleAddToToday}
             disabled={isAdding}
-            className="flex h-11 items-center justify-center gap-1.5 rounded-2xl bg-ink text-[14px] font-medium text-cream disabled:opacity-60"
+            className="flex h-11 items-center justify-center gap-1.5 rounded-2xl bg-ink text-[17px] font-medium text-cream disabled:opacity-60"
           >
             {isAdding && <IconLoader2 size={16} className="animate-spin" />}
             {onFillFromRecipe ? "이 레시피로 채우기" : "오늘 메뉴로 추가하기"}

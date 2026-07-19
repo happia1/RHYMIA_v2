@@ -148,7 +148,7 @@ export function HomeSections({
         <div className="mb-2 flex items-center justify-end">
           <button
             onClick={() => setEditMode(false)}
-            className={`text-[13px] font-medium ${mirror.primary}`}
+            className={`text-[16px] font-medium ${mirror.primary}`}
           >
             완료
           </button>

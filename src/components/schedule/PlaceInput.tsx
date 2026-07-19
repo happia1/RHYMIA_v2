@@ -18,7 +18,7 @@ export function PlaceInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="장소 (선택)"
-        className="h-6 flex-1 bg-transparent text-[13px] text-input-text placeholder:text-input-placeholder focus:outline-none"
+        className="h-6 flex-1 bg-transparent text-[16px] text-input-text placeholder:text-input-placeholder focus:outline-none"
       />
     </label>
   );

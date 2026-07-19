@@ -92,7 +92,7 @@ export function YearView({
           <button onClick={() => goToYear(-1)} aria-label="이전 연도">
             <IconChevronLeft size={20} className="text-stone" />
           </button>
-          <span className="whitespace-nowrap text-[15px] font-medium text-ink">{year}년</span>
+          <span className="whitespace-nowrap text-[18px] font-medium text-ink">{year}년</span>
           <button onClick={() => goToYear(1)} aria-label="다음 연도">
             <IconChevronRight size={20} className="text-stone" />
           </button>
@@ -119,13 +119,13 @@ export function YearView({
               className="flex flex-col items-center gap-1"
             >
               <span
-                className={`flex h-6 w-6 items-center justify-center whitespace-nowrap rounded-full text-[11px] font-medium ${
+                className={`flex h-6 w-6 items-center justify-center whitespace-nowrap rounded-full text-[13px] font-medium ${
                   isSelected ? "bg-honey/15 text-honey" : "text-ink"
                 }`}
               >
                 {m + 1}월
               </span>
-              <span className="text-[11px] text-[var(--text-muted)]">
+              <span className="text-[13px] text-[var(--text-muted)]">
                 {count > 0 ? `일정 ${count}건` : "-"}
               </span>
             </button>
@@ -137,12 +137,12 @@ export function YearView({
 
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
-          <span className="text-[12px] font-medium text-[var(--text-muted)]">
+          <span className="text-[14px] font-medium text-[var(--text-muted)]">
             {selectedMonth != null ? `${selectedMonth + 1}월 주요 일정` : "연간 주요 일정"}
           </span>
           <button
             onClick={() => setListOpen((v) => !v)}
-            className="text-[11px] font-medium text-honey"
+            className="text-[13px] font-medium text-honey"
           >
             {listOpen ? "접기" : "펼치기"}
           </button>
@@ -153,7 +153,7 @@ export function YearView({
             <div className="flex flex-wrap gap-3">
               <button
                 onClick={() => setKeyword(null)}
-                className={`text-[12px] font-medium ${
+                className={`text-[14px] font-medium ${
                   !keywordMain ? "text-ink" : "text-[var(--text-muted)]"
                 }`}
               >
@@ -163,7 +163,7 @@ export function YearView({
                 <button
                   key={g.main}
                   onClick={() => setKeyword(keywordMain === g.main ? null : g.main)}
-                  className="text-[12px] font-medium"
+                  className="text-[14px] font-medium"
                   style={{ color: keywordMain === g.main ? g.color : "var(--text-muted)" }}
                 >
                   {g.main}
@@ -171,12 +171,12 @@ export function YearView({
               ))}
             </div>
 
-            <span className="text-[12px] text-[var(--text-muted)]">
+            <span className="text-[14px] text-[var(--text-muted)]">
               {importantSchedules.length}건{totalAmount > 0 ? ` · 합계 ${won(totalAmount)}` : ""}
             </span>
 
             {importantSchedules.length === 0 && (
-              <p className="text-[13px] text-[var(--text-muted)]">등록된 주요 일정이 없어요</p>
+              <p className="text-[16px] text-[var(--text-muted)]">등록된 주요 일정이 없어요</p>
             )}
             {importantSchedules.length > 0 && (
               <SectionExpand
@@ -190,14 +190,14 @@ export function YearView({
                       i > 0 ? "border-t border-border-light" : ""
                     }`}
                   >
-                    <span className="shrink-0 text-[11px] text-[var(--text-muted)]">{s.date_start}</span>
-                    <span className="min-w-0 flex-1 truncate text-[11px] font-medium text-terra">
+                    <span className="shrink-0 text-[13px] text-[var(--text-muted)]">{s.date_start}</span>
+                    <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-terra">
                       {s.title}
                     </span>
                     {s.amount != null && (
-                      <span className="shrink-0 text-[11px] font-medium text-honey">{won(s.amount)}</span>
+                      <span className="shrink-0 text-[13px] font-medium text-honey">{won(s.amount)}</span>
                     )}
-                    <span className="ml-auto shrink-0 text-[11px] text-[var(--text-muted)]">
+                    <span className="ml-auto shrink-0 text-[13px] text-[var(--text-muted)]">
                       {targetLabel(s.target_members, membersById)}
                     </span>
                   </button>

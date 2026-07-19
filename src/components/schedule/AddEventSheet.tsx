@@ -271,18 +271,18 @@ export function AddEventSheet({
 
         {deleteConfirmOpen && (
           <div className="flex flex-col gap-2">
-            <p className="text-[13px] text-ink">정말 삭제하시겠어요?</p>
+            <p className="text-[16px] text-ink">정말 삭제하시겠어요?</p>
             <div className="flex gap-2">
               <button
                 onClick={() => setDeleteConfirmOpen(false)}
-                className="flex-1 rounded-2xl bg-cream py-3 text-[14px] font-medium text-stone"
+                className="flex-1 rounded-2xl bg-cream py-3 text-[17px] font-medium text-stone"
               >
                 취소
               </button>
               <button
                 onClick={handleDelete}
                 disabled={isSubmitting}
-                className="flex flex-1 items-center justify-center rounded-2xl bg-terra py-3 text-[14px] font-medium text-white disabled:opacity-50"
+                className="flex flex-1 items-center justify-center rounded-2xl bg-terra py-3 text-[17px] font-medium text-white disabled:opacity-50"
               >
                 삭제하기
               </button>
@@ -291,7 +291,7 @@ export function AddEventSheet({
         )}
 
         {existingSchedule?.isVirtual && (
-          <p className="rounded-xl bg-cream px-3 py-2.5 text-[12px] text-stone">
+          <p className="rounded-xl bg-cream px-3 py-2.5 text-[14px] text-stone">
             반복 일정의 원본을 수정합니다.
           </p>
         )}
@@ -300,7 +300,7 @@ export function AddEventSheet({
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="제목"
-          className="h-11 rounded-xl px-3 text-[14px]"
+          className="h-11 rounded-xl px-3 text-[17px]"
         />
 
         <div className="flex flex-col gap-2">
@@ -309,9 +309,9 @@ export function AddEventSheet({
               type="date"
               value={dateStart}
               onChange={(e) => setDateStart(e.target.value)}
-              className="h-11 flex-1 rounded-xl px-3 text-[13px]"
+              className="h-11 flex-1 rounded-xl px-3 text-[16px]"
             />
-            <label className="flex items-center gap-1.5 text-[12px] text-stone">
+            <label className="flex items-center gap-1.5 text-[14px] text-stone">
               <input
                 type="checkbox"
                 checked={isRange}
@@ -325,11 +325,11 @@ export function AddEventSheet({
               type="date"
               value={dateEnd}
               onChange={(e) => setDateEnd(e.target.value)}
-              className="h-11 rounded-xl px-3 text-[13px]"
+              className="h-11 rounded-xl px-3 text-[16px]"
             />
           )}
 
-          <label className="flex items-center justify-between text-[13px] text-ink">
+          <label className="flex items-center justify-between text-[16px] text-ink">
             종일
             <input
               type="checkbox"
@@ -344,26 +344,26 @@ export function AddEventSheet({
                 type="time"
                 value={timeStart}
                 onChange={(e) => setTimeStart(e.target.value)}
-                className="h-11 flex-1 rounded-xl px-3 text-[13px]"
+                className="h-11 flex-1 rounded-xl px-3 text-[16px]"
               />
               <Input
                 type="time"
                 value={timeEnd}
                 onChange={(e) => setTimeEnd(e.target.value)}
-                className="h-11 flex-1 rounded-xl px-3 text-[13px]"
+                className="h-11 flex-1 rounded-xl px-3 text-[16px]"
               />
             </div>
           )}
         </div>
 
         <div className="flex flex-col gap-2">
-          <span className="text-[12px] font-medium text-stone">반복</span>
+          <span className="text-[14px] font-medium text-stone">반복</span>
           <div className="flex gap-2">
             {RECUR_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
                 onClick={() => setRecurType(opt.value)}
-                className={`rounded-full px-3.5 py-1.5 text-[13px] font-medium ${
+                className={`rounded-full px-3.5 py-1.5 text-[16px] font-medium ${
                   recurType === opt.value ? "bg-ink text-cream" : "bg-cream text-stone"
                 }`}
               >
@@ -382,7 +382,7 @@ export function AddEventSheet({
                 <button
                   key={value}
                   onClick={() => setRecurCalendar(value)}
-                  className={`rounded-full px-3 py-1.5 text-[12px] font-medium ${
+                  className={`rounded-full px-3 py-1.5 text-[14px] font-medium ${
                     recurCalendar === value ? "bg-ink text-cream" : "bg-cream text-stone"
                   }`}
                 >
@@ -393,17 +393,17 @@ export function AddEventSheet({
           )}
           {recurType !== "none" && (
             <div className="flex items-center gap-2">
-              <span className="shrink-0 text-[12px] text-stone">종료일</span>
+              <span className="shrink-0 text-[14px] text-stone">종료일</span>
               <Input
                 type="date"
                 value={recurUntil}
                 onChange={(e) => setRecurUntil(e.target.value)}
-                className="h-10 flex-1 rounded-xl px-3 text-[13px]"
+                className="h-10 flex-1 rounded-xl px-3 text-[16px]"
               />
               {recurUntil && (
                 <button
                   onClick={() => setRecurUntil("")}
-                  className="shrink-0 text-[12px] text-stone"
+                  className="shrink-0 text-[14px] text-stone"
                 >
                   지우기
                 </button>
@@ -413,7 +413,7 @@ export function AddEventSheet({
         </div>
 
         <div className="flex flex-col gap-2">
-          <span className="text-[12px] font-medium text-stone">키워드 (선택)</span>
+          <span className="text-[14px] font-medium text-stone">키워드 (선택)</span>
           <div className="scrollbar-hide flex gap-2 overflow-x-auto">
             {REGISTRABLE_KEYWORD_GROUPS.map((g) => (
               <button
@@ -422,7 +422,7 @@ export function AddEventSheet({
                   setKeywordMain(keywordMain === g.main ? null : g.main);
                   setKeywordSub(null);
                 }}
-                className="shrink-0 rounded-full px-3 py-1.5 text-[12px] font-medium"
+                className="shrink-0 rounded-full px-3 py-1.5 text-[14px] font-medium"
                 style={{
                   color: g.color,
                   backgroundColor: keywordMain === g.main ? `${g.color}33` : `${g.color}14`,
@@ -439,7 +439,7 @@ export function AddEventSheet({
                 <button
                   key={sub}
                   onClick={() => setKeywordSub(keywordSub === sub ? null : sub)}
-                  className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-medium ${
+                  className={`shrink-0 rounded-full px-3 py-1 text-[13px] font-medium ${
                     keywordSub === sub ? "bg-ink text-cream" : "bg-cream text-stone"
                   }`}
                 >
@@ -452,7 +452,7 @@ export function AddEventSheet({
 
         <button
           onClick={() => setDetailsOpen((v) => !v)}
-          className="flex items-center gap-1 self-start text-[12px] font-medium text-stone"
+          className="flex items-center gap-1 self-start text-[14px] font-medium text-stone"
         >
           자세한 설정
           <IconChevronDown size={14} className={detailsOpen ? "rotate-180" : ""} />
@@ -461,11 +461,11 @@ export function AddEventSheet({
         {detailsOpen && (
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">
-              <span className="text-[12px] font-medium text-stone">누구의 일정인가요</span>
+              <span className="text-[14px] font-medium text-stone">누구의 일정인가요</span>
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => setTargets([])}
-                  className={`rounded-full px-3 py-1.5 text-[12px] font-medium ${
+                  className={`rounded-full px-3 py-1.5 text-[14px] font-medium ${
                     targets.length === 0 ? "bg-ink text-cream" : "bg-cream text-stone"
                   }`}
                 >
@@ -475,7 +475,7 @@ export function AddEventSheet({
                   <button
                     key={m.id}
                     onClick={() => toggleTarget(m.id)}
-                    className={`rounded-full px-3 py-1.5 text-[12px] font-medium ${
+                    className={`rounded-full px-3 py-1.5 text-[14px] font-medium ${
                       targets.includes(m.id) ? "bg-ink text-cream" : "bg-cream text-stone"
                     }`}
                   >
@@ -486,13 +486,13 @@ export function AddEventSheet({
             </div>
 
             <div className="flex flex-col gap-2">
-              <span className="text-[12px] font-medium text-stone">알림</span>
+              <span className="text-[14px] font-medium text-stone">알림</span>
               <div className="scrollbar-hide flex gap-2 overflow-x-auto">
                 {NOTIFY_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
                     onClick={() => setNotifyOffset(notifyOffset === opt.value ? null : opt.value)}
-                    className={`shrink-0 rounded-full px-3.5 py-1.5 text-[13px] font-medium ${
+                    className={`shrink-0 rounded-full px-3.5 py-1.5 text-[16px] font-medium ${
                       notifyOffset === opt.value ? "bg-ink text-cream" : "bg-cream text-stone"
                     }`}
                   >
@@ -505,7 +505,7 @@ export function AddEventSheet({
                   type="datetime-local"
                   value={notifyCustomAt}
                   onChange={(e) => setNotifyCustomAt(e.target.value)}
-                  className="h-11 rounded-xl px-3 text-[13px]"
+                  className="h-11 rounded-xl px-3 text-[16px]"
                 />
               )}
             </div>
@@ -517,7 +517,7 @@ export function AddEventSheet({
               onChange={(e) => setMemo(e.target.value)}
               placeholder="메모 (준비물 등 자유롭게)"
               rows={3}
-              className="rounded-xl p-3 text-[13px]"
+              className="rounded-xl p-3 text-[16px]"
             />
 
             <Input
@@ -525,10 +525,10 @@ export function AddEventSheet({
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="금액 (선택)"
-              className="h-11 rounded-xl px-3 text-[13px]"
+              className="h-11 rounded-xl px-3 text-[16px]"
             />
 
-            <label className="flex items-center justify-between text-[13px] text-ink">
+            <label className="flex items-center justify-between text-[16px] text-ink">
               중요한 일정인가요
               <input
                 type="checkbox"
@@ -537,7 +537,7 @@ export function AddEventSheet({
               />
             </label>
 
-            <label className="flex items-center justify-between text-[13px] text-ink">
+            <label className="flex items-center justify-between text-[16px] text-ink">
               외부 공유 링크에 표시
               <input
                 type="checkbox"

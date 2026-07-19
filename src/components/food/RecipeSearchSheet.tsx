@@ -175,7 +175,7 @@ export function RecipeSearchSheet({
   return (
     <BottomSheet open={open} onClose={onClose} fixedHeight>
       <div className="flex min-h-0 flex-1 flex-col gap-4">
-        <span className="text-[15px] font-medium text-ink">레시피 찾아보기</span>
+        <span className="text-[18px] font-medium text-ink">레시피 찾아보기</span>
 
         {availableTabs.length > 1 && (
           <div className="flex gap-4 border-b border-border-light">
@@ -183,7 +183,7 @@ export function RecipeSearchSheet({
               <button
                 key={t}
                 onClick={() => handleTabChange(t)}
-                className={`-mb-px border-b-2 pb-2 text-[13px] font-medium ${
+                className={`-mb-px border-b-2 pb-2 text-[16px] font-medium ${
                   tab === t ? "border-honey text-ink" : "border-transparent text-[var(--text-muted)]"
                 }`}
               >
@@ -203,7 +203,7 @@ export function RecipeSearchSheet({
                   onChange={(e) => setInternalQuery(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && runInternalSearch(internalQuery)}
                   placeholder="메뉴명으로 검색"
-                  className="h-10 flex-1 px-0 text-[13px]"
+                  className="h-10 flex-1 px-0 text-[16px]"
                 />
                 <button onClick={() => runInternalSearch(internalQuery)} disabled={internalSearching} aria-label="검색">
                   <IconSearch size={18} className="text-[var(--text-muted)]" />
@@ -213,16 +213,16 @@ export function RecipeSearchSheet({
               {!internalQuery.trim() ? (
                 <div className="flex flex-col gap-4">
                   {notesLoading && (
-                    <p className="py-6 text-center text-[13px] text-[var(--text-muted)]">불러오는 중...</p>
+                    <p className="py-6 text-center text-[16px] text-[var(--text-muted)]">불러오는 중...</p>
                   )}
                   {!notesLoading && favorites.length === 0 && recent.length === 0 && (
-                    <p className="py-6 text-center text-[13px] text-[var(--text-muted)]">
+                    <p className="py-6 text-center text-[16px] text-[var(--text-muted)]">
                       메뉴명으로 검색해보세요
                     </p>
                   )}
                   {favorites.length > 0 && (
                     <div className="flex flex-col gap-1">
-                      <span className="text-[12px] font-medium text-stone">내 레시피 노트</span>
+                      <span className="text-[14px] font-medium text-stone">내 레시피 노트</span>
                       {favorites.map((r, i) => (
                         <RecipeRow
                           key={r.id}
@@ -237,7 +237,7 @@ export function RecipeSearchSheet({
                   )}
                   {recent.length > 0 && (
                     <div className="flex flex-col gap-1">
-                      <span className="text-[12px] font-medium text-stone">최근 본 레시피</span>
+                      <span className="text-[14px] font-medium text-stone">최근 본 레시피</span>
                       {recent.map((r, i) => (
                         <RecipeRow
                           key={r.id}
@@ -254,21 +254,21 @@ export function RecipeSearchSheet({
               ) : (
                 <div className="flex flex-col gap-1">
                   {internalSearching && (
-                    <p className="py-6 text-center text-[13px] text-[var(--text-muted)]">검색 중...</p>
+                    <p className="py-6 text-center text-[16px] text-[var(--text-muted)]">검색 중...</p>
                   )}
                   {internalError && (
                     <div className="flex flex-col items-center gap-2 py-6">
-                      <p className="text-[13px] text-terra">{internalError}</p>
+                      <p className="text-[16px] text-terra">{internalError}</p>
                       <button
                         onClick={() => runInternalSearch(internalQuery)}
-                        className="text-[12px] font-medium text-honey"
+                        className="text-[14px] font-medium text-honey"
                       >
                         다시 시도
                       </button>
                     </div>
                   )}
                   {internalResults?.length === 0 && !internalError && (
-                    <p className="py-6 text-center text-[13px] text-[var(--text-muted)]">
+                    <p className="py-6 text-center text-[16px] text-[var(--text-muted)]">
                       검색 결과가 없어요
                     </p>
                   )}
@@ -296,7 +296,7 @@ export function RecipeSearchSheet({
                   onChange={(e) => setBlogQuery(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && runBlogSearch(blogQuery)}
                   placeholder="메뉴명으로 검색"
-                  className="h-10 flex-1 px-0 text-[13px]"
+                  className="h-10 flex-1 px-0 text-[16px]"
                 />
                 <button onClick={() => runBlogSearch(blogQuery)} disabled={blogSearching} aria-label="검색">
                   <IconSearch size={18} className="text-[var(--text-muted)]" />
@@ -308,16 +308,16 @@ export function RecipeSearchSheet({
                 onChange={(e) => onMemoChange(e.target.value)}
                 placeholder="레시피 보면서 메모해두기 (선택)"
                 rows={2}
-                className="rounded-xl bg-cream p-3 text-[13px]"
+                className="rounded-xl bg-cream p-3 text-[16px]"
               />
 
               <div className="flex flex-col gap-3">
                 {blogSearching && (
-                  <p className="py-6 text-center text-[13px] text-[var(--text-muted)]">검색 중...</p>
+                  <p className="py-6 text-center text-[16px] text-[var(--text-muted)]">검색 중...</p>
                 )}
-                {blogError && <p className="text-[13px] text-terra">{blogError}</p>}
+                {blogError && <p className="text-[16px] text-terra">{blogError}</p>}
                 {blogResults?.length === 0 && !blogError && (
-                  <p className="py-6 text-center text-[13px] text-[var(--text-muted)]">
+                  <p className="py-6 text-center text-[16px] text-[var(--text-muted)]">
                     검색 결과가 없어요
                   </p>
                 )}
@@ -331,14 +331,14 @@ export function RecipeSearchSheet({
                         <IconArticle size={22} className="text-[var(--text-muted)]" />
                       </div>
                       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                        <span className="line-clamp-2 text-[13px] font-medium text-ink">{r.title}</span>
-                        <span className="line-clamp-2 text-[12px] text-stone">{r.summary}</span>
-                        <span className="truncate text-[11px] text-[var(--text-muted)]">{r.blogName}</span>
+                        <span className="line-clamp-2 text-[16px] font-medium text-ink">{r.title}</span>
+                        <span className="line-clamp-2 text-[14px] text-stone">{r.summary}</span>
+                        <span className="truncate text-[13px] text-[var(--text-muted)]">{r.blogName}</span>
                       </div>
                     </a>
                     <button
                       onClick={() => onSaveBlogLink(r.link)}
-                      className="self-start text-[12px] font-medium text-honey"
+                      className="self-start text-[14px] font-medium text-honey"
                     >
                       이 레시피 저장
                     </button>
@@ -355,11 +355,11 @@ export function RecipeSearchSheet({
                 onChange={(e) => onMemoChange(e.target.value)}
                 placeholder="레시피 보면서 메모해두기 (선택)"
                 rows={2}
-                className="rounded-xl bg-cream p-3 text-[13px]"
+                className="rounded-xl bg-cream p-3 text-[16px]"
               />
               <button
                 onClick={openYoutubeSearch}
-                className="flex h-11 items-center justify-center gap-1.5 rounded-2xl bg-ink text-[14px] font-medium text-cream"
+                className="flex h-11 items-center justify-center gap-1.5 rounded-2xl bg-ink text-[17px] font-medium text-cream"
               >
                 <IconBrandYoutube size={18} />
                 유튜브에서 새 창으로 검색
@@ -370,7 +370,7 @@ export function RecipeSearchSheet({
 
         <button
           onClick={onOpenLinkPaste}
-          className="flex shrink-0 items-center justify-center gap-1.5 border-t border-border-light pt-3 text-[12px] font-medium text-[var(--text-muted)]"
+          className="flex shrink-0 items-center justify-center gap-1.5 border-t border-border-light pt-3 text-[14px] font-medium text-[var(--text-muted)]"
         >
           <IconLink size={14} />
           레시피 링크 붙여넣기

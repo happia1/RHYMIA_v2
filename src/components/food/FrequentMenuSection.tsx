@@ -33,7 +33,7 @@ function MarqueeRow({ menus, onSelect }: { menus: string[]; onSelect: (menu: str
           <button
             key={`${menu}-${i}`}
             onClick={() => onSelect(menu)}
-            className="shrink-0 rounded-full border border-border-light px-3 py-1.5 text-[12px] text-ink"
+            className="shrink-0 rounded-full border border-border-light px-3 py-1.5 text-[14px] text-ink"
           >
             {menu}
           </button>
@@ -84,7 +84,7 @@ export function FrequentMenuSection({
     <div className="flex w-full flex-col items-center gap-2">
       <button
         onClick={() => setExpanded((v) => !v)}
-        className="flex items-center gap-0.5 text-[11px] text-[var(--text-muted)]"
+        className="flex items-center gap-0.5 text-[13px] text-[var(--text-muted)]"
       >
         자주 찾는 메뉴
         <IconChevronRight size={11} className={expanded ? "rotate-90" : ""} />

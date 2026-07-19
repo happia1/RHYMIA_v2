@@ -29,7 +29,7 @@ export function TodoChecklistItem({
       </button>
       <button onClick={onOpenEdit} className="min-w-0 flex-1 text-left">
         <span
-          className={`line-clamp-2 break-words text-[10px] ${
+          className={`line-clamp-2 break-words text-[12px] ${
             todo.is_done ? "text-[var(--text-muted)] line-through" : "text-ink"
           }`}
         >

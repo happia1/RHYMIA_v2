@@ -149,7 +149,7 @@ export function WeekView({
           <button onClick={() => goToWeek(-7)} aria-label="이전 주">
             <IconChevronLeft size={20} className="text-stone" />
           </button>
-          <span className="whitespace-nowrap text-[13px] font-medium text-ink">
+          <span className="whitespace-nowrap text-[16px] font-medium text-ink">
             {formatWeekRange(weekDates)}
           </span>
           <button onClick={() => goToWeek(7)} aria-label="다음 주">
@@ -187,7 +187,7 @@ export function WeekView({
                 <div className="flex items-center justify-between">
                   <span className="flex items-baseline gap-1.5">
                     <span
-                      className={`text-[13px] font-medium ${
+                      className={`text-[16px] font-medium ${
                         isToday
                           ? "text-honey"
                           : holiday || isSunday
@@ -199,7 +199,7 @@ export function WeekView({
                     >
                       {WEEKDAY_LABELS[i]} {day}
                     </span>
-                    {holiday && <span className="text-[11px] text-terra">{holiday}</span>}
+                    {holiday && <span className="text-[13px] text-terra">{holiday}</span>}
                   </span>
                   <button
                     onClick={() => setPickerDate(date)}
@@ -220,13 +220,13 @@ export function WeekView({
                       >
                         <EventMarker type="dot" color={getKeywordColor(s.keyword_main)} />
                         <span
-                          className={`min-w-0 flex-1 truncate text-[13px] ${
+                          className={`min-w-0 flex-1 truncate text-[16px] ${
                             s.is_important ? "font-medium text-terra" : "text-ink"
                           }`}
                         >
                           {s.title}
                         </span>
-                        <span className="shrink-0 text-[11px] text-stone">
+                        <span className="shrink-0 text-[13px] text-stone">
                           {s.time_start ? s.time_start.slice(0, 5) : "종일"} ·{" "}
                           {targetLabel(s.target_members, membersById)}
                         </span>

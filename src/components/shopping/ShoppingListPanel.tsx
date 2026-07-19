@@ -9,7 +9,7 @@ import { getShoppingItems, completeGroceryRun } from "@/app/(main)/shopping/acti
 import { SHOPPING_DOT_SIZE } from "@/lib/uiTokens";
 import type { ShoppingItem } from "@/types";
 
-const LABEL_CLASS = "text-[10px] tracking-[0.12em] font-medium text-stone";
+const LABEL_CLASS = "text-[12px] tracking-[0.12em] font-medium text-stone";
 
 // 타입 정의가 없는 브라우저 전용 API라 최소한의 형태만 다룬다.
 type SpeechRecognitionLike = {
@@ -76,7 +76,7 @@ function ShoppingItemRow({
         {item.is_purchased && <IconCheck size={SHOPPING_DOT_SIZE * 0.6} stroke={2.5} />}
       </span>
       <span
-        className={`min-w-0 flex-1 truncate text-[12px] ${
+        className={`min-w-0 flex-1 truncate text-[14px] ${
           item.is_purchased ? "text-[var(--text-muted)] line-through" : "text-ink"
         }`}
       >
@@ -211,7 +211,7 @@ export function ShoppingListPanel({ workspaceId }: { workspaceId: string }) {
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleAdd()}
           placeholder={speechSupported ? "살 것을 입력하거나 음성으로 등록하세요" : "살 것을 입력하세요"}
-          className="h-11 flex-1 px-0 text-[12px]"
+          className="h-11 flex-1 px-0 text-[14px]"
         />
         {speechSupported && (
           <button
@@ -228,7 +228,7 @@ export function ShoppingListPanel({ workspaceId }: { workspaceId: string }) {
       </div>
 
       <div className="flex flex-col gap-2">
-        {active.length === 0 && <p className="text-[13px] text-[var(--text-muted)]">장바구니가 비어있어요</p>}
+        {active.length === 0 && <p className="text-[16px] text-[var(--text-muted)]">장바구니가 비어있어요</p>}
         {active.map((item) => (
           <ShoppingItemRow
             key={item.id}
@@ -244,7 +244,7 @@ export function ShoppingListPanel({ workspaceId }: { workspaceId: string }) {
           <button
             disabled={checked.length === 0}
             onClick={() => setGroceryFlowOpen(true)}
-            className={`flex h-11 items-center justify-center rounded-xl border text-[14px] font-medium ${
+            className={`flex h-11 items-center justify-center rounded-xl border text-[17px] font-medium ${
               checked.length > 0 ? "border-honey text-honey" : "border-border-light text-[var(--text-muted)]"
             }`}
           >
@@ -259,7 +259,7 @@ export function ShoppingListPanel({ workspaceId }: { workspaceId: string }) {
                 value={place}
                 onChange={(e) => setPlace(e.target.value)}
                 placeholder="구매처 (예: 트레이더스)"
-                className="h-10 flex-1 px-0 text-[13px]"
+                className="h-10 flex-1 px-0 text-[16px]"
               />
               <Input
                 variant="underline"
@@ -268,20 +268,20 @@ export function ShoppingListPanel({ workspaceId }: { workspaceId: string }) {
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 placeholder="금액"
-                className="h-10 w-24 px-0 text-[13px]"
+                className="h-10 w-24 px-0 text-[16px]"
               />
             </div>
             <div className="flex gap-2">
               <button
                 onClick={handleCompleteGroceryRun}
                 disabled={isPending}
-                className="flex-1 rounded-xl bg-honey py-2.5 text-[13px] font-medium text-white disabled:opacity-50"
+                className="flex-1 rounded-xl bg-honey py-2.5 text-[16px] font-medium text-white disabled:opacity-50"
               >
                 기록하기
               </button>
               <button
                 onClick={() => setGroceryFlowOpen(false)}
-                className="flex-1 rounded-xl bg-cream py-2.5 text-[13px] font-medium text-stone"
+                className="flex-1 rounded-xl bg-cream py-2.5 text-[16px] font-medium text-stone"
               >
                 취소
               </button>

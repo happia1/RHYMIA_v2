@@ -95,10 +95,10 @@ export function PinnedNoticeBanner({
           />
         )}
         <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <p className={`line-clamp-2 text-[14px] font-medium leading-snug ${mirror.primary}`}>
+          <p className={`line-clamp-2 text-[17px] font-medium leading-snug ${mirror.primary}`}>
             {current.content}
           </p>
-          <span className={`text-[11px] ${mirror.muted}`}>
+          <span className={`text-[13px] ${mirror.muted}`}>
             {author?.display_name ?? "가족"}
           </span>
         </div>

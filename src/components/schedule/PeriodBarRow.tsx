@@ -23,8 +23,8 @@ export function PeriodBarRow({
     return (
       <button onClick={onClick} className="flex min-w-0 items-center gap-2 text-left">
         <span className="h-3 w-[3px] shrink-0 rounded-full" style={{ backgroundColor: color }} />
-        <span className="min-w-0 flex-1 truncate text-[12px] text-ink">{schedule.title}</span>
-        <span className="shrink-0 text-[10px] text-stone">{shortRange(schedule)}</span>
+        <span className="min-w-0 flex-1 truncate text-[14px] text-ink">{schedule.title}</span>
+        <span className="shrink-0 text-[12px] text-stone">{shortRange(schedule)}</span>
       </button>
     );
   }
@@ -33,8 +33,8 @@ export function PeriodBarRow({
     <button onClick={onClick} className="flex items-stretch gap-2 text-left">
       <span className="w-[3px] shrink-0 rounded-full" style={{ backgroundColor: color }} />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[12px] text-ink">{schedule.title}</p>
-        <p className="truncate text-[10px] text-stone">{longRangeWithWeekday(schedule)}</p>
+        <p className="truncate text-[14px] text-ink">{schedule.title}</p>
+        <p className="truncate text-[12px] text-stone">{longRangeWithWeekday(schedule)}</p>
       </div>
     </button>
   );

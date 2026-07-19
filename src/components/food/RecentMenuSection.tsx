@@ -47,13 +47,13 @@ export function RecentMenuSection({
           <button
             key={meal.id}
             onClick={() => onSelect(meal)}
-            className="flex items-center gap-1.5 rounded-full border border-border-light py-1 pl-1 pr-3 text-[12px] text-ink"
+            className="flex items-center gap-1.5 rounded-full border border-border-light py-1 pl-1 pr-3 text-[14px] text-ink"
           >
             {meal.image_url ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={meal.image_url} alt="" className="h-5 w-5 rounded-full object-cover" />
             ) : (
-              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-cream text-[11px]">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-cream text-[13px]">
                 {meal.emoji}
               </span>
             )}

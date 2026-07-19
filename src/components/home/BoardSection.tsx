@@ -61,13 +61,13 @@ function StickerCard({
         {decoration && (
           <span
             aria-hidden
-            className="pointer-events-none absolute -top-2.5 left-1/2 text-[16px]"
+            className="pointer-events-none absolute -top-2.5 left-1/2 text-[19px]"
             style={{ transform: `translateX(-50%) rotate(${tilt ? -tilt : 0}deg)` }}
           >
             {decoration}
           </span>
         )}
-        <span className="truncate text-[9px] opacity-60" style={{ color: STICKER_TEXT_COLOR }}>
+        <span className="truncate text-[11px] opacity-60" style={{ color: STICKER_TEXT_COLOR }}>
           {formatPostTimestamp(notice.created_at)}
         </span>
         {notice.image_url && (
@@ -75,13 +75,13 @@ function StickerCard({
           <img src={notice.image_url} alt="" className="mt-1 h-10 w-full shrink-0 object-cover" />
         )}
         <span
-          className="mt-1 line-clamp-3 flex-1 whitespace-pre-wrap font-handwriting text-[16px] leading-snug"
+          className="mt-1 line-clamp-3 flex-1 whitespace-pre-wrap font-handwriting text-[19px] leading-snug"
           style={{ color: STICKER_TEXT_COLOR }}
         >
           {notice.content}
         </span>
         {/* 쪽지처럼 끝에 남기는 서명 — "- 엄마" 식 */}
-        <span className="truncate self-end text-[10px] opacity-70" style={{ color: STICKER_TEXT_COLOR }}>
+        <span className="truncate self-end text-[12px] opacity-70" style={{ color: STICKER_TEXT_COLOR }}>
           - {authorName}
         </span>
         {/* 오른쪽 아래 모서리 접힘 효과 */}
@@ -161,19 +161,19 @@ export function BoardSection({
       )}
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         {n.title && (
-          <span className={`truncate text-[13px] font-medium ${n.is_pinned ? "text-honey" : "text-ink"}`}>
+          <span className={`truncate text-[16px] font-medium ${n.is_pinned ? "text-honey" : "text-ink"}`}>
             {n.title}
           </span>
         )}
         <div className="flex items-center justify-between gap-2">
           <p
-            className={`min-w-0 flex-1 truncate text-[11px] ${
+            className={`min-w-0 flex-1 truncate text-[13px] ${
               n.is_pinned && !n.title ? "text-honey" : "text-[var(--text-muted)]"
             }`}
           >
             {n.content}
           </p>
-          <div className="flex shrink-0 items-center gap-1.5 text-[11px] text-[var(--text-muted)]">
+          <div className="flex shrink-0 items-center gap-1.5 text-[13px] text-[var(--text-muted)]">
             <span className="font-medium">{authorOf(n.created_by)?.display_name ?? "가족"}</span>
             <span>· {formatPostTimestamp(n.created_at)}</span>
           </div>
@@ -190,7 +190,7 @@ export function BoardSection({
         <section className="flex flex-col gap-label-gap">
           <span className={mirror.label}>하고싶은 말</span>
           {stickers.length === 0 && (
-            <p className="text-[13px] text-[var(--text-muted)]">
+            <p className="text-[16px] text-[var(--text-muted)]">
               전하고 싶은 말을 쪽지로 남겨보세요!
             </p>
           )}
@@ -228,7 +228,7 @@ export function BoardSection({
           </div>
           <div className="flex flex-col">
             {posts.length === 0 && (
-              <p className="text-[13px] text-[var(--text-muted)]">등록된 글이 없어요</p>
+              <p className="text-[16px] text-[var(--text-muted)]">등록된 글이 없어요</p>
             )}
             <SectionExpand items={posts} pageSize={POSTS_PREVIEW_COUNT} renderItem={renderPost} />
           </div>
@@ -254,7 +254,7 @@ export function BoardSection({
             </button>
           </div>
           {stickers.length === 0 && (
-            <p className="text-[13px] text-[var(--text-muted)]">
+            <p className="text-[16px] text-[var(--text-muted)]">
               전하고 싶은 말을 쪽지로 남겨보세요!
             </p>
           )}
@@ -277,7 +277,7 @@ export function BoardSection({
         <section className="flex min-h-0 flex-1 flex-col gap-label-gap">
           <span className={mirror.label}>메모/공지사항</span>
           {posts.length === 0 ? (
-            <p className="text-[13px] text-[var(--text-muted)]">등록된 글이 없어요</p>
+            <p className="text-[16px] text-[var(--text-muted)]">등록된 글이 없어요</p>
           ) : (
             <div className="grid min-h-0 flex-1 grid-cols-[240px_1fr] gap-5">
               <div className="scrollbar-hide flex flex-col overflow-y-auto">
@@ -285,7 +285,7 @@ export function BoardSection({
                   <button
                     key={p.id}
                     onClick={() => setSelectedPostId(p.id)}
-                    className={`flex items-center gap-1 rounded-lg px-2 py-2 text-left text-[13px] ${
+                    className={`flex items-center gap-1 rounded-lg px-2 py-2 text-left text-[16px] ${
                       p.id === selectedPostId
                         ? "bg-honey/10 font-medium text-honey"
                         : "text-ink"

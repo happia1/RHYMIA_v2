@@ -33,7 +33,7 @@ export function MemberFilterRow({
     <div className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-0.5 text-[10px] tracking-[0.1em] text-[var(--text-muted)]"
+        className="flex items-center gap-0.5 text-[12px] tracking-[0.1em] text-[var(--text-muted)]"
       >
         {activeLabel}
         <IconChevronDown size={11} className={open ? "rotate-180" : ""} />
@@ -45,7 +45,7 @@ export function MemberFilterRow({
           <div className="absolute right-0 top-full z-50 mt-1.5 flex min-w-20 flex-col gap-0.5 rounded-xl border border-border-light bg-surface py-1.5 shadow-sm">
             <button
               onClick={() => setTarget(null)}
-              className={`px-3 py-1.5 text-left text-[12px] ${
+              className={`px-3 py-1.5 text-left text-[14px] ${
                 target === "all" ? "font-medium text-ink" : "text-stone"
               }`}
             >
@@ -55,7 +55,7 @@ export function MemberFilterRow({
               <button
                 key={m.id}
                 onClick={() => setTarget(m.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-left text-[12px] ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-left text-[14px] ${
                   target === m.id ? "font-medium text-ink" : "text-stone"
                 }`}
               >

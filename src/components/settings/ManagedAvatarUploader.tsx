@@ -112,7 +112,7 @@ export function ManagedAvatarUploader({
             type="button"
             onClick={() => setPickerOpen(true)}
             disabled={isPending}
-            className="text-[13px] font-medium text-ocean"
+            className="text-[16px] font-medium text-ocean"
           >
             사진 변경
           </button>
@@ -121,13 +121,13 @@ export function ManagedAvatarUploader({
               type="button"
               onClick={handleReset}
               disabled={isPending}
-              className="text-[13px] text-stone"
+              className="text-[16px] text-stone"
             >
               기본 이미지로
             </button>
           )}
         </div>
-        {error && <p className="text-[12px] text-terra">{error}</p>}
+        {error && <p className="text-[14px] text-terra">{error}</p>}
       </div>
 
       <input
@@ -153,7 +153,7 @@ export function ManagedAvatarUploader({
               setPickerOpen(false);
               cameraInputRef.current?.click();
             }}
-            className="flex items-center gap-3 py-3 text-left text-[14px] text-ink"
+            className="flex items-center gap-3 py-3 text-left text-[17px] text-ink"
           >
             <IconCamera size={18} className="text-honey" />
             카메라로 찍기
@@ -163,7 +163,7 @@ export function ManagedAvatarUploader({
               setPickerOpen(false);
               albumInputRef.current?.click();
             }}
-            className="flex items-center gap-3 border-t border-border-light py-3 text-left text-[14px] text-ink"
+            className="flex items-center gap-3 border-t border-border-light py-3 text-left text-[17px] text-ink"
           >
             <IconPhoto size={18} className="text-honey" />
             앨범에서 선택

@@ -11,6 +11,7 @@ import { mirror } from "@/lib/homeTheme";
 import { NoticeDetailSheet } from "@/components/board/NoticeDetailSheet";
 import { PinnedNoticeBanner } from "@/components/home/PinnedNoticeBanner";
 import { HomePhotoFrame } from "@/components/home/HomePhotoFrame";
+import { TabletTopBar } from "@/components/home/TabletTopBar";
 import { useDeviceLayout } from "@/lib/useDeviceLayout";
 import type { FamilyMemberStatus } from "@/components/home/HomeHeader";
 import type { WorkspaceMemberInfo } from "@/lib/members";
@@ -26,20 +27,21 @@ function TabletWeather({ weather }: { weather: WeatherData | null }) {
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-baseline gap-1.5">
-        <span className={`text-[38px] font-light leading-none ${mirror.primary}`}>
+        {/* 특대(시계·온도)는 이미 커서 전역 1.2배가 아니라 1.1배만 적용 */}
+        <span className={`text-[42px] font-light leading-none ${mirror.primary}`}>
           {weather ? `${weather.tempC}°` : "-°"}
         </span>
-        {weather && <span className="text-[20px] leading-none">{weather.icon}</span>}
+        {weather && <span className="text-[22px] leading-none">{weather.icon}</span>}
       </div>
       {weather && (
-        <span className={`text-[11.5px] ${mirror.muted}`}>
+        <span className={`text-[14px] ${mirror.muted}`}>
           {weather.description}
           {weather.tempMinC !== null && weather.tempMaxC !== null
             ? ` · 최저 ${weather.tempMinC}° 최고 ${weather.tempMaxC}°`
             : ""}
         </span>
       )}
-      <span className={`text-[10px] ${mirror.muted}`}>{weather ? weather.location : "서울 강동구"}</span>
+      <span className={`text-[12px] ${mirror.muted}`}>{weather ? weather.location : "서울 강동구"}</span>
     </div>
   );
 }
@@ -60,12 +62,13 @@ function TabletClock({ nowIso }: { nowIso: string }) {
   return (
     <div className="flex flex-col items-end gap-2">
       <p className="text-right leading-none">
-        <span className={`mr-1.5 text-[14px] font-normal ${mirror.secondary}`}>{period}</span>
-        <span className={`text-[54px] font-light tracking-tight ${mirror.primary}`}>
+        <span className={`mr-1.5 text-[17px] font-normal ${mirror.secondary}`}>{period}</span>
+        {/* 특대(시계) — 1.1배만 */}
+        <span className={`text-[59px] font-light tracking-tight ${mirror.primary}`}>
           {hour12}:{String(now.getMinutes()).padStart(2, "0")}
         </span>
       </p>
-      <span className={`text-[13px] tracking-wide ${mirror.secondary}`}>
+      <span className={`text-[16px] tracking-wide ${mirror.secondary}`}>
         {formatDate(now)}
         {lunar && <span className={mirror.muted}> · 음력 {lunar.month}.{lunar.day}</span>}
       </span>
@@ -87,8 +90,8 @@ function TabletFamilyList({ familyStatus }: { familyStatus: FamilyMemberStatus[]
             imageUrl={m.avatar_image_url}
             size={AVATAR_SIZE.mirror}
           />
-          <span className={`w-12 shrink-0 truncate text-[12px] ${mirror.primary}`}>{m.display_name}</span>
-          <span className={`truncate text-[11.5px] ${mirror.muted}`}>{m.statusText}</span>
+          <span className={`w-12 shrink-0 truncate text-[14px] ${mirror.primary}`}>{m.display_name}</span>
+          <span className={`truncate text-[14px] ${mirror.muted}`}>{m.statusText}</span>
         </Link>
       ))}
     </div>
@@ -108,8 +111,8 @@ function TabletLatestNote({
   return (
     <button onClick={onOpen} className={`flex flex-col gap-1 border-b py-3 text-left ${mirror.hairline}`}>
       <span className={mirror.label}>쪽지</span>
-      <p className={`line-clamp-2 text-[12px] leading-relaxed ${mirror.primary}`}>{note.content}</p>
-      <span className={`text-[9.5px] ${mirror.muted}`}>{author}</span>
+      <p className={`line-clamp-2 text-[14px] leading-relaxed ${mirror.primary}`}>{note.content}</p>
+      <span className={`text-[11px] ${mirror.muted}`}>{author}</span>
     </button>
   );
 }
@@ -172,7 +175,9 @@ export function HomeTabletHome({
   );
 
   return (
-    <>
+    <div className="relative h-full">
+      <TabletTopBar />
+
       {layout === "tablet-landscape" && (
         <div className="grid h-full grid-cols-mirror items-stretch gap-8">
           <div className="flex min-h-0 flex-col overflow-y-auto">
@@ -218,6 +223,6 @@ export function HomeTabletHome({
         membersById={membersById}
         commentsByNotice={commentsByNotice}
       />
-    </>
+    </div>
   );
 }

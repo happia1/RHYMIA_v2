@@ -97,7 +97,7 @@ export function ManagedMemberSheet({
   return (
     <BottomSheet open={open} onClose={handleClose}>
       <div className="flex flex-col gap-4">
-        <h2 className="text-[17px] font-medium text-ink">
+        <h2 className="text-[20px] font-medium text-ink">
           {existing ? "프로필 수정" : "구성원 추가"}
         </h2>
 
@@ -131,20 +131,20 @@ export function ManagedMemberSheet({
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="이름 (예: 첫째)"
-          className="h-11 rounded-xl px-3 text-[14px]"
+          className="h-11 rounded-xl px-3 text-[17px]"
         />
         <Input
           type="number"
           value={birthYear}
           onChange={(e) => setBirthYear(e.target.value)}
           placeholder="출생연도 (선택)"
-          className="h-11 rounded-xl px-3 text-[14px]"
+          className="h-11 rounded-xl px-3 text-[17px]"
         />
 
         <button
           onClick={handleSubmit}
           disabled={isPending || !name.trim()}
-          className="flex h-12 items-center justify-center rounded-2xl bg-ink text-[15px] font-medium text-cream disabled:opacity-50"
+          className="flex h-12 items-center justify-center rounded-2xl bg-ink text-[18px] font-medium text-cream disabled:opacity-50"
         >
           {existing ? "수정하기" : "추가하기"}
         </button>
@@ -153,21 +153,21 @@ export function ManagedMemberSheet({
           <>
             {confirmingDelete ? (
               <div className="flex flex-col gap-2 rounded-xl border border-terra/30 p-3">
-                <p className="text-[13px] text-ink">
+                <p className="text-[16px] text-ink">
                   이 프로필을 삭제하면 등록된 루틴도 함께 삭제돼요. 이 프로필을 대상으로
                   지정했던 일정은 그대로 남지만, 더 이상 특정 대상으로 표시되지 않아요.
                 </p>
                 <div className="flex gap-2">
                   <button
                     onClick={() => setConfirmingDelete(false)}
-                    className="flex-1 rounded-xl bg-cream py-2 text-[13px] font-medium text-stone"
+                    className="flex-1 rounded-xl bg-cream py-2 text-[16px] font-medium text-stone"
                   >
                     취소
                   </button>
                   <button
                     onClick={handleDelete}
                     disabled={isPending}
-                    className="flex-1 rounded-xl bg-terra py-2 text-[13px] font-medium text-white disabled:opacity-50"
+                    className="flex-1 rounded-xl bg-terra py-2 text-[16px] font-medium text-white disabled:opacity-50"
                   >
                     삭제하기
                   </button>
@@ -176,7 +176,7 @@ export function ManagedMemberSheet({
             ) : (
               <button
                 onClick={() => setConfirmingDelete(true)}
-                className="text-[13px] font-medium text-terra"
+                className="text-[16px] font-medium text-terra"
               >
                 프로필 삭제
               </button>
