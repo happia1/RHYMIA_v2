@@ -1,6 +1,8 @@
 import { requireWorkspaceContext } from "@/lib/workspace";
 import { getWorkspaceMembers } from "@/lib/members.server";
 import { BoardSection } from "@/components/home/BoardSection";
+import { TabPageFrame } from "@/components/ui/TabPageFrame";
+import { ScrollRegion } from "@/components/ui/ScrollRegion";
 import type { NoticeComment } from "@/types";
 
 export default async function BoardPage() {
@@ -36,8 +38,8 @@ export default async function BoardPage() {
   }
 
   return (
-    <div className="flex h-[calc(100dvh-64px)] flex-col overflow-hidden px-4 pt-6">
-      <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto pb-6">
+    <TabPageFrame className="px-4 pt-6">
+      <ScrollRegion className="scrollbar-hide pb-6">
         <BoardSection
           workspaceId={workspaceId}
           notices={notices ?? []}
@@ -45,7 +47,7 @@ export default async function BoardPage() {
           membersById={membersById}
           commentsByNotice={commentsByNotice}
         />
-      </div>
-    </div>
+      </ScrollRegion>
+    </TabPageFrame>
   );
 }

@@ -42,7 +42,9 @@ export function FullScreenSheet({
           <IconArrowLeft size={22} />
         </button>
       </div>
-      <div className="min-w-0 flex-1 px-5 pb-6">{children}</div>
+      <div className="min-w-0 flex-1 px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+        {children}
+      </div>
     </div>
   );
 }

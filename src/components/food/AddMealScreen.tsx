@@ -14,6 +14,8 @@ import {
   IconX,
 } from "@tabler/icons-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
+import { TabPageFrame } from "@/components/ui/TabPageFrame";
+import { ScrollRegion } from "@/components/ui/ScrollRegion";
 import { Input, Textarea } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
 import { mirror } from "@/lib/homeTheme";
@@ -242,7 +244,7 @@ export function AddMealScreen({
   };
 
   return (
-    <div className="flex h-[calc(100dvh-64px)] flex-col overflow-hidden bg-cream">
+    <TabPageFrame className="bg-cream">
       <header className="flex h-12 shrink-0 items-center justify-between px-4">
         <Link
           href={existingMeal ? `/food/${existingMeal.id}` : "/food"}
@@ -262,7 +264,7 @@ export function AddMealScreen({
         </button>
       </header>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
+      <ScrollRegion className="flex flex-col gap-4 px-4 pb-4">
         <section className="flex flex-col gap-2">
           <span className={mirror.label}>끼니</span>
           <div className="flex gap-4 overflow-x-auto">
@@ -441,7 +443,7 @@ export function AddMealScreen({
             className="px-0 py-2 text-[12px]"
           />
         </section>
-      </div>
+      </ScrollRegion>
 
       <FridgeStockSheet
         open={fridgeOpen}
@@ -518,6 +520,6 @@ export function AddMealScreen({
           setRecipeLinkOpen(true);
         }}
       />
-    </div>
+    </TabPageFrame>
   );
 }

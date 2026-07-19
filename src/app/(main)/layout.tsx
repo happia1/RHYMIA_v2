@@ -11,7 +11,7 @@ export default async function MainLayout({
 
   return (
     <ShoppingSheetProvider workspaceId={workspaceId}>
-      <div className="min-h-screen bg-cream pb-[64px]">
+      <div className="min-h-screen bg-cream pb-[var(--dock-h)]">
         {children}
         <DockBar />
       </div>

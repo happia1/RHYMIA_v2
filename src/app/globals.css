@@ -30,6 +30,12 @@
   --input-border: #E8E6E0;
   /* 섹션 라벨의 [아이콘 14px + gap-1.5(6px)]과 내용 시작점을 맞추기 위한 들여쓰기 */
   --section-indent: 20px;
+  /* 하단 DockBar가 실제로 차지하는 높이 — 아이콘/라벨이 들어가는 64px 고정 영역 +
+     iOS Safari의 홈 인디케이터 안전 영역(env(safe-area-inset-bottom), viewport-fit=cover가
+     layout.tsx의 viewport 설정에 있어야 0이 아닌 값이 나온다). 각 탭 page.tsx의
+     `h-[calc(100dvh-var(--dock-h))]`와 DockBar 자신의 높이가 반드시 이 변수 하나만
+     참조해야 아이패드에서 하단이 잘리지 않는다. */
+  --dock-h: calc(64px + env(safe-area-inset-bottom));
   /* 내 루틴 24시간 원형 차트 — 상태별 파스텔 팔레트 (라이트 기본값) */
   --routine-work: #AEC6EA;
   --routine-class: #CBB8EA;

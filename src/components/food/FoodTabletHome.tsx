@@ -227,7 +227,9 @@ function FridgeCompartment({
   );
 }
 
-/** 1024px 이상(태블릿) 전용 식탁 탭 레이아웃 — fridge_tablet_suite.jsx 스펙. 좌열은 전부
+/** 태블릿 전용 식탁 탭 레이아웃 — fridge_tablet_suite.jsx 스펙. 부모(food/page.tsx)의
+ * DeviceLayoutSwitch가 이미 모바일/태블릿을 갈라놓기 때문에 이 컴포넌트 자체는 별도
+ * 미디어쿼리 없이 항상 렌더된 그대로 보이면 된다. 좌열은 전부
  * 기존 위젯이 쓰는 데이터/서버 액션을 그대로 재사용(주간 스트립만 신규 — 끼니가 아니라
  * 일정 유무를 점으로 보여주고 탭하면 일정 탭으로 나간다). 우열은 냉장고 묘사 + 장바구니
  * 아코디언(기본 8:2, 장바구니 탭 시 4:6) — 펼친 장바구니는 ShoppingListPanel을 그대로
@@ -302,7 +304,7 @@ export function FoodTabletHome({
 
   return (
     <>
-      <div className="hidden h-full lg:flex lg:gap-8">
+      <div className="flex h-full gap-8">
         <div className="flex w-[42%] flex-col gap-3 overflow-y-auto">
           <TabletWeekStrip weekDates={weekDates} datesWithSchedule={datesWithSchedule} />
           <TabletMealList meals={dayMeals} />

@@ -16,6 +16,9 @@ import { FoodTabActions } from "@/components/food/FoodTabActions";
 import { MealListSection, type MealRow } from "@/components/food/MealListSection";
 import { MealNutritionSummary } from "@/components/food/MealNutritionSummary";
 import { FoodTabletHome } from "@/components/food/FoodTabletHome";
+import { DeviceLayoutSwitch } from "@/components/ui/DeviceLayoutSwitch";
+import { TabPageFrame } from "@/components/ui/TabPageFrame";
+import { ScrollRegion } from "@/components/ui/ScrollRegion";
 import type { FridgeItem } from "@/types";
 
 export default async function FoodPage({
@@ -112,82 +115,93 @@ export default async function FoodPage({
   }
 
   return (
-    <div className="flex h-[calc(100dvh-64px)] flex-col gap-4 overflow-hidden px-4 pt-6">
-      <div className="shrink-0 lg:hidden">
-        <WeekCalendar
-          weekDates={weekDates}
-          selectedDate={selectedDate}
-          datesWithMeals={datesWithMeals}
-        />
-      </div>
-
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pb-6 lg:hidden">
-        {todayVote && (
-          <MealVoteCard vote={todayVote} workspaceId={workspaceId} currentUserId={user.id} />
-        )}
-
-        {(dayMeals ?? []).length === 0 ? (
-          <MealEmptyState
-            workspaceId={workspaceId}
-            selectedDate={selectedDate}
-            frequentMenus={frequentMenus}
-            activeVote={blockingVote}
-          />
-        ) : (
+    <TabPageFrame className="gap-4 px-4 pt-6">
+      <DeviceLayoutSwitch
+        mobile={
           <>
-            <MealListSection
-              meals={(dayMeals ?? []) as MealRow[]}
-              members={members}
-              currentUserId={user.id}
-              nutritionEnabled={nutritionEnabled}
-            />
-            <div className="flex items-center gap-2 border-t border-border-light pt-2.5">
-              {nutritionEnabled && <MealNutritionSummary meals={(dayMeals ?? []) as MealRow[]} />}
-              <Link
-                href={`/food/add?date=${selectedDate}`}
-                className="ml-auto shrink-0 text-[13px] font-medium text-honey"
-              >
-                + 끼니 추가
-              </Link>
+            <div className="shrink-0">
+              <WeekCalendar
+                weekDates={weekDates}
+                selectedDate={selectedDate}
+                datesWithMeals={datesWithMeals}
+              />
             </div>
+
+            <ScrollRegion className="flex flex-col gap-4 pb-6">
+              {todayVote && (
+                <MealVoteCard vote={todayVote} workspaceId={workspaceId} currentUserId={user.id} />
+              )}
+
+              {(dayMeals ?? []).length === 0 ? (
+                <MealEmptyState
+                  workspaceId={workspaceId}
+                  selectedDate={selectedDate}
+                  frequentMenus={frequentMenus}
+                  activeVote={blockingVote}
+                />
+              ) : (
+                <>
+                  <MealListSection
+                    meals={(dayMeals ?? []) as MealRow[]}
+                    members={members}
+                    currentUserId={user.id}
+                    nutritionEnabled={nutritionEnabled}
+                  />
+                  <div className="flex items-center gap-2 border-t border-border-light pt-2.5">
+                    {nutritionEnabled && (
+                      <MealNutritionSummary meals={(dayMeals ?? []) as MealRow[]} />
+                    )}
+                    <Link
+                      href={`/food/add?date=${selectedDate}`}
+                      className="ml-auto shrink-0 text-[13px] font-medium text-honey"
+                    >
+                      + 끼니 추가
+                    </Link>
+                  </div>
+                </>
+              )}
+
+              <div className="h-px w-full shrink-0 bg-border-light" />
+
+              <FoodTabActions
+                workspaceId={workspaceId}
+                fridgeItems={(fridgeItems as FridgeItem[]) ?? []}
+              />
+
+              <div className="h-px w-full shrink-0 bg-border-light" />
+
+              <SuggestionSection
+                workspaceId={workspaceId}
+                selectedDate={selectedDate}
+                frequentMenus={frequentMenus}
+                trackingDays={trackingDays}
+                activeVote={blockingVote}
+                recommendedRecipe={recommendedRecipe}
+                recipeEnabled={recipeEnabled}
+              />
+            </ScrollRegion>
           </>
-        )}
-
-        <div className="h-px w-full shrink-0 bg-border-light" />
-
-        <FoodTabActions workspaceId={workspaceId} fridgeItems={(fridgeItems as FridgeItem[]) ?? []} />
-
-        <div className="h-px w-full shrink-0 bg-border-light" />
-
-        <SuggestionSection
-          workspaceId={workspaceId}
-          selectedDate={selectedDate}
-          frequentMenus={frequentMenus}
-          trackingDays={trackingDays}
-          activeVote={blockingVote}
-          recommendedRecipe={recommendedRecipe}
-          recipeEnabled={recipeEnabled}
-        />
-      </div>
-
-      {/* 태블릿(1024px~) 전용 레이아웃 — fridge_tablet_suite.jsx 스펙 */}
-      <div className="hidden min-h-0 flex-1 lg:block">
-        <FoodTabletHome
-          workspaceId={workspaceId}
-          selectedDate={selectedDate}
-          weekDates={weekDates}
-          datesWithSchedule={datesWithSchedule}
-          dayMeals={(dayMeals ?? []) as MealRow[]}
-          frequentMenus={frequentMenus}
-          trackingDays={trackingDays}
-          blockingVote={blockingVote}
-          recommendedRecipe={recommendedRecipe}
-          recipeEnabled={recipeEnabled}
-          recipeNotesCount={recipeNotes.favorites.length}
-          fridgeItems={(fridgeItems as FridgeItem[]) ?? []}
-          cartItems={cartItems}
-        />
-      </div>
-    </div>
+        }
+        tablet={
+          <div className="min-h-0 flex-1">
+            <FoodTabletHome
+              workspaceId={workspaceId}
+              selectedDate={selectedDate}
+              weekDates={weekDates}
+              datesWithSchedule={datesWithSchedule}
+              dayMeals={(dayMeals ?? []) as MealRow[]}
+              frequentMenus={frequentMenus}
+              trackingDays={trackingDays}
+              blockingVote={blockingVote}
+              recommendedRecipe={recommendedRecipe}
+              recipeEnabled={recipeEnabled}
+              recipeNotesCount={recipeNotes.favorites.length}
+              fridgeItems={(fridgeItems as FridgeItem[]) ?? []}
+              cartItems={cartItems}
+            />
+          </div>
+        }
+      />
+    </TabPageFrame>
   );
 }

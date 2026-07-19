@@ -11,6 +11,7 @@ import { mirror } from "@/lib/homeTheme";
 import { NoticeDetailSheet } from "@/components/board/NoticeDetailSheet";
 import { PinnedNoticeBanner } from "@/components/home/PinnedNoticeBanner";
 import { HomePhotoFrame } from "@/components/home/HomePhotoFrame";
+import { useDeviceLayout } from "@/lib/useDeviceLayout";
 import type { FamilyMemberStatus } from "@/components/home/HomeHeader";
 import type { WorkspaceMemberInfo } from "@/lib/members";
 import type { Notice, NoticeComment } from "@/types";
@@ -113,8 +114,9 @@ function TabletLatestNote({
   );
 }
 
-/** 1024px 이상(태블릿) 전용 홈 레이아웃 — 가로/세로 두 배치 모두 이 컴포넌트가 담당하고
- * CSS `orientation` 미디어 쿼리로 실제 화면 방향에 맞는 쪽만 보인다(JS 토글 없음). 위계는
+/** 태블릿(가로/세로) 전용 홈 레이아웃 — 가로/세로 두 배치 모두 이 컴포넌트가 담당하고
+ * useDeviceLayout()으로 실제 화면 방향에 맞는 쪽만 렌더한다(홈/식탁/일정/게시판이 전부
+ * 공유하는 그 훅 — 여기서만 랜드스케이프/포트레이트를 더 세분화해서 쓴다). 위계는
  * "특대는 시계·온도 둘뿐" — 나머지(가족상태/쪽지/공지/오늘 뭐하지/오늘 뭐먹지)는 전부
  * 기존 모바일 위젯이 쓰는 것과 같은 데이터/컴포넌트를 재사용한다("오늘 뭐하지"/"오늘 뭐먹지"는
  * 아예 같은 ReactNode를 그대로 전달받아 배치만 바꾼다). */
@@ -146,6 +148,7 @@ export function HomeTabletHome({
   scheduleTodaySection: React.ReactNode;
   photoUrls: string[];
 }) {
+  const { layout } = useDeviceLayout();
   const [openMemo, setOpenMemo] = useState<Notice | null>(null);
 
   const latestNote = stickers[0] ?? null;
@@ -170,40 +173,42 @@ export function HomeTabletHome({
 
   return (
     <>
-      {/* 가로 */}
-      <div className="hidden h-full lg:landscape:grid lg:landscape:grid-cols-mirror lg:landscape:items-stretch lg:landscape:gap-8">
-        <div className="flex min-h-0 flex-col overflow-y-auto">
-          <div className="mb-5 shrink-0">
-            <TabletWeather weather={weather} />
+      {layout === "tablet-landscape" && (
+        <div className="grid h-full grid-cols-mirror items-stretch gap-8">
+          <div className="flex min-h-0 flex-col overflow-y-auto">
+            <div className="mb-5 shrink-0">
+              <TabletWeather weather={weather} />
+            </div>
+            {leftColumn}
           </div>
-          {leftColumn}
+          <div className="min-h-0">
+            <HomePhotoFrame photoUrls={photoUrls} />
+          </div>
+          <div className="flex min-h-0 flex-col overflow-y-auto">
+            <div className="mb-5 shrink-0">
+              <TabletClock nowIso={nowIso} />
+            </div>
+            {rightColumn}
+          </div>
         </div>
-        <div className="min-h-0">
-          <HomePhotoFrame photoUrls={photoUrls} />
-        </div>
-        <div className="flex min-h-0 flex-col overflow-y-auto">
-          <div className="mb-5 shrink-0">
+      )}
+
+      {layout === "tablet-portrait" && (
+        <div className="flex h-full flex-col">
+          <div className="flex shrink-0 items-start justify-between">
+            <TabletWeather weather={weather} />
             <TabletClock nowIso={nowIso} />
           </div>
-          {rightColumn}
+          <div className="my-4 min-h-0 flex-1">
+            <HomePhotoFrame photoUrls={photoUrls} />
+          </div>
+          <div className="flex shrink-0 gap-6 overflow-y-auto">
+            <div className="flex flex-1 flex-col">{leftColumn}</div>
+            <div className={`w-px shrink-0 ${mirror.hairlineBg}`} />
+            <div className="flex flex-1 flex-col">{rightColumn}</div>
+          </div>
         </div>
-      </div>
-
-      {/* 세로 */}
-      <div className="hidden h-full lg:portrait:flex lg:portrait:flex-col">
-        <div className="flex shrink-0 items-start justify-between">
-          <TabletWeather weather={weather} />
-          <TabletClock nowIso={nowIso} />
-        </div>
-        <div className="my-4 min-h-0 flex-1">
-          <HomePhotoFrame photoUrls={photoUrls} />
-        </div>
-        <div className="flex shrink-0 gap-6 overflow-y-auto">
-          <div className="flex flex-1 flex-col">{leftColumn}</div>
-          <div className={`w-px shrink-0 ${mirror.hairlineBg}`} />
-          <div className="flex flex-1 flex-col">{rightColumn}</div>
-        </div>
-      </div>
+      )}
 
       <NoticeDetailSheet
         notice={openMemo}

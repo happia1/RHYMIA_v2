@@ -8,6 +8,8 @@ import { WeekView } from "@/components/schedule/WeekView";
 import { YearView } from "@/components/schedule/YearView";
 import { AddEventEntry } from "@/components/schedule/AddEventEntry";
 import { AgentLauncher } from "@/components/agent/AgentLauncher";
+import { TabPageFrame } from "@/components/ui/TabPageFrame";
+import { ScrollRegion } from "@/components/ui/ScrollRegion";
 import { getSchedulesForRange, getTodosForRange, getOverdueTodos } from "@/app/(main)/schedule/actions";
 import type { Schedule, Routine, Todo } from "@/types";
 
@@ -101,18 +103,18 @@ export default async function SchedulePage({
         : myMember?.id ?? editableMembers[0]?.id ?? "";
 
     return (
-      <div className="flex h-[calc(100dvh-64px)] flex-col gap-3 overflow-hidden px-4 pt-6">
+      <TabPageFrame className="gap-3 px-4 pt-6">
         <div className="shrink-0">
           <ScheduleTabs anchorDate={anchorStr} view={view} />
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto pb-24">
+        <ScrollRegion className="pb-24">
           <ScheduleDayView
             members={editableMembers}
             initialRoutines={(routines as Routine[]) ?? []}
             defaultMemberId={requestedMemberId}
           />
-        </div>
+        </ScrollRegion>
 
         <AddEventEntry
           workspaceId={workspaceId}
@@ -121,7 +123,7 @@ export default async function SchedulePage({
           autoOpen={params.new === "1"}
         />
         <AgentLauncher workspaceId={workspaceId} members={members} currentMemberId={myMember?.id ?? ""} />
-      </div>
+      </TabPageFrame>
     );
   }
 
@@ -141,12 +143,15 @@ export default async function SchedulePage({
   }
 
   return (
-    <div className="flex h-[calc(100dvh-64px)] flex-col gap-2 overflow-hidden px-4 pt-6">
+    <TabPageFrame className="gap-2 px-4 pt-6">
       <div className="shrink-0">
         <ScheduleTabs anchorDate={anchorStr} view={view} />
       </div>
 
-      <div className={`min-h-0 flex-1 ${view === "month" ? "overflow-hidden" : "overflow-y-auto pb-24"}`}>
+      <ScrollRegion
+        lockOverflow={view === "month"}
+        className={view === "month" ? "" : "pb-24"}
+      >
         <section className={`flex flex-col ${view === "month" ? "h-full gap-label-gap" : "gap-label-gap"}`}>
           {view === "month" && (
             <MonthView
@@ -185,7 +190,7 @@ export default async function SchedulePage({
             />
           )}
         </section>
-      </div>
+      </ScrollRegion>
 
       <AddEventEntry
         workspaceId={workspaceId}
@@ -194,6 +199,6 @@ export default async function SchedulePage({
         autoOpen={params.new === "1"}
       />
       <AgentLauncher workspaceId={workspaceId} members={members} currentMemberId={myMember?.id ?? ""} />
-    </div>
+    </TabPageFrame>
   );
 }

@@ -21,6 +21,9 @@ import { HomeStickySection } from "@/components/home/HomeStickySection";
 import { HomeShoppingSection } from "@/components/home/HomeShoppingSection";
 import { HomeSections } from "@/components/home/HomeSections";
 import { HomeTabletHome } from "@/components/home/HomeTabletHome";
+import { DeviceLayoutSwitch } from "@/components/ui/DeviceLayoutSwitch";
+import { TabPageFrame } from "@/components/ui/TabPageFrame";
+import { ScrollRegion } from "@/components/ui/ScrollRegion";
 import type { NoticeComment, RoutineBlock, Todo } from "@/types";
 
 export default async function HomePage() {
@@ -244,44 +247,51 @@ export default async function HomePage() {
   const shoppingSection = <HomeShoppingSection shoppingItems={shoppingItems ?? []} />;
 
   return (
-    <div className={`flex h-[calc(100dvh-64px)] flex-col overflow-hidden ${mirror.bg} px-4 pt-6 pb-4`}>
-      {/* 모바일: 위젯처럼 길게 눌러 순서를 바꿀 수 있는 4개 독립 섹션(끼니/오늘/하고싶은말/장바구니).
-          한 화면(100dvh - 독바 높이)에 고정 — 헤더/헤어라인은 고정 높이, 위젯 그리드 영역만
-          남은 높이를 차지하고 넘치면 그 영역 안에서만 스크롤(overflow-y-auto), 페이지 자체는 스크롤 없음. */}
-      <div className="flex min-h-0 flex-1 flex-col lg:hidden">
-        <div className="shrink-0">{headerNode}</div>
-        <div className={`my-3 h-px w-full shrink-0 ${mirror.hairlineBg}`} />
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <HomeSections
-            initialOrder={homeSectionOrder}
-            sections={{
-              mealToday: mealTodaySection,
-              scheduleToday: scheduleTodaySection,
-              sticky: stickySection,
-              shopping: shoppingSection,
-            }}
-          />
-        </div>
-      </div>
-
-      {/* 태블릿(1024px~): 가로/세로 전용 레이아웃 — fridge_tablet_suite.jsx 스펙,
-          CSS orientation 미디어 쿼리로 실제 화면 방향에 맞는 쪽만 렌더된다. */}
-      <div className="hidden h-full lg:block">
-        <HomeTabletHome
-          familyStatus={familyStatus}
-          weather={weather}
-          nowIso={new Date().toISOString()}
-          pinnedMemos={pinnedMemoRows ?? []}
-          stickers={stickers ?? []}
-          workspaceId={workspaceId}
-          currentUserId={user.id}
-          membersById={membersByUserId}
-          commentsByNotice={pinnedMemoComments}
-          mealTodaySection={mealTodaySection}
-          scheduleTodaySection={scheduleTodaySection}
-          photoUrls={homePhotos.map((p) => p.url)}
-        />
-      </div>
-    </div>
+    <TabPageFrame className={`${mirror.bg} px-4 pt-6 pb-4`}>
+      <DeviceLayoutSwitch
+        mobile={
+          // 모바일: 위젯처럼 길게 눌러 순서를 바꿀 수 있는 4개 독립 섹션(끼니/오늘/하고싶은말/
+          // 장바구니). 한 화면(100dvh - 독바 높이)에 고정 — 헤더/헤어라인은 고정 높이, 위젯
+          // 그리드 영역만 남은 높이를 차지하고 넘치면 그 영역 안에서만 스크롤
+          // (overflow-y-auto), 페이지 자체는 스크롤 없음. 폰 가로일 땐 ScrollRegion이 이
+          // 내부 스크롤 상자를 풀어 페이지 전체가 자연 스크롤된다.
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="shrink-0">{headerNode}</div>
+            <div className={`my-3 h-px w-full shrink-0 ${mirror.hairlineBg}`} />
+            <ScrollRegion>
+              <HomeSections
+                initialOrder={homeSectionOrder}
+                sections={{
+                  mealToday: mealTodaySection,
+                  scheduleToday: scheduleTodaySection,
+                  sticky: stickySection,
+                  shopping: shoppingSection,
+                }}
+              />
+            </ScrollRegion>
+          </div>
+        }
+        // 태블릿(가로/세로): 가로/세로 전용 레이아웃 — fridge_tablet_suite.jsx 스펙,
+        // HomeTabletHome 내부에서 useDeviceLayout()으로 실제 방향에 맞는 쪽만 렌더한다.
+        tablet={
+          <div className="h-full">
+            <HomeTabletHome
+              familyStatus={familyStatus}
+              weather={weather}
+              nowIso={new Date().toISOString()}
+              pinnedMemos={pinnedMemoRows ?? []}
+              stickers={stickers ?? []}
+              workspaceId={workspaceId}
+              currentUserId={user.id}
+              membersById={membersByUserId}
+              commentsByNotice={pinnedMemoComments}
+              mealTodaySection={mealTodaySection}
+              scheduleTodaySection={scheduleTodaySection}
+              photoUrls={homePhotos.map((p) => p.url)}
+            />
+          </div>
+        }
+      />
+    </TabPageFrame>
   );
 }

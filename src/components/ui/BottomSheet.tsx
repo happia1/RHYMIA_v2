@@ -42,7 +42,7 @@ export function BottomSheet({
       <div
         onClick={(e) => e.stopPropagation()}
         {...handlers}
-        className={`relative z-10 flex w-full flex-col overflow-y-auto rounded-t-3xl bg-surface p-6 ${
+        className={`relative z-10 flex w-full flex-col overflow-y-auto rounded-t-3xl bg-surface p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] ${
           dragging ? "" : "transition-transform duration-200"
         } ${fixedHeight ? "h-[85dvh]" : tall ? "max-h-[92dvh]" : "max-h-[85vh]"} ${
           open ? "translate-y-0" : "translate-y-full"

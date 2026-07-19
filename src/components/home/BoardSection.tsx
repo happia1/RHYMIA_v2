@@ -9,6 +9,7 @@ import { AddPostSheet } from "@/components/board/AddPostSheet";
 import { formatPostTimestamp } from "@/lib/date";
 import { mirror } from "@/lib/homeTheme";
 import { pickDeterministic, seededRange } from "@/lib/randomPick";
+import { useDeviceLayout } from "@/lib/useDeviceLayout";
 import type { WorkspaceMemberInfo } from "@/lib/members";
 import type { Notice, NoticeComment } from "@/types";
 
@@ -115,6 +116,7 @@ export function BoardSection({
   membersById: Record<string, WorkspaceMemberInfo>;
   commentsByNotice: Record<string, NoticeComment[]>;
 }) {
+  const { layout } = useDeviceLayout();
   const [detail, setDetail] = useState<Notice | null>(null);
   const [addingSticky, setAddingSticky] = useState(false);
   const [addingPost, setAddingPost] = useState(false);
@@ -182,8 +184,9 @@ export function BoardSection({
 
   return (
     <div className="flex flex-col gap-1.5">
-      {/* 모바일(1024px 미만) — 변경 없음 */}
-      <div className="flex flex-col gap-1.5 lg:hidden">
+      {/* 모바일 — 변경 없음 */}
+      {layout === "mobile" && (
+      <div className="flex flex-col gap-1.5">
         <section className="flex flex-col gap-label-gap">
           <span className={mirror.label}>하고싶은 말</span>
           {stickers.length === 0 && (
@@ -231,12 +234,14 @@ export function BoardSection({
           </div>
         </section>
       </div>
+      )}
 
-      {/* 태블릿(1024px~) — 1) 상단 쪽지: 스티커 id 시드 기반 -3~3도 랜덤 틸트(리렌더돼도
+      {/* 태블릿(가로/세로) — 1) 상단 쪽지: 스티커 id 시드 기반 -3~3도 랜덤 틸트(리렌더돼도
           고정), 그림자, 장식 이모지. 2) 하단 메모/공지사항 2단: 좌측 제목 리스트(고정은
           📌+상단 정렬, 선택 하이라이트) / 우측 본문 즉시 표시(팝업 없이 NoticeDetailContent
           그대로 재사용 — 수정 모드도 이 패널 안에서 인라인으로 전환됨). */}
-      <div className="hidden flex-col gap-5 lg:flex">
+      {layout !== "mobile" && (
+      <div className="flex flex-col gap-5">
         <section className="flex flex-col gap-label-gap">
           <div className="flex items-center justify-between">
             <span className={mirror.label}>하고싶은 말</span>
@@ -307,6 +312,7 @@ export function BoardSection({
           )}
         </section>
       </div>
+      )}
 
       <NoticeDetailSheet
         notice={detail}

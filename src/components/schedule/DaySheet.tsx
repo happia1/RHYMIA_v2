@@ -66,7 +66,7 @@ export function DaySheet({
       onTransitionEnd={() => {
         if (!open) setMounted(false);
       }}
-      className={`fixed inset-x-0 bottom-0 z-50 flex h-[50dvh] flex-col overflow-y-auto rounded-t-3xl bg-surface p-5 shadow-[0_-8px_24px_rgba(0,0,0,0.08)] ${
+      className={`fixed inset-x-0 bottom-0 z-50 flex h-[50dvh] flex-col overflow-y-auto rounded-t-3xl bg-surface p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-[0_-8px_24px_rgba(0,0,0,0.08)] ${
         dragging ? "" : "transition-transform duration-200"
       } ${open ? "translate-y-0" : "translate-y-full"}`}
       style={dragY ? { transform: `translateY(${dragY}px)` } : undefined}

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { IconHome, IconToolsKitchen2, IconCalendar, IconLayoutBoard } from "@tabler/icons-react";
 import { mirror } from "@/lib/homeTheme";
+import { useDeviceLayout } from "@/lib/useDeviceLayout";
 
 const TABS = [
   { href: "/home", label: "홈", icon: IconHome },
@@ -14,7 +15,6 @@ const TABS = [
 ];
 
 const REVEAL_MS = 3000;
-const TABLET_QUERY = "(min-width: 1024px)";
 
 /** 태블릿 홈 화면에서만 독바를 기본적으로 숨기고, 화면 어디든 탭하면 3초간 보였다가 다시
  * 사라진다(태블릿 스펙의 "화면 탭 → 독바 표시" 동작) — 모바일이나 다른 탭에서는 이전과
@@ -52,22 +52,15 @@ function useTabletHomeAutoHide(active: boolean) {
 
 export function DockBar() {
   const pathname = usePathname();
-  const [isTablet, setIsTablet] = useState(false);
-
-  useEffect(() => {
-    const mq = window.matchMedia(TABLET_QUERY);
-    const update = () => setIsTablet(mq.matches);
-    update();
-    mq.addEventListener("change", update);
-    return () => mq.removeEventListener("change", update);
-  }, []);
+  const { layout } = useDeviceLayout();
+  const isTablet = layout !== "mobile";
 
   const isTabletHome = isTablet && pathname === "/home";
   const visible = useTabletHomeAutoHide(isTabletHome);
 
   return (
     <nav
-      className={`fixed inset-x-0 bottom-0 z-40 flex h-[64px] items-center justify-around bg-cream transition-opacity duration-300 ${
+      className={`fixed inset-x-0 bottom-0 z-40 flex h-[var(--dock-h)] items-center justify-around bg-cream pb-[env(safe-area-inset-bottom)] transition-opacity duration-300 ${
         visible ? "opacity-100" : "pointer-events-none opacity-0"
       }`}
     >

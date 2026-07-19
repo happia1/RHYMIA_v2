@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { Nanum_Pen_Script } from "next/font/google";
 import "./globals.css";
@@ -30,6 +30,14 @@ const handwriting = Nanum_Pen_Script({
 export const metadata: Metadata = {
   title: "fridge",
   description: "5초 안에 오늘 우리 집의 상태를 이해할 수 있는 가족 홈 대시보드",
+};
+
+// viewportFit: "cover" — 이게 없으면 iOS Safari에서 env(safe-area-inset-*)가 전부 0으로
+// 취급돼(globals.css의 --dock-h 계산 포함) 노치/홈 인디케이터 영역을 반영할 수 없다.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

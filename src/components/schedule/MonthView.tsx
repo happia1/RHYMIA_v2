@@ -21,6 +21,7 @@ import { MemberFilterRow } from "@/components/schedule/MemberFilterRow";
 import { getLastYearHighlights, toggleTodoDone } from "@/app/(main)/schedule/actions";
 import { ACTIVITY_SUGGESTION_POOL, pickActivityCandidates } from "@/lib/activitySuggestions";
 import { pickDeterministic } from "@/lib/randomPick";
+import { useDeviceLayout } from "@/lib/useDeviceLayout";
 import type { Todo } from "@/types";
 
 const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
@@ -134,6 +135,7 @@ export function MonthView({
   target: string;
 }) {
   const router = useRouter();
+  const { layout } = useDeviceLayout();
   const initialHighlightMatch = highlightId ? schedules.find((s) => s.id === highlightId) : undefined;
   const [selectedDate, setSelectedDate] = useState(initialHighlightMatch?.date_start ?? anchorDate);
   const [sheetOpen, setSheetOpen] = useState(Boolean(initialHighlightMatch));
@@ -380,10 +382,11 @@ export function MonthView({
 
       {/* 기본 상태: 달력이 남는 높이 전부(100%)를 씀 — 페이지 스크롤 없음(요구사항 1).
           날짜 탭: 50%로 압축 애니메이션(요구사항 2), 하단 절반엔 DaySheet(고정 위치, 자체
-          슬라이드 트랜지션). 시트 닫힘: 다시 100%로(요구사항 3). 1024px 이상은 이 압축+
-          슬라이드 시트 구조 자체를 안 쓰고 아래 별도 태블릿 블록(좌 미니 달력 + 우 고정
-          패널)으로 대체한다. */}
-      <div className="min-h-0 flex-1 lg:hidden">
+          슬라이드 트랜지션). 시트 닫힘: 다시 100%로(요구사항 3). 태블릿(useDeviceLayout)은
+          이 압축+슬라이드 시트 구조 자체를 안 쓰고 아래 별도 태블릿 블록(좌 미니 달력 + 우
+          고정 패널)으로 대체한다. */}
+      {layout === "mobile" && (
+      <div className="min-h-0 flex-1">
         <div
           className="flex h-full flex-col overflow-hidden"
           style={{ height: sheetOpen ? "50%" : "100%", transition: COMPRESS_TRANSITION }}
@@ -550,12 +553,14 @@ export function MonthView({
           </div>
         </div>
       </div>
+      )}
 
-      {/* 태블릿(1024px~): 좌 미니 달력(도트만, 밴드/라벨 없음) + 우 고정 상세 패널 — 날짜를
+      {/* 태블릿(가로/세로): 좌 미니 달력(도트만, 밴드/라벨 없음) + 우 고정 상세 패널 — 날짜를
           선택해도 시트가 슬라이드하지 않고 우측 패널 내용만 바뀐다. DaySheetContent를
           모바일 DaySheet와 그대로 공유(마커·+·수정 문법 동일), 활동 제안은 여기서만
           "한 줄"로 노출(showActivitySuggestion). */}
-      <div className="hidden min-h-0 flex-1 lg:flex lg:gap-8">
+      {layout !== "mobile" && (
+      <div className="flex min-h-0 flex-1 gap-8">
         <div className="flex w-[42%] flex-col">
           <div
             key={`tablet-${anchorDate}`}
@@ -636,8 +641,9 @@ export function MonthView({
           />
         </div>
       </div>
+      )}
 
-      <div className="lg:hidden">
+      {layout === "mobile" && (
       <DaySheet
         open={sheetOpen}
         date={selectedDate}
@@ -657,7 +663,7 @@ export function MonthView({
         activitySuggestion={activitySuggestion}
         activityCandidates={activityCandidates}
       />
-      </div>
+      )}
 
       <AddEventSheet
         open={!!prefillEvent || !!editingSchedule || addNewOpen}
